@@ -6,8 +6,6 @@
 import ctypes
 import datetime
 import os
-import sys
-import time
 from ctypes import wintypes
 
 # Путь к лог-файлу (в папке пользователя)
@@ -20,8 +18,29 @@ WTS_SESSION_UNLOCK = 0x8
 WTS_SESSION_LOGON = 0x5
 WTS_SESSION_LOGOFF = 0x6
 
-WNDPROC = ctypes.WINFUNCTYPE(ctypes.c_long, wintypes.HWND, wintypes.UINT, 
-                              wintypes.WPARAM, wintypes.LPARAM)
+# Определяем WNDPROC
+WNDPROC = ctypes.WINFUNCTYPE(
+    ctypes.c_long,
+    wintypes.HWND,
+    wintypes.UINT,
+    wintypes.WPARAM,
+    wintypes.LPARAM
+)
+
+# Определяем структуру WNDCLASSW вручную
+class WNDCLASSW(ctypes.Structure):
+    _fields_ = [
+        ("style", wintypes.UINT),
+        ("lpfnWndProc", WNDPROC),
+        ("cbClsExtra", ctypes.c_int),
+        ("cbWndExtra", ctypes.c_int),
+        ("hInstance", wintypes.HINSTANCE),
+        ("hIcon", wintypes.HICON),
+        ("hCursor", wintypes.HANDLE),
+        ("hbrBackground", wintypes.HBRUSH),
+        ("lpszMenuName", wintypes.LPCWSTR),
+        ("lpszClassName", wintypes.LPCWSTR),
+    ]
 
 user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
@@ -53,11 +72,16 @@ def wnd_proc(hwnd, msg, wparam, lparam):
     
     return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
+# Создаём callback ВНЕ функции, чтобы не был собран garbage collector'ом
+wnd_proc_callback = WNDPROC(wnd_proc)
+
 def create_hidden_window():
     """Создаёт скрытое окно для получения системных сообщений"""
-    wnd_class = wintypes.WNDCLASSW()
-    wnd_class.lpfnWndProc = WNDPROC(wnd_proc)
-    wnd_class.hInstance = kernel32.GetModuleHandleW(None)
+    hInstance = kernel32.GetModuleHandleW(None)
+    
+    wnd_class = WNDCLASSW()
+    wnd_class.lpfnWndProc = wnd_proc_callback
+    wnd_class.hInstance = hInstance
     wnd_class.lpszClassName = "SessionMonitor"
     
     class_atom = user32.RegisterClassW(ctypes.byref(wnd_class))
@@ -65,9 +89,15 @@ def create_hidden_window():
         raise ctypes.WinError(ctypes.get_last_error())
     
     hwnd = user32.CreateWindowExW(
-        0, class_atom, "Session Monitor",
-        0, 0, 0, 0, 0,
-        None, None, wnd_class.hInstance, None
+        0,                      # dwExStyle
+        class_atom,             # lpClassName
+        "Session Monitor",      # lpWindowName
+        0,                      # dwStyle
+        0, 0, 0, 0,            # x, y, width, height
+        None,                   # hWndParent
+        None,                   # hMenu
+        hInstance,              # hInstance
+        None                    # lpParam
     )
     
     if not hwnd:
@@ -82,6 +112,7 @@ def main():
     
     log_event("MONITOR_START (запуск мониторинга)")
     
+    hwnd = None
     try:
         hwnd = create_hidden_window()
         
@@ -103,28 +134,9 @@ def main():
         print("\nОстановка...")
     finally:
         log_event("MONITOR_STOP (остановка мониторинга)")
-        if 'hwnd' in locals():
+        if hwnd:
             wtsapi32.WTSUnRegisterSessionNotification(hwnd)
             user32.DestroyWindow(hwnd)
 
 if __name__ == "__main__":
     main()
-```
-
-**Что отслеживается:**
-- `LOGON` — вход в систему
-- `LOGOFF` — выход из системы  
-- `LOCK` — блокировка экрана (Win+L)
-- `UNLOCK` — разблокировка экрана
-
-**Как использовать:**
-
-1. Сохрани как `session_monitor.py`
-2. Запусти: `python session_monitor.py`
-3. Лог пишется в `C:\Users\<твой_юзер>\session_log.txt`
-
-**Автозапуск без админки:**
-
-Добавь ярлык в автозагрузку пользователя:
-```
-Win+R → shell:startup → создай ярлык на pythonw.exe session_monitor.py
