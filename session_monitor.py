@@ -5,11 +5,17 @@
 
 import ctypes
 import datetime
+import json
 import os
 from ctypes import wintypes
 
-# Путь к лог-файлу
-LOG_FILE = os.path.join(os.path.expanduser("~"), "session_log.txt")
+# Папка для логов
+LOG_DIR = os.path.join(os.path.expanduser("~"), "active_time")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# Файлы
+LOG_FILE = os.path.join(LOG_DIR, "session_log.txt")
+STATS_FILE = os.path.join(LOG_DIR, "daily_stats.json")
 
 # Константы Windows
 WM_WTSSESSION_CHANGE = 0x02B1
@@ -44,34 +50,91 @@ user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
 wtsapi32 = ctypes.windll.wtsapi32
 
-# Настраиваем типы возвращаемых значений — ЭТО ВАЖНО!
 user32.CreateWindowExW.restype = wintypes.HWND
 user32.CreateWindowExW.argtypes = [
-    wintypes.DWORD,    # dwExStyle
-    wintypes.LPCWSTR,  # lpClassName
-    wintypes.LPCWSTR,  # lpWindowName
-    wintypes.DWORD,    # dwStyle
-    ctypes.c_int,      # x
-    ctypes.c_int,      # y
-    ctypes.c_int,      # nWidth
-    ctypes.c_int,      # nHeight
-    wintypes.HWND,     # hWndParent
-    wintypes.HMENU,    # hMenu
-    wintypes.HINSTANCE,# hInstance
-    wintypes.LPVOID,   # lpParam
+    wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
+    ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+    wintypes.HWND, wintypes.HMENU, wintypes.HINSTANCE, wintypes.LPVOID,
 ]
-
 user32.RegisterClassW.restype = wintypes.ATOM
 user32.RegisterClassW.argtypes = [ctypes.POINTER(WNDCLASSW)]
-
 user32.DefWindowProcW.restype = ctypes.c_long
 user32.DefWindowProcW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
-
 user32.GetMessageW.restype = wintypes.BOOL
 user32.GetMessageW.argtypes = [ctypes.POINTER(wintypes.MSG), wintypes.HWND, wintypes.UINT, wintypes.UINT]
-
 kernel32.GetModuleHandleW.restype = wintypes.HMODULE
 kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
+
+
+# === Отслеживание активного времени ===
+session_start_time = None  # Когда началась текущая активная сессия
+
+
+def load_stats() -> dict:
+    """Загружает статистику из файла"""
+    if os.path.exists(STATS_FILE):
+        try:
+            with open(STATS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return {}
+
+
+def save_stats(stats: dict):
+    """Сохраняет статистику в файл"""
+    with open(STATS_FILE, "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=2, ensure_ascii=False)
+
+
+def format_duration(seconds: int) -> str:
+    """Форматирует секунды в читаемый вид"""
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    secs = seconds % 60
+    return f"{hours}ч {minutes}м {secs}с"
+
+
+def start_session():
+    """Начинает отсчёт активной сессии"""
+    global session_start_time
+    session_start_time = datetime.datetime.now()
+    print(f"[SESSION] Сессия началась: {session_start_time.strftime('%H:%M:%S')}")
+
+
+def end_session():
+    """Завершает сессию и записывает время"""
+    global session_start_time
+    
+    if session_start_time is None:
+        print("[SESSION] Сессия не была начата, пропускаем")
+        return
+    
+    end_time = datetime.datetime.now()
+    
+    # Если сессия перешла через полночь — разбиваем по дням
+    current = session_start_time
+    stats = load_stats()
+    
+    while current.date() < end_time.date():
+        # Считаем время до конца дня
+        midnight = datetime.datetime.combine(current.date() + datetime.timedelta(days=1), datetime.time.min)
+        duration = (midnight - current).total_seconds()
+        
+        date_key = current.strftime("%Y-%m-%d")
+        stats[date_key] = stats.get(date_key, 0) + int(duration)
+        print(f"[STATS] {date_key}: +{format_duration(int(duration))}")
+        
+        current = midnight
+    
+    # Остаток в последний день
+    duration = (end_time - current).total_seconds()
+    date_key = end_time.strftime("%Y-%m-%d")
+    stats[date_key] = stats.get(date_key, 0) + int(duration)
+    print(f"[STATS] {date_key}: +{format_duration(int(duration))} (всего: {format_duration(stats[date_key])})")
+    
+    save_stats(stats)
+    session_start_time = None
 
 
 def log_event(event_type: str):
@@ -97,19 +160,23 @@ def wnd_proc(hwnd, msg, wparam, lparam):
         }
         event_name = events.get(wparam, f"UNKNOWN ({wparam})")
         log_event(event_name)
+        
+        # Управление сессией
+        if wparam in (WTS_SESSION_UNLOCK, WTS_SESSION_LOGON):
+            start_session()
+        elif wparam in (WTS_SESSION_LOCK, WTS_SESSION_LOGOFF):
+            end_session()
     
     return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
 
-# Callback должен жить всё время работы программы
 wnd_proc_callback = WNDPROC(wnd_proc)
 
 
 def create_hidden_window():
     """Создаёт скрытое окно для получения системных сообщений"""
     hInstance = kernel32.GetModuleHandleW(None)
-    
-    class_name = "SessionMonitor_" + str(os.getpid())  # Уникальное имя
+    class_name = "SessionMonitor_" + str(os.getpid())
     
     wnd_class = WNDCLASSW()
     wnd_class.style = 0
@@ -125,43 +192,47 @@ def create_hidden_window():
     
     class_atom = user32.RegisterClassW(ctypes.byref(wnd_class))
     if not class_atom:
-        error = ctypes.get_last_error()
-        raise ctypes.WinError(error)
+        raise ctypes.WinError(ctypes.get_last_error())
     
     hwnd = user32.CreateWindowExW(
-        0,                      # dwExStyle
-        class_name,             # lpClassName (используем строку, не atom)
-        "Session Monitor",      # lpWindowName
-        0,                      # dwStyle
-        0, 0, 0, 0,            # x, y, width, height
-        None,                   # hWndParent
-        None,                   # hMenu
-        hInstance,              # hInstance
-        None                    # lpParam
+        0, class_name, "Session Monitor", 0,
+        0, 0, 0, 0, None, None, hInstance, None
     )
     
     if not hwnd:
         error = ctypes.get_last_error()
         if error:
             raise ctypes.WinError(error)
-        raise RuntimeError("CreateWindowExW вернул NULL без кода ошибки")
+        raise RuntimeError("CreateWindowExW вернул NULL")
     
     return hwnd
 
 
+def print_today_stats():
+    """Показывает статистику за сегодня"""
+    stats = load_stats()
+    today = datetime.date.today().strftime("%Y-%m-%d")
+    seconds = stats.get(today, 0)
+    print(f"Активное время сегодня: {format_duration(seconds)}")
+
+
 def main():
     print("=== Монитор сессий Windows ===")
-    print(f"Лог-файл: {LOG_FILE}")
+    print(f"Папка логов: {LOG_DIR}")
+    print(f"  - События: session_log.txt")
+    print(f"  - Статистика: daily_stats.json")
+    print()
+    print_today_stats()
+    print()
     print("Нажмите Ctrl+C для выхода\n")
     
     log_event("MONITOR_START (запуск мониторинга)")
+    start_session()  # Считаем, что при запуске мониторинга пользователь активен
     
     hwnd = None
     try:
         hwnd = create_hidden_window()
-        print(f"Окно создано: {hwnd}")
         
-        # Регистрируемся на уведомления
         NOTIFY_FOR_THIS_SESSION = 0
         result = wtsapi32.WTSRegisterSessionNotification(hwnd, NOTIFY_FOR_THIS_SESSION)
         if result:
@@ -169,24 +240,20 @@ def main():
         else:
             print("Предупреждение: не удалось подписаться на события")
         
-        print("Мониторинг запущен. Заблокируй/разблокируй экран для теста (Win+L)")
+        print("Мониторинг запущен. Для теста: Win+L\n")
         
-        # Цикл обработки сообщений
         msg = wintypes.MSG()
         while True:
             ret = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
-            if ret == 0:  # WM_QUIT
-                break
-            if ret == -1:  # Ошибка
+            if ret == 0 or ret == -1:
                 break
             user32.TranslateMessage(ctypes.byref(msg))
             user32.DispatchMessageW(ctypes.byref(msg))
             
     except KeyboardInterrupt:
-        print("\nОстановка по Ctrl+C...")
-    except Exception as e:
-        print(f"Ошибка: {e}")
+        print("\nОстановка...")
     finally:
+        end_session()  # Сохраняем время при выходе
         log_event("MONITOR_STOP (остановка мониторинга)")
         if hwnd:
             wtsapi32.WTSUnRegisterSessionNotification(hwnd)
