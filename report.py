@@ -6,20 +6,12 @@ import datetime
 import os
 
 from config import MAX_WORK_HOURS
-
-
-def format_duration(seconds: int) -> str:
-    """Форматирует секунды в читаемый вид"""
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
-    secs = seconds % 60
-    return f"{hours}ч {minutes}м {secs}с"
+from utility import format_date_display, format_duration, parse_time
 
 
 def get_report_filename(username: str, date: datetime.date) -> str:
     """Возвращает имя файла отчёта: userName_dd.mm.yyyy.txt"""
-    date_str = date.strftime("%d.%m.%Y")
-    return f"{username}_{date_str}.txt"
+    return f"{username}_{format_date_display(date)}.txt"
 
 
 def generate_report(
@@ -33,13 +25,10 @@ def generate_report(
 ) -> str:
     """Генерирует текст отчёта за день"""
     max_work_seconds = MAX_WORK_HOURS * 3600
-    date_str = date.strftime("%d.%m.%Y")
 
     # Общее время работы (первый логин - последний разлогин)
     if first_login and last_logout:
-        first = datetime.datetime.strptime(first_login, "%H:%M:%S")
-        last = datetime.datetime.strptime(last_logout, "%H:%M:%S")
-        total_work_seconds = int((last - first).total_seconds())
+        total_work_seconds = int((parse_time(last_logout) - parse_time(first_login)).total_seconds())
         if total_work_seconds > 0:
             total_work_time = format_duration(total_work_seconds)
         else:
@@ -55,7 +44,7 @@ def generate_report(
 
     lines = [
         f"Пользователь: {username}",
-        f"Дата: {date_str}",
+        f"Дата: {format_date_display(date)}",
         "",
         f"Общее активное время: {format_duration(active_seconds)}",
         f"Максимальное рабочее время: {format_duration(max_work_seconds)}",

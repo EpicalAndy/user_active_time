@@ -9,24 +9,18 @@ import json
 import os
 from ctypes import wintypes
 
-from report import format_duration, write_report
+from config import LOG_DIR, STATE_FILE, USERNAME
+from constants import (
+    WM_WTSSESSION_CHANGE,
+    WTS_SESSION_LOCK,
+    WTS_SESSION_LOGOFF,
+    WTS_SESSION_LOGON,
+    WTS_SESSION_UNLOCK,
+)
+from report import write_report
+from utility import format_date_key, format_duration, format_time, format_timestamp
 
-# Папка для логов
-LOG_DIR = os.path.join(os.path.expanduser("~"), "active_time")
 os.makedirs(LOG_DIR, exist_ok=True)
-
-# Файл внутреннего состояния
-STATE_FILE = os.path.join(LOG_DIR, "state.json")
-
-# Текущий пользователь
-USERNAME = os.getenv("USERNAME", "unknown")
-
-# Константы Windows
-WM_WTSSESSION_CHANGE = 0x02B1
-WTS_SESSION_LOCK = 0x7
-WTS_SESSION_UNLOCK = 0x8
-WTS_SESSION_LOGON = 0x5
-WTS_SESSION_LOGOFF = 0x6
 
 WNDPROC = ctypes.WINFUNCTYPE(
     ctypes.c_long,
@@ -106,11 +100,11 @@ def get_day_state(state: dict, date_key: str) -> dict:
 
 def update_report(date_key: str, day_state: dict):
     """Обновляет файл отчёта для указанного дня"""
-    date = datetime.datetime.strptime(date_key, "%Y-%m-%d").date()
+    from utility import parse_date_key
     write_report(
         log_dir=LOG_DIR,
         username=USERNAME,
-        date=date,
+        date=parse_date_key(date_key),
         active_seconds=day_state["active_seconds"],
         first_login=day_state["first_login"],
         last_logout=day_state["last_logout"],
@@ -122,10 +116,8 @@ def update_report(date_key: str, day_state: dict):
 def log_event(event_type: str):
     """Записывает событие в состояние и обновляет отчёт"""
     now = datetime.datetime.now()
-    timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
-    date_key = now.strftime("%Y-%m-%d")
-
-    line = f"{timestamp} | {USERNAME} | {event_type}"
+    date_key = format_date_key(now)
+    line = f"{format_timestamp(now)} | {USERNAME} | {event_type}"
 
     state = load_state()
     day_state = get_day_state(state, date_key)
@@ -141,8 +133,8 @@ def start_session():
     global session_start_time
     session_start_time = datetime.datetime.now()
 
-    date_key = session_start_time.strftime("%Y-%m-%d")
-    time_str = session_start_time.strftime("%H:%M:%S")
+    date_key = format_date_key(session_start_time)
+    time_str = format_time(session_start_time)
 
     state = load_state()
     day_state = get_day_state(state, date_key)
@@ -165,11 +157,11 @@ def split_session_by_days(start_time, end_time):
             current.date() + datetime.timedelta(days=1), datetime.time.min
         )
         duration = int((midnight - current).total_seconds())
-        segments.append((current.strftime("%Y-%m-%d"), duration, "23:59:59"))
+        segments.append((format_date_key(current), duration, "23:59:59"))
         current = midnight
 
     duration = int((end_time - current).total_seconds())
-    segments.append((end_time.strftime("%Y-%m-%d"), duration, end_time.strftime("%H:%M:%S")))
+    segments.append((format_date_key(end_time), duration, format_time(end_time)))
 
     return segments
 
@@ -277,7 +269,7 @@ def create_hidden_window():
 def print_today_stats():
     """Показывает статистику за сегодня"""
     state = load_state()
-    today = datetime.date.today().strftime("%Y-%m-%d")
+    today = format_date_key(datetime.date.today())
     day_state = state.get(today, {})
     seconds = day_state.get("active_seconds", 0)
     print(f"Активное время сегодня: {format_duration(seconds)}")
