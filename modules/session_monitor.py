@@ -7,9 +7,10 @@ import ctypes
 import datetime
 import json
 import os
+import threading
 from ctypes import wintypes
 
-from config import LOG_DIR, STATE_FILE, USERNAME
+from config import LOG_DIR, MAX_WORK_HOURS, STATE_FILE, USERNAME
 from constants import (
     WM_WTSSESSION_CHANGE,
     WTS_SESSION_LOCK,
@@ -66,6 +67,7 @@ kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
 
 # === Отслеживание активного времени ===
 session_start_time = None  # Когда началась текущая активная сессия
+_monitor_thread_id = None  # ID потока монитора для остановки
 
 
 def load_state() -> dict:
@@ -111,6 +113,40 @@ def update_report(date_key: str, day_state: dict):
         session_count=day_state["session_count"],
         log_entries=day_state["log_entries"],
     )
+
+
+def get_current_stats() -> dict:
+    """Возвращает текущую статистику за сегодня (включая незавершённую сессию)"""
+    state = load_state()
+    today = format_date_key(datetime.date.today())
+    day_state = state.get(today, {"active_seconds": 0, "session_count": 0})
+
+    active_seconds = day_state.get("active_seconds", 0)
+    session_count = day_state.get("session_count", 0)
+
+    # Добавляем время текущей незавершённой сессии
+    if session_start_time is not None:
+        elapsed = int((datetime.datetime.now() - session_start_time).total_seconds())
+        active_seconds += elapsed
+
+    max_work_seconds = MAX_WORK_HOURS * 3600
+    if max_work_seconds > 0:
+        activity_percent = (active_seconds / max_work_seconds) * 100
+    else:
+        activity_percent = 0.0
+
+    return {
+        "active_seconds": active_seconds,
+        "session_count": session_count,
+        "activity_percent": activity_percent,
+    }
+
+
+def request_stop():
+    """Запрашивает остановку монитора (вызов из другого потока)"""
+    if _monitor_thread_id is not None:
+        WM_QUIT = 0x0012
+        user32.PostThreadMessageW(_monitor_thread_id, WM_QUIT, 0, 0)
 
 
 def log_event(event_type: str):
@@ -297,6 +333,9 @@ def run_message_loop():
 
 
 def main():
+    global _monitor_thread_id
+    _monitor_thread_id = threading.current_thread().ident
+
     print("=== Монитор сессий Windows ===")
     print(f"Папка логов: {LOG_DIR}")
     print()
