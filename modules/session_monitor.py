@@ -13,15 +13,19 @@ from ctypes import wintypes
 from config import LOG_DIR, MAX_WORK_HOURS, STATE_FILE, USERNAME
 from constants import (
     NOTIFY_FOR_THIS_SESSION,
+    WNDCLASSW,
+    WNDPROC,
     WM_QUIT,
     WM_WTSSESSION_CHANGE,
     WTS_SESSION_LOCK,
     WTS_SESSION_LOGOFF,
     WTS_SESSION_LOGON,
     WTS_SESSION_UNLOCK,
+    kernel32,
+    user32,
+    wtsapi32,
 )
-from modules.win_api import WNDCLASSW, WNDPROC, kernel32, user32, wtsapi32
-from report import write_report
+from modules.report import write_report
 from utility import (
     calculate_activity_percent,
     format_date_key,

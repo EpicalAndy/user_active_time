@@ -59,7 +59,6 @@ Win+R → shell:startup → создай ярлык на pythonw.exe main.py
 - `config.py` — настройки приложения
 - `constants.py` — константы Windows API
 - `utility.py` — утилиты (форматирование дат/времени)
-- `report.py` — формирование отчёта
+- `modules/report.py` — формирование отчёта
 - `modules/session_monitor.py` — мониторинг сессий Windows
 - `modules/widget.py` — виджет активности на рабочем столе
-- `modules/win_api.py` — определения Windows API (ctypes)
