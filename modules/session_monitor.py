@@ -12,57 +12,26 @@ from ctypes import wintypes
 
 from config import LOG_DIR, MAX_WORK_HOURS, STATE_FILE, USERNAME
 from constants import (
+    NOTIFY_FOR_THIS_SESSION,
+    WM_QUIT,
     WM_WTSSESSION_CHANGE,
     WTS_SESSION_LOCK,
     WTS_SESSION_LOGOFF,
     WTS_SESSION_LOGON,
     WTS_SESSION_UNLOCK,
 )
+from modules.win_api import WNDCLASSW, WNDPROC, kernel32, user32, wtsapi32
 from report import write_report
-from utility import format_date_key, format_duration, format_time, format_timestamp
-
-os.makedirs(LOG_DIR, exist_ok=True)
-
-WNDPROC = ctypes.WINFUNCTYPE(
-    ctypes.c_long,
-    wintypes.HWND,
-    wintypes.UINT,
-    wintypes.WPARAM,
-    wintypes.LPARAM
+from utility import (
+    calculate_activity_percent,
+    format_date_key,
+    format_duration,
+    format_time,
+    format_timestamp,
+    parse_date_key,
 )
 
-class WNDCLASSW(ctypes.Structure):
-    _fields_ = [
-        ("style", wintypes.UINT),
-        ("lpfnWndProc", WNDPROC),
-        ("cbClsExtra", ctypes.c_int),
-        ("cbWndExtra", ctypes.c_int),
-        ("hInstance", wintypes.HINSTANCE),
-        ("hIcon", wintypes.HICON),
-        ("hCursor", wintypes.HANDLE),
-        ("hbrBackground", wintypes.HBRUSH),
-        ("lpszMenuName", wintypes.LPCWSTR),
-        ("lpszClassName", wintypes.LPCWSTR),
-    ]
-
-user32 = ctypes.windll.user32
-kernel32 = ctypes.windll.kernel32
-wtsapi32 = ctypes.windll.wtsapi32
-
-user32.CreateWindowExW.restype = wintypes.HWND
-user32.CreateWindowExW.argtypes = [
-    wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
-    ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
-    wintypes.HWND, wintypes.HMENU, wintypes.HINSTANCE, wintypes.LPVOID,
-]
-user32.RegisterClassW.restype = wintypes.ATOM
-user32.RegisterClassW.argtypes = [ctypes.POINTER(WNDCLASSW)]
-user32.DefWindowProcW.restype = ctypes.c_long
-user32.DefWindowProcW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
-user32.GetMessageW.restype = wintypes.BOOL
-user32.GetMessageW.argtypes = [ctypes.POINTER(wintypes.MSG), wintypes.HWND, wintypes.UINT, wintypes.UINT]
-kernel32.GetModuleHandleW.restype = wintypes.HMODULE
-kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
+os.makedirs(LOG_DIR, exist_ok=True)
 
 
 # === Отслеживание активного времени ===
@@ -102,7 +71,6 @@ def get_day_state(state: dict, date_key: str) -> dict:
 
 def update_report(date_key: str, day_state: dict):
     """Обновляет файл отчёта для указанного дня"""
-    from utility import parse_date_key
     write_report(
         log_dir=LOG_DIR,
         username=USERNAME,
@@ -129,11 +97,7 @@ def get_current_stats() -> dict:
         elapsed = int((datetime.datetime.now() - session_start_time).total_seconds())
         active_seconds += elapsed
 
-    max_work_seconds = MAX_WORK_HOURS * 3600
-    if max_work_seconds > 0:
-        activity_percent = (active_seconds / max_work_seconds) * 100
-    else:
-        activity_percent = 0.0
+    activity_percent = calculate_activity_percent(active_seconds, MAX_WORK_HOURS)
 
     return {
         "active_seconds": active_seconds,
@@ -145,7 +109,6 @@ def get_current_stats() -> dict:
 def request_stop():
     """Запрашивает остановку монитора (вызов из другого потока)"""
     if _monitor_thread_id is not None:
-        WM_QUIT = 0x0012
         user32.PostThreadMessageW(_monitor_thread_id, WM_QUIT, 0, 0)
 
 
@@ -313,7 +276,6 @@ def print_today_stats():
 
 def subscribe_to_session_events(hwnd):
     """Подписывается на события сессии Windows"""
-    NOTIFY_FOR_THIS_SESSION = 0
     result = wtsapi32.WTSRegisterSessionNotification(hwnd, NOTIFY_FOR_THIS_SESSION)
     if result:
         print("Подписка на события сессии: ОК")

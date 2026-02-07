@@ -6,7 +6,7 @@ import datetime
 import os
 
 from config import MAX_WORK_HOURS
-from utility import format_date_display, format_duration, parse_time
+from utility import calculate_activity_percent, format_date_display, format_duration, parse_time
 
 
 def get_report_filename(username: str, date: datetime.date) -> str:
@@ -36,11 +36,7 @@ def generate_report(
     else:
         total_work_time = "—"
 
-    # Процент активности (100% = максимальное рабочее время)
-    if max_work_seconds > 0:
-        activity_percent = (active_seconds / max_work_seconds) * 100
-    else:
-        activity_percent = 0.0
+    activity_percent = calculate_activity_percent(active_seconds, MAX_WORK_HOURS)
 
     lines = [
         f"Пользователь: {username}",

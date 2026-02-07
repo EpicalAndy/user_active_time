@@ -48,3 +48,11 @@ def parse_date_key(date_key: str) -> datetime.date:
 def parse_time(time_str: str) -> datetime.datetime:
     """Парсит строку HH:MM:SS в datetime"""
     return datetime.datetime.strptime(time_str, TIME_FORMAT)
+
+
+def calculate_activity_percent(active_seconds: int, max_work_hours: int) -> float:
+    """Вычисляет процент активности относительно максимального рабочего времени"""
+    max_work_seconds = max_work_hours * 3600
+    if max_work_seconds > 0:
+        return (active_seconds / max_work_seconds) * 100
+    return 0.0
