@@ -12,6 +12,7 @@ from config import (
     WIDGET_SHOW_ACTIVITY_PERCENT,
     WIDGET_SHOW_SESSION_COUNT,
     WIDGET_UPDATE_INTERVAL,
+    MAIN_FONT_SIZE
 )
 from utility import format_duration
 
@@ -69,14 +70,14 @@ class ActivityWidget:
         title_label = tk.Label(
             title_frame, text="Активность",
             bg=TITLE_BG, fg=TITLE_FG,
-            font=("Segoe UI", 10, "bold"), padx=10,
+            font=("Segoe UI", MAIN_FONT_SIZE, "bold"), padx=MAIN_FONT_SIZE,
         )
         title_label.pack(side=tk.LEFT, fill=tk.Y)
 
         close_btn = tk.Label(
             title_frame, text="  \u2715  ",
             bg=TITLE_BG, fg=TITLE_FG,
-            font=("Segoe UI", 10), cursor="hand2",
+            font=("Segoe UI", MAIN_FONT_SIZE), cursor="hand2",
         )
         close_btn.pack(side=tk.RIGHT, fill=tk.Y)
         close_btn.bind("<Button-1>", lambda e: self.close())
@@ -86,7 +87,7 @@ class ActivityWidget:
         self._minimize_btn = tk.Label(
             title_frame, text="  \u2014  ",
             bg=TITLE_BG, fg=TITLE_FG,
-            font=("Segoe UI", 10), cursor="hand2",
+            font=("Segoe UI", MAIN_FONT_SIZE), cursor="hand2",
         )
         self._minimize_btn.pack(side=tk.RIGHT, fill=tk.Y)
         self._minimize_btn.bind("<Button-1>", lambda e: self._toggle_minimize())
@@ -120,14 +121,14 @@ class ActivityWidget:
         label = tk.Label(
             frame, text=label_text,
             bg=COLOR_RED, fg=METRIC_FG,
-            font=("Segoe UI", 10), anchor=tk.W,
+            font=("Segoe UI", MAIN_FONT_SIZE), anchor=tk.W,
         )
         label.pack(side=tk.LEFT)
 
         value = tk.Label(
             frame, text="\u2014",
             bg=COLOR_RED, fg=METRIC_FG,
-            font=("Segoe UI", 10, "bold"), anchor=tk.E,
+            font=("Segoe UI", MAIN_FONT_SIZE, "bold"), anchor=tk.E,
         )
         value.pack(side=tk.RIGHT)
 
