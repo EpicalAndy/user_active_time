@@ -3,6 +3,7 @@
 """
 
 import tkinter as tk
+from collections.abc import Callable
 
 from config import (
     MIN_ACTIVITY_THRESHOLD,
@@ -38,7 +39,7 @@ def is_widget_enabled() -> bool:
 class ActivityWidget:
     """Минималистичный виджет активности на рабочем столе"""
 
-    def __init__(self, stats_provider: callable):
+    def __init__(self, stats_provider: Callable[[], dict]):
         self.stats_provider = stats_provider
         self._minimized = False
         self.root = tk.Tk()
