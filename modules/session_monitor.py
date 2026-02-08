@@ -96,9 +96,12 @@ def get_current_stats() -> dict:
     active_seconds = day_state.get("active_seconds", 0)
     session_count = day_state.get("session_count", 0)
 
-    # Добавляем время текущей незавершённой сессии
+    # Добавляем время текущей незавершённой сессии (только сегодняшнюю часть)
     if session_start_time is not None:
-        elapsed = int((datetime.datetime.now() - session_start_time).total_seconds())
+        now = datetime.datetime.now()
+        today_start = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
+        effective_start = max(session_start_time, today_start)
+        elapsed = int((now - effective_start).total_seconds())
         active_seconds += elapsed
 
     activity_percent = calculate_activity_percent(active_seconds, MAX_WORK_HOURS)
