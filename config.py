@@ -3,6 +3,9 @@ import os
 # Пользовательские настройки
 MAX_WORK_HOURS = 8
 
+# Таймаут неактивности ввода (мышь/клавиатура) в секундах. 0 = отключено.
+INPUT_ACTIVITY_TIMEOUT = 300
+
 # Пути
 LOG_DIR = os.path.join(os.path.expanduser("~"), "active_time")
 STATE_FILE = os.path.join(LOG_DIR, "state.json")

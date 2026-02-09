@@ -11,6 +11,10 @@ WTS_SESSION_LOGON = 0x5
 WTS_SESSION_LOGOFF = 0x6
 NOTIFY_FOR_THIS_SESSION = 0
 
+# === Константы для низкоуровневых хуков ввода ===
+WH_KEYBOARD_LL = 13
+WH_MOUSE_LL = 14
+
 # === Типы, структуры и функции Windows API (ctypes) ===
 
 WNDPROC = ctypes.WINFUNCTYPE(
@@ -19,6 +23,15 @@ WNDPROC = ctypes.WINFUNCTYPE(
     wintypes.UINT,
     wintypes.WPARAM,
     wintypes.LPARAM,
+)
+
+
+# Тип callback для низкоуровневых хуков (SetWindowsHookExW)
+HOOKPROC = ctypes.WINFUNCTYPE(
+    ctypes.c_long,       # LRESULT
+    ctypes.c_int,        # nCode
+    wintypes.WPARAM,     # wParam
+    wintypes.LPARAM,     # lParam
 )
 
 
@@ -55,3 +68,34 @@ user32.GetMessageW.restype = wintypes.BOOL
 user32.GetMessageW.argtypes = [ctypes.POINTER(wintypes.MSG), wintypes.HWND, wintypes.UINT, wintypes.UINT]
 kernel32.GetModuleHandleW.restype = wintypes.HMODULE
 kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
+
+# SetWindowsHookExW
+user32.SetWindowsHookExW.restype = wintypes.HANDLE
+user32.SetWindowsHookExW.argtypes = [
+    ctypes.c_int,        # idHook
+    HOOKPROC,            # lpfn
+    wintypes.HINSTANCE,  # hMod
+    wintypes.DWORD,      # dwThreadId
+]
+
+# UnhookWindowsHookEx
+user32.UnhookWindowsHookEx.restype = wintypes.BOOL
+user32.UnhookWindowsHookEx.argtypes = [wintypes.HANDLE]
+
+# CallNextHookEx
+user32.CallNextHookEx.restype = ctypes.c_long
+user32.CallNextHookEx.argtypes = [
+    wintypes.HANDLE,     # hhk
+    ctypes.c_int,        # nCode
+    wintypes.WPARAM,     # wParam
+    wintypes.LPARAM,     # lParam
+]
+
+# PostThreadMessageW
+user32.PostThreadMessageW.restype = wintypes.BOOL
+user32.PostThreadMessageW.argtypes = [
+    wintypes.DWORD,      # idThread
+    wintypes.UINT,       # Msg
+    wintypes.WPARAM,     # wParam
+    wintypes.LPARAM,     # lParam
+]

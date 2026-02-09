@@ -25,6 +25,7 @@ from constants import (
     user32,
     wtsapi32,
 )
+from modules import events_monitor
 from modules.report import write_report
 from utility import (
     calculate_activity_percent,
@@ -102,6 +103,9 @@ def get_current_stats() -> dict:
         today_start = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
         effective_start = max(session_start_time, today_start)
         elapsed = int((now - effective_start).total_seconds())
+        # Вычитаем время неактивности ввода
+        inactive = events_monitor.get_session_inactive_seconds()
+        elapsed = max(0, elapsed - inactive)
         active_seconds += elapsed
 
     activity_percent = calculate_activity_percent(active_seconds, MAX_WORK_HOURS)
@@ -190,8 +194,20 @@ def end_session():
         return
 
     end_time = datetime.datetime.now()
+    inactive_seconds = events_monitor.get_session_inactive_seconds()
+
     state = load_state()
     segments = split_session_by_days(session_start_time, end_time)
+
+    # Вычитаем неактивное время из сегментов (с конца)
+    remaining_inactive = inactive_seconds
+    for i in range(len(segments) - 1, -1, -1):
+        if remaining_inactive <= 0:
+            break
+        date_key, duration, last_logout = segments[i]
+        subtract = min(duration, remaining_inactive)
+        segments[i] = (date_key, duration - subtract, last_logout)
+        remaining_inactive -= subtract
 
     for date_key, duration, last_logout in segments:
         day_state = get_day_state(state, date_key)
@@ -222,7 +238,9 @@ def wnd_proc(hwnd, msg, wparam, lparam):
         # Управление сессией
         if wparam in (WTS_SESSION_UNLOCK, WTS_SESSION_LOGON):
             start_session()
+            events_monitor.notify_session_start()
         elif wparam in (WTS_SESSION_LOCK, WTS_SESSION_LOGOFF):
+            events_monitor.notify_session_end()
             end_session()
 
     return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
@@ -314,6 +332,8 @@ def main():
 
     log_event("MONITOR_START (запуск мониторинга)")
     start_session()
+    events_monitor.start(log_callback=log_event)
+    events_monitor.notify_session_start()
 
     hwnd = None
     try:
@@ -325,6 +345,8 @@ def main():
     except KeyboardInterrupt:
         print("\nОстановка...")
     finally:
+        events_monitor.notify_session_end()
+        events_monitor.stop()
         end_session()
         log_event("MONITOR_STOP (остановка мониторинга)")
         if hwnd:
