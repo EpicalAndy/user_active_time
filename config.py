@@ -27,4 +27,6 @@ DATE_KEY_FORMAT = "%Y-%m-%d"
 TIME_FORMAT = "%H:%M:%S"
 TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
 DATE_DISPLAY_FORMAT = "%d.%m.%Y"
+
+# Текст
 MAIN_FONT_SIZE = 10
