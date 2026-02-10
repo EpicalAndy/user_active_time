@@ -201,6 +201,17 @@ def get_session_inactive_seconds() -> int:
     return int(total)
 
 
+def get_countdown_remaining() -> int | None:
+    """Возвращает секунды до перехода в неактивное состояние, или None если отключено/неактивен"""
+    if INPUT_ACTIVITY_TIMEOUT <= 0 or not _session_running or _screen_locked:
+        return None
+    if not _is_active:
+        return 0
+    elapsed = time.monotonic() - _countdown_start_mono
+    remaining = INPUT_ACTIVITY_TIMEOUT - elapsed
+    return max(0, int(remaining))
+
+
 def notify_session_start():
     """Вызывается при начале сессии (UNLOCK/LOGON). Сбрасывает состояние."""
     global _is_active, _session_running, _screen_locked

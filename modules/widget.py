@@ -6,14 +6,16 @@ import tkinter as tk
 from collections.abc import Callable
 
 from config import (
+    INPUT_ACTIVITY_TIMEOUT,
     MIN_ACTIVITY_THRESHOLD,
     RECOMMENDED_ACTIVITY_THRESHOLD,
     WIDGET_SHOW_ACTIVE_TIME,
     WIDGET_SHOW_ACTIVITY_PERCENT,
     WIDGET_SHOW_SESSION_COUNT,
     WIDGET_UPDATE_INTERVAL,
-    MAIN_FONT_SIZE
+    MAIN_FONT_SIZE,
 )
+from modules.events_monitor import get_countdown_remaining
 from utility import format_duration
 
 # Цветовая схема
@@ -52,6 +54,7 @@ class ActivityWidget:
         self._create_body()
         self._position_window()
         self._schedule_update()
+        self._schedule_countdown()
 
     def _setup_window(self):
         self.window.overrideredirect(True)
@@ -94,8 +97,21 @@ class ActivityWidget:
         self._minimize_btn.bind("<Enter>", lambda e: self._minimize_btn.configure(fg=MINIMIZE_HOVER))
         self._minimize_btn.bind("<Leave>", lambda e: self._minimize_btn.configure(fg=TITLE_FG))
 
+        # Счётчик обратного отсчёта до неактивности
+        self._countdown_label = None
+        if INPUT_ACTIVITY_TIMEOUT > 0:
+            self._countdown_label = tk.Label(
+                title_frame, text="",
+                bg=TITLE_BG, fg=TITLE_FG,
+                font=("Segoe UI", MAIN_FONT_SIZE - 1),
+            )
+            self._countdown_label.pack(side=tk.LEFT, fill=tk.Y)
+
         # Перетаскивание за заголовок
-        for w in (title_frame, title_label):
+        drag_widgets = [title_frame, title_label]
+        if self._countdown_label:
+            drag_widgets.append(self._countdown_label)
+        for w in drag_widgets:
             w.bind("<ButtonPress-1>", self._start_drag)
             w.bind("<B1-Motion>", self._on_drag)
 
@@ -182,6 +198,20 @@ class ActivityWidget:
             )
 
         self._apply_body_color(self._get_body_color(stats["activity_percent"]))
+
+    def _update_countdown(self):
+        if self._countdown_label is None:
+            return
+        remaining = get_countdown_remaining()
+        if remaining is None:
+            self._countdown_label.configure(text="")
+        else:
+            minutes, secs = divmod(remaining, 60)
+            self._countdown_label.configure(text=f"{minutes:02d}:{secs:02d}")
+
+    def _schedule_countdown(self):
+        self._update_countdown()
+        self.root.after(1000, self._schedule_countdown)
 
     def _schedule_update(self):
         self._update_metrics()
