@@ -2,10 +2,12 @@
 Виджет отображения активности на рабочем столе
 """
 
+import os
 import tkinter as tk
 from collections.abc import Callable
 
 from config import (
+    LOG_DIR,
     INPUT_ACTIVITY_TIMEOUT,
     MIN_ACTIVITY_THRESHOLD,
     RECOMMENDED_ACTIVITY_THRESHOLD,
@@ -74,8 +76,10 @@ class ActivityWidget:
             title_frame, text="Активность",
             bg=TITLE_BG, fg=TITLE_FG,
             font=("Segoe UI", MAIN_FONT_SIZE, "bold"), padx=MAIN_FONT_SIZE,
+            cursor="hand2",
         )
         title_label.pack(side=tk.LEFT, fill=tk.Y)
+        title_label.bind("<Button-1>", lambda e: os.startfile(LOG_DIR))
 
         close_btn = tk.Label(
             title_frame, text="  \u2715  ",
@@ -108,7 +112,7 @@ class ActivityWidget:
             self._countdown_label.pack(side=tk.LEFT, fill=tk.Y)
 
         # Перетаскивание за заголовок
-        drag_widgets = [title_frame, title_label]
+        drag_widgets: list[tk.Widget] = [title_frame]
         if self._countdown_label:
             drag_widgets.append(self._countdown_label)
         for w in drag_widgets:
