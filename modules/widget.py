@@ -91,7 +91,7 @@ class ActivityWidget:
         )
         close_btn.pack(side=tk.RIGHT, fill=tk.Y)
         close_btn.bind("<Button-1>", lambda e: self.close())
-        close_btn.bind("<Enter>", lambda e: close_btn.configure(fg=CLOSE_HOVER))
+        close_btn.bind("<Enter>", lambda e: close_btn.configure(fg=MINIMIZE_HOVER))
         close_btn.bind("<Leave>", lambda e: close_btn.configure(fg=TITLE_FG))
 
         self._minimize_btn = tk.Label(
