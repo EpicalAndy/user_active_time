@@ -6,6 +6,12 @@ MAX_WORK_HOURS = 8
 # Таймаут неактивности ввода (мышь/клавиатура) в секундах. 0 = отключено.
 INPUT_ACTIVITY_TIMEOUT = 300
 
+# Считать движение мыши за активность (клики и скролл отслеживаются всегда)
+TRACK_MOUSE_MOVE = False
+
+# Порог предупреждения о скором переходе в неактивность (секунды). 0 = отключено.
+COUNTDOWN_WARNING_SECONDS = 60
+
 # Пути
 LOG_DIR = os.path.join(os.path.expanduser("~"), "active_time")
 STATE_FILE = os.path.join(LOG_DIR, "state.json")

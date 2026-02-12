@@ -14,6 +14,7 @@ NOTIFY_FOR_THIS_SESSION = 0
 # === Константы для низкоуровневых хуков ввода ===
 WH_KEYBOARD_LL = 13
 WH_MOUSE_LL = 14
+WM_MOUSEMOVE = 0x0200
 
 # === Типы, структуры и функции Windows API (ctypes) ===
 

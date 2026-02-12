@@ -7,6 +7,7 @@ import tkinter as tk
 from collections.abc import Callable
 
 from config import (
+    COUNTDOWN_WARNING_SECONDS,
     LOG_DIR,
     INPUT_ACTIVITY_TIMEOUT,
     MIN_ACTIVITY_THRESHOLD,
@@ -47,6 +48,8 @@ class ActivityWidget:
     def __init__(self, stats_provider: Callable[[], dict]):
         self.stats_provider = stats_provider
         self._minimized = False
+        self._countdown_blink_bold = False
+        self._countdown_blinking = False
         self.root = tk.Tk()
         self.root.withdraw()
 
@@ -209,9 +212,45 @@ class ActivityWidget:
         remaining = get_countdown_remaining()
         if remaining is None:
             self._countdown_label.configure(text="")
+            self._countdown_blink_bold = False
+            return
+
+        minutes, secs = divmod(remaining, 60)
+        text = f"{minutes:02d}:{secs:02d}"
+
+        if remaining == 0:
+            # Неактивен — жирный красный, мигание выключено
+            self._countdown_blinking = False
+            self._countdown_blink_bold = False
+            self._countdown_label.configure(
+                text=text, fg=COLOR_RED,
+                font=("Segoe UI", MAIN_FONT_SIZE - 1, "bold"),
+            )
+        elif COUNTDOWN_WARNING_SECONDS > 0 and remaining <= COUNTDOWN_WARNING_SECONDS:
+            # Приближение к неактивности — запускаем мигание если ещё не идёт
+            self._countdown_label.configure(text=text, fg=TITLE_FG)
+            if not self._countdown_blinking:
+                self._countdown_blinking = True
+                self._blink_countdown()
         else:
-            minutes, secs = divmod(remaining, 60)
-            self._countdown_label.configure(text=f"{minutes:02d}:{secs:02d}")
+            # Обычное состояние
+            self._countdown_blinking = False
+            self._countdown_blink_bold = False
+            self._countdown_label.configure(
+                text=text, fg=TITLE_FG,
+                font=("Segoe UI", MAIN_FONT_SIZE - 1),
+            )
+
+    def _blink_countdown(self):
+        """Переключает толщину шрифта при мигании (вызывается каждые 500мс)"""
+        if self._countdown_label is None or not self._countdown_blinking:
+            return
+        self._countdown_blink_bold = not self._countdown_blink_bold
+        weight = "bold" if self._countdown_blink_bold else "normal"
+        self._countdown_label.configure(
+            font=("Segoe UI", MAIN_FONT_SIZE - 1, weight),
+        )
+        self.root.after(500, self._blink_countdown)
 
     def _schedule_countdown(self):
         self._update_countdown()

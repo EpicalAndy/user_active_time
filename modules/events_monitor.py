@@ -8,11 +8,12 @@ import threading
 import time
 from ctypes import wintypes
 
-from config import INPUT_ACTIVITY_TIMEOUT
+from config import INPUT_ACTIVITY_TIMEOUT, TRACK_MOUSE_MOVE
 from constants import (
     HOOKPROC,
     WH_KEYBOARD_LL,
     WH_MOUSE_LL,
+    WM_MOUSEMOVE,
     WM_QUIT,
     kernel32,
     user32,
@@ -59,8 +60,9 @@ def _mouse_hook_callback(nCode, wParam, lParam):
     """Callback низкоуровневого хука мыши"""
     global _last_input_mono, _last_input_source
     if nCode >= 0 and _session_running and not _screen_locked:
-        _last_input_source = "мышь"
-        _last_input_mono = time.monotonic()
+        if wParam != WM_MOUSEMOVE or TRACK_MOUSE_MOVE:
+            _last_input_source = "мышь"
+            _last_input_mono = time.monotonic()
     return user32.CallNextHookEx(None, nCode, wParam, lParam)
 
 
