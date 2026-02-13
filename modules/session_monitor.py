@@ -10,7 +10,7 @@ import os
 import threading
 from ctypes import wintypes
 
-from config import LOG_DIR, MAX_WORK_HOURS, STATE_FILE, USERNAME
+from config import LOG_DIR, STATE_FILE, USERNAME
 from constants import (
     NOTIFY_FOR_THIS_SESSION,
     WNDCLASSW,
@@ -33,6 +33,7 @@ from utility import (
     format_duration,
     format_time,
     format_timestamp,
+    get_work_hours,
     parse_date_key,
 )
 
@@ -108,7 +109,8 @@ def get_current_stats() -> dict:
         elapsed = max(0, elapsed - inactive)
         active_seconds += elapsed
 
-    activity_percent = calculate_activity_percent(active_seconds, MAX_WORK_HOURS)
+    work_hours = get_work_hours(datetime.date.today())
+    activity_percent = calculate_activity_percent(active_seconds, work_hours)
 
     return {
         "active_seconds": active_seconds,

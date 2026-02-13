@@ -7,8 +7,10 @@ import datetime
 from config import (
     DATE_DISPLAY_FORMAT,
     DATE_KEY_FORMAT,
+    DEFAULT_WORK_HOURS,
     TIME_FORMAT,
     TIMESTAMP_FORMAT,
+    WORK_HOURS_BY_DAY,
 )
 
 
@@ -48,6 +50,18 @@ def parse_date_key(date_key: str) -> datetime.date:
 def parse_time(time_str: str) -> datetime.datetime:
     """Парсит строку HH:MM:SS в datetime"""
     return datetime.datetime.strptime(time_str, TIME_FORMAT)
+
+
+_DAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+
+def get_work_hours(date: datetime.date) -> int:
+    """Возвращает рабочие часы для указанного дня (0 = не отслеживать)"""
+    day_name = _DAY_NAMES[date.weekday()]
+    hours = WORK_HOURS_BY_DAY.get(day_name)
+    if hours is None:
+        return DEFAULT_WORK_HOURS
+    return hours
 
 
 def calculate_activity_percent(active_seconds: int, max_work_hours: int) -> float:

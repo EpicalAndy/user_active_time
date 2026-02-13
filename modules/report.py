@@ -5,8 +5,7 @@
 import datetime
 import os
 
-from config import MAX_WORK_HOURS
-from utility import calculate_activity_percent, format_date_display, format_duration, parse_time
+from utility import calculate_activity_percent, format_date_display, format_duration, get_work_hours, parse_time
 
 
 def get_report_filename(username: str, date: datetime.date) -> str:
@@ -24,7 +23,8 @@ def generate_report(
     log_entries: list[str],
 ) -> str:
     """Генерирует текст отчёта за день"""
-    max_work_seconds = MAX_WORK_HOURS * 3600
+    work_hours = get_work_hours(date)
+    max_work_seconds = work_hours * 3600
 
     # Общее время работы (первый логин - последний разлогин)
     if first_login and last_logout:
@@ -36,7 +36,7 @@ def generate_report(
     else:
         total_work_time = "—"
 
-    activity_percent = calculate_activity_percent(active_seconds, MAX_WORK_HOURS)
+    activity_percent = calculate_activity_percent(active_seconds, work_hours)
 
     lines = [
         f"Пользователь: {username}",

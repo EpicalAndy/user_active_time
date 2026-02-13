@@ -1,7 +1,20 @@
 import os
 
 # Пользовательские настройки
-MAX_WORK_HOURS = 8
+
+# Рабочие часы по умолчанию
+DEFAULT_WORK_HOURS = 8
+
+# Рабочие часы по дням недели (None = используется DEFAULT_WORK_HOURS, 0 = не отслеживать)
+WORK_HOURS_BY_DAY = {
+    "monday": None,
+    "tuesday": None,
+    "wednesday": None,
+    "thursday": None,
+    "friday": 7,
+    "saturday": 0,
+    "sunday": 0,
+}
 
 # Таймаут неактивности ввода (мышь/клавиатура) в секундах. 0 = отключено.
 INPUT_ACTIVITY_TIMEOUT = 300
@@ -25,7 +38,7 @@ MIN_ACTIVITY_THRESHOLD = 70
 
 # Виджет: какие метрики отображать
 WIDGET_SHOW_ACTIVE_TIME = True
-WIDGET_SHOW_SESSION_COUNT = True
+WIDGET_SHOW_SESSION_COUNT = False
 WIDGET_SHOW_ACTIVITY_PERCENT = True
 
 # Виджет: интервал обновления данных (в секундах)
