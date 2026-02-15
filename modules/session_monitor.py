@@ -116,6 +116,9 @@ def get_current_stats() -> dict:
     # Общее рабочее время (от первого логина до сейчас)
     full_day_seconds = 0
     first_login = day_state.get("first_login")
+    # Сессия началась до сегодня и продолжается — считаем логин с полуночи
+    if first_login is None and session_start_time is not None and session_start_time.date() < datetime.date.today():
+        first_login = "00:00:00"
     if first_login:
         now = datetime.datetime.now()
         login_time = datetime.datetime.combine(datetime.date.today(), parse_time(first_login).time())
