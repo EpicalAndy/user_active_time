@@ -35,6 +35,7 @@ from utility import (
     format_timestamp,
     get_work_hours,
     parse_date_key,
+    parse_time,
 )
 
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -112,10 +113,19 @@ def get_current_stats() -> dict:
     work_hours = get_work_hours(datetime.date.today())
     activity_percent = calculate_activity_percent(active_seconds, work_hours)
 
+    # Общее рабочее время (от первого логина до сейчас)
+    full_day_seconds = 0
+    first_login = day_state.get("first_login")
+    if first_login:
+        now = datetime.datetime.now()
+        login_time = datetime.datetime.combine(datetime.date.today(), parse_time(first_login).time())
+        full_day_seconds = max(0, int((now - login_time).total_seconds()))
+
     return {
         "active_seconds": active_seconds,
         "session_count": session_count,
         "activity_percent": activity_percent,
+        "full_day_seconds": full_day_seconds,
     }
 
 

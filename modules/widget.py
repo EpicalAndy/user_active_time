@@ -14,6 +14,7 @@ from config import (
     RECOMMENDED_ACTIVITY_THRESHOLD,
     WIDGET_SHOW_ACTIVE_TIME,
     WIDGET_SHOW_ACTIVITY_PERCENT,
+    WIDGET_SHOW_FULL_DAY_TIME,
     WIDGET_SHOW_SESSION_COUNT,
     WIDGET_UPDATE_INTERVAL,
     MAIN_FONT_SIZE,
@@ -39,6 +40,7 @@ def is_widget_enabled() -> bool:
         WIDGET_SHOW_ACTIVE_TIME,
         WIDGET_SHOW_SESSION_COUNT,
         WIDGET_SHOW_ACTIVITY_PERCENT,
+        WIDGET_SHOW_FULL_DAY_TIME,
     ])
 
 
@@ -136,6 +138,8 @@ class ActivityWidget:
             self.metric_labels["session_count"] = self._add_metric("Сессий:")
         if WIDGET_SHOW_ACTIVITY_PERCENT:
             self.metric_labels["activity_percent"] = self._add_metric("Активность:")
+        if WIDGET_SHOW_FULL_DAY_TIME:
+            self.metric_labels["full_day_time"] = self._add_metric("Рабочее время:")
 
     def _add_metric(self, label_text: str) -> dict:
         frame = tk.Frame(self.body_frame, bg=COLOR_RED)
@@ -202,6 +206,10 @@ class ActivityWidget:
         if "activity_percent" in self.metric_labels:
             self.metric_labels["activity_percent"]["value"].configure(
                 text=f"{stats['activity_percent']:.1f}%"
+            )
+        if "full_day_time" in self.metric_labels:
+            self.metric_labels["full_day_time"]["value"].configure(
+                text=format_duration(stats["full_day_seconds"])
             )
 
         self._apply_body_color(self._get_body_color(stats["activity_percent"]))
