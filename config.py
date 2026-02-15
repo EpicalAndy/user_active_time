@@ -7,10 +7,10 @@ DEFAULT_WORK_HOURS = 8
 
 # Рабочие часы по дням недели (None = используется DEFAULT_WORK_HOURS, 0 = не отслеживать)
 WORK_HOURS_BY_DAY = {
-    "monday": None,
-    "tuesday": None,
-    "wednesday": None,
-    "thursday": None,
+    "monday": DEFAULT_WORK_HOURS,
+    "tuesday": DEFAULT_WORK_HOURS,
+    "wednesday": DEFAULT_WORK_HOURS,
+    "thursday": DEFAULT_WORK_HOURS,
     "friday": 7,
     "saturday": 0,
     "sunday": 0,
