@@ -111,6 +111,11 @@ def get_current_stats() -> dict:
         active_seconds += elapsed
 
     work_hours = get_work_hours(datetime.date.today())
+
+    # Нерабочий день — возвращаем минимум данных
+    if work_hours == 0:
+        return {"is_working_day": False}
+
     activity_percent = calculate_activity_percent(active_seconds, work_hours)
 
     # Общее рабочее время (от первого логина до сейчас)
@@ -125,6 +130,7 @@ def get_current_stats() -> dict:
         full_day_seconds = max(0, int((now - login_time).total_seconds()))
 
     return {
+        "is_working_day": True,
         "active_seconds": active_seconds,
         "session_count": session_count,
         "activity_percent": activity_percent,

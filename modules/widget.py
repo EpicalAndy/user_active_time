@@ -32,6 +32,7 @@ METRIC_FG = "#FFFFFF"
 COLOR_GREEN = "#27AE60"
 COLOR_YELLOW = "#F39C12"
 COLOR_RED = "#E74C3C"
+COLOR_GRAY = "#7F8C8D"
 
 
 def is_widget_enabled() -> bool:
@@ -52,6 +53,8 @@ class ActivityWidget:
         self._minimized = False
         self._countdown_blink_bold = False
         self._countdown_blinking = False
+        self._is_working_day = True
+        self._tick_count = 0
         self.root = tk.Tk()
         self.root.withdraw()
 
@@ -60,8 +63,7 @@ class ActivityWidget:
         self._create_title_bar()
         self._create_body()
         self._position_window()
-        self._schedule_update()
-        self._schedule_countdown()
+        self._tick()
 
     def _setup_window(self):
         self.window.overrideredirect(True)
@@ -130,6 +132,13 @@ class ActivityWidget:
         self.body_frame = tk.Frame(self.window, bg=COLOR_RED, padx=12, pady=8)
         self.body_frame.pack(fill=tk.BOTH, expand=True)
 
+        # Сообщение для нерабочего дня (скрыто по умолчанию)
+        self._day_off_label = tk.Label(
+            self.body_frame, text="Сегодня не рабочий день",
+            bg=COLOR_GRAY, fg=METRIC_FG,
+            font=("Segoe UI", MAIN_FONT_SIZE, "bold"),
+        )
+
         self.metric_labels = {}
 
         if WIDGET_SHOW_ACTIVE_TIME:
@@ -189,11 +198,34 @@ class ActivityWidget:
             widgets["label"].configure(bg=color)
             widgets["value"].configure(bg=color)
 
+    def _show_day_off(self):
+        """Переключает виджет в режим нерабочего дня"""
+        self._is_working_day = False
+        for widgets in self.metric_labels.values():
+            widgets["frame"].pack_forget()
+        self._day_off_label.pack(fill=tk.X, pady=8)
+        self._apply_body_color(COLOR_GRAY)
+
+    def _show_working_day(self):
+        """Переключает виджет в режим рабочего дня"""
+        self._is_working_day = True
+        self._day_off_label.pack_forget()
+        for widgets in self.metric_labels.values():
+            widgets["frame"].pack(fill=tk.X, pady=2)
+
     def _update_metrics(self):
         try:
             stats = self.stats_provider()
         except Exception:
             return
+
+        if not stats.get("is_working_day", True):
+            self._show_day_off()
+            return
+
+        # Убедиться, что метрики видны (переход с нерабочего дня)
+        if not self.metric_labels or next(iter(self.metric_labels.values()))["frame"].winfo_manager() == "":
+            self._show_working_day()
 
         if "active_time" in self.metric_labels:
             self.metric_labels["active_time"]["value"].configure(
@@ -217,6 +249,10 @@ class ActivityWidget:
     def _update_countdown(self):
         if self._countdown_label is None:
             return
+        if not self._is_working_day:
+            self._countdown_label.configure(text="")
+            self._countdown_blinking = False
+            return
         remaining = get_countdown_remaining()
         if remaining is None:
             self._countdown_label.configure(text="")
@@ -235,11 +271,9 @@ class ActivityWidget:
                 font=("Segoe UI", MAIN_FONT_SIZE - 1, "bold"),
             )
         elif COUNTDOWN_WARNING_SECONDS > 0 and remaining <= COUNTDOWN_WARNING_SECONDS:
-            # Приближение к неактивности — запускаем мигание если ещё не идёт
+            # Приближение к неактивности — мигание управляется тикером
             self._countdown_label.configure(text=text, fg=TITLE_FG)
-            if not self._countdown_blinking:
-                self._countdown_blinking = True
-                self._blink_countdown()
+            self._countdown_blinking = True
         else:
             # Обычное состояние
             self._countdown_blinking = False
@@ -249,24 +283,27 @@ class ActivityWidget:
                 font=("Segoe UI", MAIN_FONT_SIZE - 1),
             )
 
-    def _blink_countdown(self):
-        """Переключает толщину шрифта при мигании (вызывается каждые 500мс)"""
-        if self._countdown_label is None or not self._countdown_blinking:
-            return
-        self._countdown_blink_bold = not self._countdown_blink_bold
-        weight = "bold" if self._countdown_blink_bold else "normal"
-        self._countdown_label.configure(
-            font=("Segoe UI", MAIN_FONT_SIZE - 1, weight),
-        )
-        self.root.after(500, self._blink_countdown)
+    def _tick(self):
+        """Единый тикер виджета (шаг 500мс)"""
+        # 500мс — мигание
+        if self._countdown_blinking and self._countdown_label is not None:
+            self._countdown_blink_bold = not self._countdown_blink_bold
+            weight = "bold" if self._countdown_blink_bold else "normal"
+            self._countdown_label.configure(
+                font=("Segoe UI", MAIN_FONT_SIZE - 1, weight),
+            )
 
-    def _schedule_countdown(self):
-        self._update_countdown()
-        self.root.after(1000, self._schedule_countdown)
+        # 1с — countdown
+        if self._tick_count % 2 == 0:
+            self._update_countdown()
 
-    def _schedule_update(self):
-        self._update_metrics()
-        self.root.after(WIDGET_UPDATE_INTERVAL * 1000, self._schedule_update)
+        # WIDGET_UPDATE_INTERVAL — метрики
+        update_every = WIDGET_UPDATE_INTERVAL * 2
+        if self._tick_count % update_every == 0:
+            self._update_metrics()
+
+        self._tick_count = (self._tick_count + 1) % update_every
+        self.root.after(500, self._tick)
 
     # --- Перетаскивание ---
 
