@@ -289,8 +289,9 @@ class ActivityWidget:
         if self._countdown_blinking and self._countdown_label is not None:
             self._countdown_blink_bold = not self._countdown_blink_bold
             weight = "bold" if self._countdown_blink_bold else "normal"
+            fg = COLOR_RED if self._countdown_blink_bold else TITLE_FG
             self._countdown_label.configure(
-                font=("Segoe UI", MAIN_FONT_SIZE - 1, weight),
+                font=("Segoe UI", MAIN_FONT_SIZE - 1, weight), fg=fg,
             )
 
         # 1с — countdown
