@@ -63,6 +63,26 @@ def save_state(state: dict):
         json.dump(state, f, indent=2, ensure_ascii=False)
 
 
+def cleanup_old_days():
+    """Удаляет из state.json данные за прошедшие дни после записи их отчётов.
+
+    Не выполняет очистку, если текущая сессия началась до сегодня
+    (кросс-полуночная сессия ещё не завершена).
+    """
+    if session_start_time is not None and session_start_time.date() < datetime.date.today():
+        return
+
+    today = format_date_key(datetime.date.today())
+    state = load_state()
+    old_keys = [key for key in state if key < today]
+    if not old_keys:
+        return
+    for key in old_keys:
+        del state[key]
+    save_state(state)
+    print(f"[STATE] Удалены устаревшие данные за: {', '.join(sorted(old_keys))}")
+
+
 def get_day_state(state: dict, date_key: str) -> dict:
     """Возвращает состояние дня, создавая если не существует"""
     if date_key not in state:
@@ -155,6 +175,7 @@ def log_event(event_type: str):
     day_state["log_entries"].append(line)
     save_state(state)
     update_report(date_key, day_state)
+    cleanup_old_days()
 
     print(f"[LOG] {line}")
 
@@ -242,6 +263,7 @@ def end_session():
         update_report(date_key, state[date_key])
 
     session_start_time = None
+    cleanup_old_days()
 
 
 def wnd_proc(hwnd, msg, wparam, lparam):
