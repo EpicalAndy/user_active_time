@@ -44,6 +44,7 @@ os.makedirs(LOG_DIR, exist_ok=True)
 # === Отслеживание активного времени ===
 session_start_time = None  # Когда началась текущая активная сессия
 _monitor_thread_id = None  # ID потока монитора для остановки
+_state_lock = threading.Lock()  # Защита state.json и session_start_time от гонок потоков
 
 
 def load_state() -> dict:
@@ -58,9 +59,11 @@ def load_state() -> dict:
 
 
 def save_state(state: dict):
-    """Сохраняет состояние в файл"""
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
+    """Сохраняет состояние в файл (атомарно через временный файл)"""
+    tmp_path = STATE_FILE + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2, ensure_ascii=False)
+    os.replace(tmp_path, STATE_FILE)
 
 
 def cleanup_old_days():
@@ -112,42 +115,43 @@ def update_report(date_key: str, day_state: dict):
 
 def get_current_stats() -> dict:
     """Возвращает текущую статистику за сегодня (включая незавершённую сессию)"""
-    state = load_state()
-    today = format_date_key(datetime.date.today())
-    day_state = state.get(today, {"active_seconds": 0, "session_count": 0})
+    with _state_lock:
+        state = load_state()
+        today = format_date_key(datetime.date.today())
+        day_state = state.get(today, {"active_seconds": 0, "session_count": 0})
 
-    active_seconds = day_state.get("active_seconds", 0)
-    session_count = day_state.get("session_count", 0)
+        active_seconds = day_state.get("active_seconds", 0)
+        session_count = day_state.get("session_count", 0)
 
-    # Добавляем время текущей незавершённой сессии (только сегодняшнюю часть)
-    if session_start_time is not None:
-        now = datetime.datetime.now()
-        today_start = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
-        effective_start = max(session_start_time, today_start)
-        elapsed = int((now - effective_start).total_seconds())
-        # Вычитаем время неактивности ввода
-        inactive = events_monitor.get_session_inactive_seconds()
-        elapsed = max(0, elapsed - inactive)
-        active_seconds += elapsed
+        # Добавляем время текущей незавершённой сессии (только сегодняшнюю часть)
+        if session_start_time is not None:
+            now = datetime.datetime.now()
+            today_start = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
+            effective_start = max(session_start_time, today_start)
+            elapsed = int((now - effective_start).total_seconds())
+            # Вычитаем время неактивности ввода
+            inactive = events_monitor.get_session_inactive_seconds()
+            elapsed = max(0, elapsed - inactive)
+            active_seconds += elapsed
 
-    work_hours = get_work_hours(datetime.date.today())
+        work_hours = get_work_hours(datetime.date.today())
 
-    # Нерабочий день — возвращаем минимум данных
-    if work_hours == 0:
-        return {"is_working_day": False}
+        # Нерабочий день — возвращаем минимум данных
+        if work_hours == 0:
+            return {"is_working_day": False}
 
-    activity_percent = calculate_activity_percent(active_seconds, work_hours)
+        activity_percent = calculate_activity_percent(active_seconds, work_hours)
 
-    # Общее рабочее время (от первого логина до сейчас)
-    full_day_seconds = 0
-    first_login = day_state.get("first_login")
-    # Сессия началась до сегодня и продолжается — считаем логин с полуночи
-    if first_login is None and session_start_time is not None and session_start_time.date() < datetime.date.today():
-        first_login = "00:00:00"
-    if first_login:
-        now = datetime.datetime.now()
-        login_time = datetime.datetime.combine(datetime.date.today(), parse_time(first_login).time())
-        full_day_seconds = max(0, int((now - login_time).total_seconds()))
+        # Общее рабочее время (от первого логина до сейчас)
+        full_day_seconds = 0
+        first_login = day_state.get("first_login")
+        # Сессия началась до сегодня и продолжается — считаем логин с полуночи
+        if first_login is None and session_start_time is not None and session_start_time.date() < datetime.date.today():
+            first_login = "00:00:00"
+        if first_login:
+            now = datetime.datetime.now()
+            login_time = datetime.datetime.combine(datetime.date.today(), parse_time(first_login).time())
+            full_day_seconds = max(0, int((now - login_time).total_seconds()))
 
     return {
         "is_working_day": True,
@@ -170,12 +174,12 @@ def log_event(event_type: str):
     date_key = format_date_key(now)
     line = f"{format_timestamp(now)} | {USERNAME} | {event_type}"
 
-    state = load_state()
-    day_state = get_day_state(state, date_key)
-    day_state["log_entries"].append(line)
-    save_state(state)
-    update_report(date_key, day_state)
-    cleanup_old_days()
+    with _state_lock:
+        state = load_state()
+        day_state = get_day_state(state, date_key)
+        day_state["log_entries"].append(line)
+        save_state(state)
+        update_report(date_key, day_state)
 
     print(f"[LOG] {line}")
 
@@ -183,18 +187,20 @@ def log_event(event_type: str):
 def start_session():
     """Начинает отсчёт активной сессии"""
     global session_start_time
-    session_start_time = datetime.datetime.now()
 
-    date_key = format_date_key(session_start_time)
-    time_str = format_time(session_start_time)
+    with _state_lock:
+        session_start_time = datetime.datetime.now()
 
-    state = load_state()
-    day_state = get_day_state(state, date_key)
+        date_key = format_date_key(session_start_time)
+        time_str = format_time(session_start_time)
 
-    if day_state["first_login"] is None:
-        day_state["first_login"] = time_str
-        save_state(state)
-        update_report(date_key, day_state)
+        state = load_state()
+        day_state = get_day_state(state, date_key)
+
+        if day_state["first_login"] is None:
+            day_state["first_login"] = time_str
+            save_state(state)
+            update_report(date_key, day_state)
 
     print(f"[SESSION] Сессия началась: {time_str}")
 
@@ -227,83 +233,79 @@ def record_day_activity(day_state: dict, duration: int, last_logout: str):
     day_state["last_logout"] = last_logout
 
 
+def _subtract_inactive(segments: list, inactive_seconds: int):
+    """Вычитает неактивное время из сегментов (с конца)"""
+    remaining = inactive_seconds
+    for i in range(len(segments) - 1, -1, -1):
+        if remaining <= 0:
+            break
+        date_key, duration, last_logout = segments[i]
+        subtract = min(duration, remaining)
+        segments[i] = (date_key, duration - subtract, last_logout)
+        remaining -= subtract
+
+
 def checkpoint_session():
     """Промежуточное сохранение текущей сессии (защита от потери данных при сбое)"""
     global session_start_time
 
-    if session_start_time is None:
-        return
+    with _state_lock:
+        if session_start_time is None:
+            return
 
-    now = datetime.datetime.now()
-    inactive_seconds = events_monitor.get_session_inactive_seconds()
+        now = datetime.datetime.now()
+        inactive_seconds = events_monitor.get_session_inactive_seconds()
 
-    state = load_state()
-    segments = split_session_by_days(session_start_time, now)
+        state = load_state()
+        segments = split_session_by_days(session_start_time, now)
+        _subtract_inactive(segments, inactive_seconds)
 
-    # Вычитаем неактивное время из сегментов (с конца)
-    remaining_inactive = inactive_seconds
-    for i in range(len(segments) - 1, -1, -1):
-        if remaining_inactive <= 0:
-            break
-        date_key, duration, last_logout = segments[i]
-        subtract = min(duration, remaining_inactive)
-        segments[i] = (date_key, duration - subtract, last_logout)
-        remaining_inactive -= subtract
+        for date_key, duration, _ in segments:
+            day_state = get_day_state(state, date_key)
+            day_state["active_seconds"] += duration
+            # session_count НЕ увеличиваем — сессия продолжается
 
-    for date_key, duration, _ in segments:
-        day_state = get_day_state(state, date_key)
-        day_state["active_seconds"] += duration
-        # session_count НЕ увеличиваем — сессия продолжается
+        save_state(state)
 
-    save_state(state)
+        for date_key, _, _ in segments:
+            update_report(date_key, state[date_key])
 
-    for date_key, _, _ in segments:
-        update_report(date_key, state[date_key])
+        # Сдвигаем старт сессии и сбрасываем счётчик неактивности
+        session_start_time = now
+        events_monitor.reset_inactive_seconds()
 
-    # Сдвигаем старт сессии и сбрасываем счётчик неактивности
-    session_start_time = now
-    events_monitor.reset_inactive_seconds()
-
-    print(f"[SESSION] Checkpoint: сохранено промежуточное состояние")
+    print("[SESSION] Checkpoint: сохранено промежуточное состояние")
 
 
 def end_session():
     """Завершает сессию и записывает время"""
     global session_start_time
 
-    if session_start_time is None:
-        print("[SESSION] Сессия не была начата, пропускаем")
-        return
+    with _state_lock:
+        if session_start_time is None:
+            print("[SESSION] Сессия не была начата, пропускаем")
+            return
 
-    end_time = datetime.datetime.now()
-    inactive_seconds = events_monitor.get_session_inactive_seconds()
+        end_time = datetime.datetime.now()
+        inactive_seconds = events_monitor.get_session_inactive_seconds()
 
-    state = load_state()
-    segments = split_session_by_days(session_start_time, end_time)
+        state = load_state()
+        segments = split_session_by_days(session_start_time, end_time)
+        _subtract_inactive(segments, inactive_seconds)
 
-    # Вычитаем неактивное время из сегментов (с конца)
-    remaining_inactive = inactive_seconds
-    for i in range(len(segments) - 1, -1, -1):
-        if remaining_inactive <= 0:
-            break
-        date_key, duration, last_logout = segments[i]
-        subtract = min(duration, remaining_inactive)
-        segments[i] = (date_key, duration - subtract, last_logout)
-        remaining_inactive -= subtract
+        for date_key, duration, last_logout in segments:
+            day_state = get_day_state(state, date_key)
+            record_day_activity(day_state, duration, last_logout)
+            print(f"[STATS] {date_key}: +{format_duration(duration)} "
+                  f"(всего: {format_duration(day_state['active_seconds'])})")
 
-    for date_key, duration, last_logout in segments:
-        day_state = get_day_state(state, date_key)
-        record_day_activity(day_state, duration, last_logout)
-        print(f"[STATS] {date_key}: +{format_duration(duration)} "
-              f"(всего: {format_duration(day_state['active_seconds'])})")
+        save_state(state)
 
-    save_state(state)
+        for date_key, _, _ in segments:
+            update_report(date_key, state[date_key])
 
-    for date_key, _, _ in segments:
-        update_report(date_key, state[date_key])
-
-    session_start_time = None
-    cleanup_old_days()
+        session_start_time = None
+        cleanup_old_days()
 
 
 def wnd_proc(hwnd, msg, wparam, lparam):
@@ -413,6 +415,7 @@ def main():
     print()
     print("Нажмите Ctrl+C для выхода\n")
 
+    cleanup_old_days()
     log_event("MONITOR_START (запуск мониторинга)")
     start_session()
     events_monitor.start(log_callback=log_event)

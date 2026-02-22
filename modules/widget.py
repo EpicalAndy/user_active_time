@@ -2,8 +2,13 @@
 Виджет отображения активности на рабочем столе
 """
 
+import json
+import math
 import os
+import struct
 import tkinter as tk
+import wave
+import winsound
 from collections.abc import Callable
 
 from config import (
@@ -38,6 +43,44 @@ COLOR_YELLOW = "#F39C12"
 COLOR_RED = "#E74C3C"
 COLOR_GRAY = "#7F8C8D"
 
+_WIDGET_POS_FILE = os.path.join(LOG_DIR, "widget_position.json")
+
+
+def _generate_notification_wav() -> str:
+    """Генерирует приятный звук уведомления (~2.5с) — восходящий аккорд"""
+    sample_rate = 22050
+    duration = 2.5
+    n_samples = int(sample_rate * duration)
+
+    notes = [
+        (523.25, 0.0, 0.9),    # C5
+        (659.25, 0.3, 1.2),    # E5
+        (783.99, 0.6, 1.5),    # G5
+        (1046.50, 1.0, 2.5),   # C6 (fade out)
+    ]
+
+    samples = []
+    for i in range(n_samples):
+        t = i / sample_rate
+        value = 0.0
+        for freq, start, end in notes:
+            if start <= t <= end:
+                local_t = (t - start) / (end - start)
+                envelope = math.sin(math.pi * local_t)
+                value += math.sin(2 * math.pi * freq * t) * envelope * 0.2
+        samples.append(int(max(-1.0, min(1.0, value)) * 32767))
+
+    wav_path = os.path.join(LOG_DIR, "notification.wav")
+    with wave.open(wav_path, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(struct.pack(f"<{n_samples}h", *samples))
+    return wav_path
+
+
+_NOTIFICATION_WAV_PATH = _generate_notification_wav()
+
 
 def is_widget_enabled() -> bool:
     """Проверяет, включена ли хотя бы одна опция отображения"""
@@ -58,8 +101,9 @@ class ActivityWidget:
         self._countdown_blink_bold = False
         self._countdown_blinking = False
         self._is_working_day = True
+        self._goal_notified = False
         self._tick_count = 0
-        self._checkpoint_count = 0
+        self._checkpoint_count = 1  # начинаем с 1, чтобы не срабатывать на первом тике
         self.root = tk.Tk()
         self.root.withdraw()
 
@@ -140,6 +184,7 @@ class ActivityWidget:
         for w in drag_widgets:
             w.bind("<ButtonPress-1>", self._start_drag)
             w.bind("<B1-Motion>", self._on_drag)
+            w.bind("<ButtonRelease-1>", lambda e: self._save_position())
 
     # --- Тело ---
 
@@ -193,6 +238,14 @@ class ActivityWidget:
         screen_w = self.window.winfo_screenwidth()
         screen_h = self.window.winfo_screenheight()
         win_h = self.window.winfo_reqheight()
+
+        saved = self._load_position()
+        if saved:
+            sx, sy = saved
+            if 0 <= sx <= screen_w - width and 0 <= sy <= screen_h - win_h:
+                self.window.geometry(f"{width}x{win_h}+{sx}+{sy}")
+                return
+
         x = screen_w - width - 20
         y = screen_h - win_h - 60
         self.window.geometry(f"{width}x{win_h}+{x}+{y}")
@@ -260,6 +313,16 @@ class ActivityWidget:
             )
 
         self._apply_body_color(self._get_body_color(stats["activity_percent"]))
+
+        # Уведомление о достижении рекомендуемого порога активности
+        if stats["activity_percent"] >= RECOMMENDED_ACTIVITY_THRESHOLD:
+            if not self._goal_notified:
+                self._goal_notified = True
+                winsound.PlaySound(
+                    _NOTIFICATION_WAV_PATH, winsound.SND_FILENAME | winsound.SND_ASYNC
+                )
+        else:
+            self._goal_notified = False
 
     def _update_countdown(self):
         if self._countdown_label is None:
@@ -391,7 +454,27 @@ class ActivityWidget:
         y = self.window.winfo_y()
         self.window.geometry(f"{width}x{win_h}+{x}+{y}")
 
+    def _load_position(self) -> tuple[int, int] | None:
+        """Загружает сохранённую позицию виджета"""
+        try:
+            with open(_WIDGET_POS_FILE, "r") as f:
+                pos = json.load(f)
+            return pos["x"], pos["y"]
+        except (FileNotFoundError, KeyError, json.JSONDecodeError, IOError):
+            return None
+
+    def _save_position(self):
+        """Сохраняет текущую позицию виджета"""
+        try:
+            x = self.window.winfo_x()
+            y = self.window.winfo_y()
+            with open(_WIDGET_POS_FILE, "w") as f:
+                json.dump({"x": x, "y": y}, f)
+        except IOError:
+            pass
+
     def close(self):
+        self._save_position()
         self.root.quit()
         self.root.destroy()
 
