@@ -7,6 +7,7 @@ import tkinter as tk
 from collections.abc import Callable
 
 from config import (
+    CHECKPOINT_INTERVAL,
     COUNTDOWN_WARNING_SECONDS,
     LOG_DIR,
     INPUT_ACTIVITY_TIMEOUT,
@@ -21,6 +22,7 @@ from config import (
 )
 import config
 from modules.events_monitor import get_countdown_remaining
+from modules.session_monitor import checkpoint_session
 from modules.settings_dialog import SettingsDialog
 from utility import format_duration
 
@@ -57,6 +59,7 @@ class ActivityWidget:
         self._countdown_blinking = False
         self._is_working_day = True
         self._tick_count = 0
+        self._checkpoint_count = 0
         self.root = tk.Tk()
         self.root.withdraw()
 
@@ -315,6 +318,13 @@ class ActivityWidget:
         if self._tick_count % update_every == 0:
             self._update_metrics()
 
+        # CHECKPOINT_INTERVAL — промежуточное сохранение
+        if CHECKPOINT_INTERVAL > 0:
+            checkpoint_every = CHECKPOINT_INTERVAL * 2
+            if self._checkpoint_count % checkpoint_every == 0:
+                checkpoint_session()
+            self._checkpoint_count = (self._checkpoint_count + 1) % checkpoint_every
+
         self._tick_count = (self._tick_count + 1) % update_every
         self.root.after(500, self._tick)
 
@@ -363,13 +373,14 @@ class ActivityWidget:
         # Импорты на уровне модуля кэшируют значения — обновляем из config напрямую
         global WIDGET_SHOW_ACTIVE_TIME, WIDGET_SHOW_SESSION_COUNT
         global WIDGET_SHOW_ACTIVITY_PERCENT, WIDGET_SHOW_FULL_DAY_TIME
-        global INPUT_ACTIVITY_TIMEOUT, COUNTDOWN_WARNING_SECONDS
+        global INPUT_ACTIVITY_TIMEOUT, COUNTDOWN_WARNING_SECONDS, CHECKPOINT_INTERVAL
         WIDGET_SHOW_ACTIVE_TIME = config.WIDGET_SHOW_ACTIVE_TIME
         WIDGET_SHOW_SESSION_COUNT = config.WIDGET_SHOW_SESSION_COUNT
         WIDGET_SHOW_ACTIVITY_PERCENT = config.WIDGET_SHOW_ACTIVITY_PERCENT
         WIDGET_SHOW_FULL_DAY_TIME = config.WIDGET_SHOW_FULL_DAY_TIME
         INPUT_ACTIVITY_TIMEOUT = config.INPUT_ACTIVITY_TIMEOUT
         COUNTDOWN_WARNING_SECONDS = config.COUNTDOWN_WARNING_SECONDS
+        CHECKPOINT_INTERVAL = config.CHECKPOINT_INTERVAL
 
     def _resize_window(self):
         """Пересчитывает размер окна под содержимое"""

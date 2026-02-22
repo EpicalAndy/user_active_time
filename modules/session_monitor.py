@@ -227,6 +227,46 @@ def record_day_activity(day_state: dict, duration: int, last_logout: str):
     day_state["last_logout"] = last_logout
 
 
+def checkpoint_session():
+    """Промежуточное сохранение текущей сессии (защита от потери данных при сбое)"""
+    global session_start_time
+
+    if session_start_time is None:
+        return
+
+    now = datetime.datetime.now()
+    inactive_seconds = events_monitor.get_session_inactive_seconds()
+
+    state = load_state()
+    segments = split_session_by_days(session_start_time, now)
+
+    # Вычитаем неактивное время из сегментов (с конца)
+    remaining_inactive = inactive_seconds
+    for i in range(len(segments) - 1, -1, -1):
+        if remaining_inactive <= 0:
+            break
+        date_key, duration, last_logout = segments[i]
+        subtract = min(duration, remaining_inactive)
+        segments[i] = (date_key, duration - subtract, last_logout)
+        remaining_inactive -= subtract
+
+    for date_key, duration, _ in segments:
+        day_state = get_day_state(state, date_key)
+        day_state["active_seconds"] += duration
+        # session_count НЕ увеличиваем — сессия продолжается
+
+    save_state(state)
+
+    for date_key, _, _ in segments:
+        update_report(date_key, state[date_key])
+
+    # Сдвигаем старт сессии и сбрасываем счётчик неактивности
+    session_start_time = now
+    events_monitor.reset_inactive_seconds()
+
+    print(f"[SESSION] Checkpoint: сохранено промежуточное состояние")
+
+
 def end_session():
     """Завершает сессию и записывает время"""
     global session_start_time

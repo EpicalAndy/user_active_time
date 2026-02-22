@@ -45,6 +45,9 @@ WIDGET_SHOW_FULL_DAY_TIME = True
 # Виджет: интервал обновления данных (в секундах)
 WIDGET_UPDATE_INTERVAL = 60
 
+# Интервал промежуточного сохранения сессии в секундах (защита от потери данных). 0 = отключено.
+CHECKPOINT_INTERVAL = 60
+
 # Форматы дат
 DATE_KEY_FORMAT = "%Y-%m-%d"
 TIME_FORMAT = "%H:%M:%S"

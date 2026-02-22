@@ -214,6 +214,14 @@ def get_countdown_remaining() -> int | None:
     return max(0, int(remaining))
 
 
+def reset_inactive_seconds():
+    """Сбрасывает накопленное неактивное время (после checkpoint)"""
+    global _inactive_start_mono, _total_inactive_seconds
+    _total_inactive_seconds = 0.0
+    if not _is_active and _inactive_start_mono > 0:
+        _inactive_start_mono = time.monotonic()
+
+
 def notify_session_start():
     """Вызывается при начале сессии (UNLOCK/LOGON). Сбрасывает состояние."""
     global _is_active, _session_running, _screen_locked
