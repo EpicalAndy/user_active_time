@@ -94,6 +94,15 @@ class SettingsDialog:
                 anchor=tk.W, padx=12, pady=2,
             )
 
+        # --- Уведомления ---
+        notify_frame = ttk.LabelFrame(self.dialog, text="Уведомления")
+        notify_frame.pack(fill=tk.X, **pad)
+
+        self._sound_var = tk.BooleanVar(value=config.SOUND_NOTIFICATION)
+        ttk.Checkbutton(notify_frame, text="Звук при достижении нормы", variable=self._sound_var).pack(
+            anchor=tk.W, padx=12, pady=2,
+        )
+
         # --- Таймеры ---
         timers_frame = ttk.LabelFrame(self.dialog, text="Таймеры")
         timers_frame.pack(fill=tk.X, **pad)
@@ -142,6 +151,7 @@ class SettingsDialog:
             "metrics": {attr: self._metric_vars[attr].get() for attr, _ in _METRIC_TOGGLES},
             "input_activity_timeout": self._timeout_var.get(),
             "countdown_warning_seconds": self._warning_var.get(),
+            "sound_notification": self._sound_var.get(),
         }
 
     def _write_config_file(self, values: dict):
@@ -157,6 +167,11 @@ class SettingsDialog:
         content = re.sub(
             r"^COUNTDOWN_WARNING_SECONDS\s*=\s*.+$",
             f"COUNTDOWN_WARNING_SECONDS = {values['countdown_warning_seconds']}",
+            content, flags=re.MULTILINE,
+        )
+        content = re.sub(
+            r"^SOUND_NOTIFICATION\s*=\s*.+$",
+            f"SOUND_NOTIFICATION = {values['sound_notification']}",
             content, flags=re.MULTILINE,
         )
 
@@ -187,6 +202,7 @@ class SettingsDialog:
 
     def _apply_runtime(self, values: dict):
         """Обновляет атрибуты модуля config в памяти"""
+        config.SOUND_NOTIFICATION = values["sound_notification"]
         config.INPUT_ACTIVITY_TIMEOUT = values["input_activity_timeout"]
         config.COUNTDOWN_WARNING_SECONDS = values["countdown_warning_seconds"]
         for attr, val in values["metrics"].items():

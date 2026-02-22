@@ -18,6 +18,7 @@ from config import (
     INPUT_ACTIVITY_TIMEOUT,
     MIN_ACTIVITY_THRESHOLD,
     RECOMMENDED_ACTIVITY_THRESHOLD,
+    SOUND_NOTIFICATION,
     WIDGET_SHOW_ACTIVE_TIME,
     WIDGET_SHOW_ACTIVITY_PERCENT,
     WIDGET_SHOW_FULL_DAY_TIME,
@@ -315,7 +316,7 @@ class ActivityWidget:
         self._apply_body_color(self._get_body_color(stats["activity_percent"]))
 
         # Уведомление о достижении рекомендуемого порога активности
-        if stats["activity_percent"] >= RECOMMENDED_ACTIVITY_THRESHOLD:
+        if SOUND_NOTIFICATION and stats["activity_percent"] >= RECOMMENDED_ACTIVITY_THRESHOLD:
             if not self._goal_notified:
                 self._goal_notified = True
                 winsound.PlaySound(
@@ -437,6 +438,7 @@ class ActivityWidget:
         global WIDGET_SHOW_ACTIVE_TIME, WIDGET_SHOW_SESSION_COUNT
         global WIDGET_SHOW_ACTIVITY_PERCENT, WIDGET_SHOW_FULL_DAY_TIME
         global INPUT_ACTIVITY_TIMEOUT, COUNTDOWN_WARNING_SECONDS, CHECKPOINT_INTERVAL
+        global SOUND_NOTIFICATION
         WIDGET_SHOW_ACTIVE_TIME = config.WIDGET_SHOW_ACTIVE_TIME
         WIDGET_SHOW_SESSION_COUNT = config.WIDGET_SHOW_SESSION_COUNT
         WIDGET_SHOW_ACTIVITY_PERCENT = config.WIDGET_SHOW_ACTIVITY_PERCENT
@@ -444,6 +446,7 @@ class ActivityWidget:
         INPUT_ACTIVITY_TIMEOUT = config.INPUT_ACTIVITY_TIMEOUT
         COUNTDOWN_WARNING_SECONDS = config.COUNTDOWN_WARNING_SECONDS
         CHECKPOINT_INTERVAL = config.CHECKPOINT_INTERVAL
+        SOUND_NOTIFICATION = config.SOUND_NOTIFICATION
 
     def _resize_window(self):
         """Пересчитывает размер окна под содержимое"""

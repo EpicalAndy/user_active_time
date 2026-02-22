@@ -36,6 +36,9 @@ USERNAME = os.getenv("USERNAME", "unknown")
 RECOMMENDED_ACTIVITY_THRESHOLD = 80
 MIN_ACTIVITY_THRESHOLD = 70
 
+# Звуковое уведомление при достижении рекомендуемого порога активности
+SOUND_NOTIFICATION = False
+
 # Виджет: какие метрики отображать
 WIDGET_SHOW_ACTIVE_TIME = True
 WIDGET_SHOW_SESSION_COUNT = True
