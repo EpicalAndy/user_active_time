@@ -55,7 +55,7 @@ def parse_time(time_str: str) -> datetime.datetime:
 _DAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 
-def get_work_hours(date: datetime.date) -> int:
+def get_work_hours(date: datetime.date) -> float:
     """Возвращает рабочие часы для указанного дня (0 = не отслеживать)"""
     day_name = _DAY_NAMES[date.weekday()]
     hours = WORK_HOURS_BY_DAY.get(day_name)
@@ -64,7 +64,7 @@ def get_work_hours(date: datetime.date) -> int:
     return hours
 
 
-def calculate_activity_percent(active_seconds: int, max_work_hours: int) -> float:
+def calculate_activity_percent(active_seconds: int, max_work_hours: float) -> float:
     """Вычисляет процент активности относительно максимального рабочего времени"""
     max_work_seconds = max_work_hours * 3600
     if max_work_seconds > 0:

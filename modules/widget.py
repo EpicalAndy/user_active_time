@@ -19,7 +19,9 @@ from config import (
     WIDGET_UPDATE_INTERVAL,
     MAIN_FONT_SIZE,
 )
+import config
 from modules.events_monitor import get_countdown_remaining
+from modules.settings_dialog import SettingsDialog
 from utility import format_duration
 
 # Цветовая схема
@@ -107,6 +109,16 @@ class ActivityWidget:
         self._minimize_btn.bind("<Button-1>", lambda e: self._toggle_minimize())
         self._minimize_btn.bind("<Enter>", lambda e: self._minimize_btn.configure(fg=MINIMIZE_HOVER))
         self._minimize_btn.bind("<Leave>", lambda e: self._minimize_btn.configure(fg=TITLE_FG))
+
+        settings_btn = tk.Label(
+            title_frame, text="  \u2699  ",
+            bg=TITLE_BG, fg=TITLE_FG,
+            font=("Segoe UI", MAIN_FONT_SIZE), cursor="hand2",
+        )
+        settings_btn.pack(side=tk.RIGHT, fill=tk.Y)
+        settings_btn.bind("<Button-1>", lambda e: self._open_settings())
+        settings_btn.bind("<Enter>", lambda e: settings_btn.configure(fg=MINIMIZE_HOVER))
+        settings_btn.bind("<Leave>", lambda e: settings_btn.configure(fg=TITLE_FG))
 
         # Счётчик обратного отсчёта до неактивности
         self._countdown_label = None
@@ -223,8 +235,8 @@ class ActivityWidget:
             self._show_day_off()
             return
 
-        # Убедиться, что метрики видны (переход с нерабочего дня)
-        if not self.metric_labels or next(iter(self.metric_labels.values()))["frame"].winfo_manager() == "":
+        # Убедиться, что метрики видны (переход с нерабочего дня или после пересоздания)
+        if not self._is_working_day:
             self._show_working_day()
 
         if "active_time" in self.metric_labels:
@@ -325,8 +337,42 @@ class ActivityWidget:
             self.body_frame.pack(fill=tk.BOTH, expand=True)
         else:
             self.body_frame.pack_forget()
-
         self._minimized = not self._minimized
+        self._resize_window()
+
+    def _open_settings(self):
+        """Открывает диалог настроек"""
+        dialog = SettingsDialog(self.window)
+        dialog.wait()
+        if dialog.saved:
+            self._rebuild_body()
+
+    def _rebuild_body(self):
+        """Пересоздаёт тело виджета после изменения настроек"""
+        # Обновляем конфиг-зависимые значения из модуля
+        self._reload_config()
+        self.body_frame.destroy()
+        self._create_body()
+        if self._minimized:
+            self.body_frame.pack_forget()
+        self._update_metrics()
+        self._resize_window()
+
+    def _reload_config(self):
+        """Перечитывает значения из модуля config"""
+        # Импорты на уровне модуля кэшируют значения — обновляем из config напрямую
+        global WIDGET_SHOW_ACTIVE_TIME, WIDGET_SHOW_SESSION_COUNT
+        global WIDGET_SHOW_ACTIVITY_PERCENT, WIDGET_SHOW_FULL_DAY_TIME
+        global INPUT_ACTIVITY_TIMEOUT, COUNTDOWN_WARNING_SECONDS
+        WIDGET_SHOW_ACTIVE_TIME = config.WIDGET_SHOW_ACTIVE_TIME
+        WIDGET_SHOW_SESSION_COUNT = config.WIDGET_SHOW_SESSION_COUNT
+        WIDGET_SHOW_ACTIVITY_PERCENT = config.WIDGET_SHOW_ACTIVITY_PERCENT
+        WIDGET_SHOW_FULL_DAY_TIME = config.WIDGET_SHOW_FULL_DAY_TIME
+        INPUT_ACTIVITY_TIMEOUT = config.INPUT_ACTIVITY_TIMEOUT
+        COUNTDOWN_WARNING_SECONDS = config.COUNTDOWN_WARNING_SECONDS
+
+    def _resize_window(self):
+        """Пересчитывает размер окна под содержимое"""
         self.window.update_idletasks()
         width = 250
         win_h = self.window.winfo_reqheight()

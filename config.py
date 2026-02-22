@@ -7,13 +7,13 @@ DEFAULT_WORK_HOURS = 8
 
 # Рабочие часы по дням недели (None = используется DEFAULT_WORK_HOURS, 0 = не отслеживать)
 WORK_HOURS_BY_DAY = {
-    "monday": DEFAULT_WORK_HOURS,
-    "tuesday": DEFAULT_WORK_HOURS,
-    "wednesday": DEFAULT_WORK_HOURS,
-    "thursday": DEFAULT_WORK_HOURS,
-    "friday": 7,
-    "saturday": 0,
-    "sunday": 0,
+    "monday": 8.50,
+    "tuesday": 8.50,
+    "wednesday": 8.50,
+    "thursday": 8.50,
+    "friday": 7.50,
+    "saturday": 1,
+    "sunday": 1,
 }
 
 # Таймаут неактивности ввода (мышь/клавиатура) в секундах. 0 = отключено.
@@ -38,7 +38,7 @@ MIN_ACTIVITY_THRESHOLD = 70
 
 # Виджет: какие метрики отображать
 WIDGET_SHOW_ACTIVE_TIME = True
-WIDGET_SHOW_SESSION_COUNT = False
+WIDGET_SHOW_SESSION_COUNT = True
 WIDGET_SHOW_ACTIVITY_PERCENT = True
 WIDGET_SHOW_FULL_DAY_TIME = True
 
