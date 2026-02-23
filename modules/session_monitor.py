@@ -274,8 +274,6 @@ def checkpoint_session():
         session_start_time = now
         events_monitor.reset_inactive_seconds()
 
-    print("[SESSION] Checkpoint: сохранено промежуточное состояние")
-
 
 def end_session():
     """Завершает сессию и записывает время"""
