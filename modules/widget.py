@@ -132,7 +132,7 @@ class ActivityWidget:
         title_label = tk.Label(
             title_frame, text="Активность",
             bg=TITLE_BG, fg=TITLE_FG,
-            font=("Segoe UI", MAIN_FONT_SIZE, "bold"), padx=MAIN_FONT_SIZE,
+            font=("Segoe UI", MAIN_FONT_SIZE), padx=MAIN_FONT_SIZE,
             cursor="hand2",
         )
         title_label.pack(side=tk.LEFT, fill=tk.Y)
