@@ -19,11 +19,13 @@ class WidgetToolbar:
         self,
         parent: tk.Misc,
         on_open_reports: Callable,
+        on_view_report: Callable,
         on_open_settings: Callable,
     ):
         self.frame = tk.Frame(parent, bg=TOOLBAR_BG, pady=2)
 
         self._add_button("\U0001F4C2", "Открыть отчёты", on_open_reports)
+        self._add_button("\U0001F4CA", "Визуализация отчёта", on_view_report)
         self._add_button("\u2699", "Настройки", on_open_settings)
 
     def _add_button(self, icon: str, tooltip_text: str, command: Callable):

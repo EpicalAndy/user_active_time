@@ -29,6 +29,7 @@ from config import (
 import config
 from modules.events_monitor import get_countdown_remaining
 from modules.session_monitor import checkpoint_session
+from modules.report_viewer import ReportViewer
 from modules.settings_dialog import SettingsDialog
 from modules.toolbar import WidgetToolbar
 from utility import format_duration
@@ -115,6 +116,7 @@ class ActivityWidget:
         self._toolbar = WidgetToolbar(
             self.window,
             on_open_reports=lambda: os.startfile(LOG_DIR),
+            on_view_report=self._view_report,
             on_open_settings=self._open_settings,
         )
         self._toolbar.pack(fill=tk.X)
@@ -410,6 +412,10 @@ class ActivityWidget:
             self.body_frame.pack_forget()
         self._minimized = not self._minimized
         self._resize_window()
+
+    def _view_report(self):
+        """Открывает визуализацию отчёта"""
+        ReportViewer(self.window)
 
     def _open_settings(self):
         """Открывает диалог настроек"""
