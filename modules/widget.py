@@ -30,6 +30,7 @@ import config
 from modules.events_monitor import get_countdown_remaining
 from modules.session_monitor import checkpoint_session
 from modules.settings_dialog import SettingsDialog
+from modules.toolbar import WidgetToolbar
 from utility import format_duration
 
 # Цветовая схема
@@ -111,6 +112,12 @@ class ActivityWidget:
         self.window = tk.Toplevel(self.root)
         self._setup_window()
         self._create_title_bar()
+        self._toolbar = WidgetToolbar(
+            self.window,
+            on_open_reports=lambda: os.startfile(LOG_DIR),
+            on_open_settings=self._open_settings,
+        )
+        self._toolbar.pack(fill=tk.X)
         self._create_body()
         self._position_window()
         self._tick()
@@ -133,10 +140,8 @@ class ActivityWidget:
             title_frame, text="Активность",
             bg=TITLE_BG, fg=TITLE_FG,
             font=("Segoe UI", MAIN_FONT_SIZE), padx=MAIN_FONT_SIZE,
-            cursor="hand2",
         )
         title_label.pack(side=tk.LEFT, fill=tk.Y)
-        title_label.bind("<Button-1>", lambda e: os.startfile(LOG_DIR))
 
         close_btn = tk.Label(
             title_frame, text="  \u2715  ",
@@ -158,16 +163,6 @@ class ActivityWidget:
         self._minimize_btn.bind("<Enter>", lambda e: self._minimize_btn.configure(fg=MINIMIZE_HOVER))
         self._minimize_btn.bind("<Leave>", lambda e: self._minimize_btn.configure(fg=TITLE_FG))
 
-        settings_btn = tk.Label(
-            title_frame, text="  \u2699  ",
-            bg=TITLE_BG, fg=TITLE_FG,
-            font=("Segoe UI", MAIN_FONT_SIZE), cursor="hand2",
-        )
-        settings_btn.pack(side=tk.RIGHT, fill=tk.Y)
-        settings_btn.bind("<Button-1>", lambda e: self._open_settings())
-        settings_btn.bind("<Enter>", lambda e: settings_btn.configure(fg=MINIMIZE_HOVER))
-        settings_btn.bind("<Leave>", lambda e: settings_btn.configure(fg=TITLE_FG))
-
         # Счётчик обратного отсчёта до неактивности
         self._countdown_label = None
         if INPUT_ACTIVITY_TIMEOUT > 0:
@@ -179,7 +174,7 @@ class ActivityWidget:
             self._countdown_label.pack(side=tk.LEFT, fill=tk.Y)
 
         # Перетаскивание за заголовок
-        drag_widgets: list[tk.Widget] = [title_frame]
+        drag_widgets: list[tk.Widget] = [title_frame, title_label]
         if self._countdown_label:
             drag_widgets.append(self._countdown_label)
         for w in drag_widgets:
@@ -408,8 +403,10 @@ class ActivityWidget:
     def _toggle_minimize(self):
         """Сворачивает/разворачивает тело виджета"""
         if self._minimized:
+            self._toolbar.pack(fill=tk.X)
             self.body_frame.pack(fill=tk.BOTH, expand=True)
         else:
+            self._toolbar.pack_forget()
             self.body_frame.pack_forget()
         self._minimized = not self._minimized
         self._resize_window()
@@ -423,11 +420,11 @@ class ActivityWidget:
 
     def _rebuild_body(self):
         """Пересоздаёт тело виджета после изменения настроек"""
-        # Обновляем конфиг-зависимые значения из модуля
         self._reload_config()
         self.body_frame.destroy()
         self._create_body()
         if self._minimized:
+            self._toolbar.pack_forget()
             self.body_frame.pack_forget()
         self._update_metrics()
         self._resize_window()
