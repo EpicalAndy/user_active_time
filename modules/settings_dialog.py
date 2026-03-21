@@ -8,6 +8,7 @@ import tkinter as tk
 from tkinter import ttk
 
 import config
+from constants import ENCODING, FONT_FAMILY
 
 # Путь к config.py
 _CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.py")
@@ -74,7 +75,7 @@ class SettingsDialog:
         for key, label in _DAYS:
             col = tk.Frame(row)
             col.pack(side=tk.LEFT, expand=True)
-            tk.Label(col, text=label, font=("Segoe UI", 9)).pack()
+            tk.Label(col, text=label, font=(FONT_FAMILY, 9)).pack()
             var = tk.DoubleVar(value=config.WORK_HOURS_BY_DAY.get(key, config.DEFAULT_WORK_HOURS))
             self._day_vars[key] = var
             ttk.Spinbox(
@@ -110,7 +111,7 @@ class SettingsDialog:
         timer_grid = tk.Frame(timers_frame)
         timer_grid.pack(fill=tk.X, padx=8, pady=6)
 
-        tk.Label(timer_grid, text="Таймаут неактивности (сек):", font=("Segoe UI", 9)).grid(
+        tk.Label(timer_grid, text="Таймаут неактивности (сек):", font=(FONT_FAMILY, 9)).grid(
             row=0, column=0, sticky=tk.W, pady=2,
         )
         self._timeout_var = tk.IntVar(value=config.INPUT_ACTIVITY_TIMEOUT)
@@ -118,7 +119,7 @@ class SettingsDialog:
             row=0, column=1, padx=(8, 0), pady=2,
         )
 
-        tk.Label(timer_grid, text="Предупреждение (сек):", font=("Segoe UI", 9)).grid(
+        tk.Label(timer_grid, text="Предупреждение (сек):", font=(FONT_FAMILY, 9)).grid(
             row=1, column=0, sticky=tk.W, pady=2,
         )
         self._warning_var = tk.IntVar(value=config.COUNTDOWN_WARNING_SECONDS)
@@ -155,7 +156,7 @@ class SettingsDialog:
         }
 
     def _write_config_file(self, values: dict):
-        with open(_CONFIG_PATH, "r", encoding="utf-8") as f:
+        with open(_CONFIG_PATH, "r", encoding=ENCODING) as f:
             content = f.read()
 
         # Таймеры
@@ -197,7 +198,7 @@ class SettingsDialog:
             content, flags=re.MULTILINE | re.DOTALL,
         )
 
-        with open(_CONFIG_PATH, "w", encoding="utf-8") as f:
+        with open(_CONFIG_PATH, "w", encoding=ENCODING) as f:
             f.write(content)
 
     def _apply_runtime(self, values: dict):

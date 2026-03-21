@@ -9,15 +9,16 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 from config import LOG_DIR, MAIN_FONT_SIZE
-
-# Цвета
-_BG = "#2C3E50"
-_FG = "#ECF0F1"
-_CHART_ACTIVE = "#27AE60"
-_CHART_INACTIVE = "#E74C3C"
-_CHART_BG = "#BDC3C7"
-_CHART_GRID = "#95A5A6"
-_STAT_LABEL_FG = "#95A5A6"
+from constants import (
+    COLOR_DARK_BG,
+    COLOR_GREEN,
+    COLOR_LIGHT_FG,
+    COLOR_LIGHT_GRAY,
+    COLOR_MUTED,
+    COLOR_RED,
+    ENCODING,
+    FONT_FAMILY,
+)
 
 # Типы событий → активность
 _ACTIVE_EVENTS = {"LOGON", "UNLOCK", "INPUT_ACTIVE", "MONITOR_START"}
@@ -31,7 +32,7 @@ _LOG_LINE_RE = re.compile(
 def _parse_report(filepath: str) -> dict | None:
     """Парсит файл отчёта. Возвращает dict с данными или None если невалидный."""
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, "r", encoding=ENCODING) as f:
             text = f.read()
     except (IOError, UnicodeDecodeError):
         return None
@@ -149,10 +150,10 @@ class ReportViewer:
         self.win.resizable(False, False)
         self.win.transient(parent)
         self.win.grab_set()
-        self.win.configure(bg=_BG)
+        self.win.configure(bg=COLOR_DARK_BG)
 
         # --- Статистика ---
-        stats_frame = tk.Frame(self.win, bg=_BG, padx=16, pady=12)
+        stats_frame = tk.Frame(self.win, bg=COLOR_DARK_BG, padx=16, pady=12)
         stats_frame.pack(fill=tk.X)
 
         stats = [
@@ -166,40 +167,40 @@ class ReportViewer:
         ]
 
         for label_text, value_text in stats:
-            row = tk.Frame(stats_frame, bg=_BG)
+            row = tk.Frame(stats_frame, bg=COLOR_DARK_BG)
             row.pack(fill=tk.X, pady=1)
             tk.Label(
-                row, text=f"{label_text}:", bg=_BG, fg=_STAT_LABEL_FG,
-                font=("Segoe UI", MAIN_FONT_SIZE), anchor=tk.W,
+                row, text=f"{label_text}:", bg=COLOR_DARK_BG, fg=COLOR_MUTED,
+                font=(FONT_FAMILY, MAIN_FONT_SIZE), anchor=tk.W,
             ).pack(side=tk.LEFT)
             tk.Label(
-                row, text=value_text, bg=_BG, fg=_FG,
-                font=("Segoe UI", MAIN_FONT_SIZE, "bold"), anchor=tk.E,
+                row, text=value_text, bg=COLOR_DARK_BG, fg=COLOR_LIGHT_FG,
+                font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"), anchor=tk.E,
             ).pack(side=tk.RIGHT)
 
         # --- Разделитель ---
-        tk.Frame(self.win, bg=_CHART_GRID, height=1).pack(fill=tk.X, padx=16)
+        tk.Frame(self.win, bg=COLOR_MUTED, height=1).pack(fill=tk.X, padx=16)
 
         # --- График ---
         chart_label = tk.Label(
-            self.win, text="Активность за день", bg=_BG, fg=_FG,
-            font=("Segoe UI", MAIN_FONT_SIZE, "bold"),
+            self.win, text="Активность за день", bg=COLOR_DARK_BG, fg=COLOR_LIGHT_FG,
+            font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"),
         )
         chart_label.pack(pady=(10, 4))
 
         self._draw_chart(data)
 
         # --- Легенда ---
-        legend_frame = tk.Frame(self.win, bg=_BG)
+        legend_frame = tk.Frame(self.win, bg=COLOR_DARK_BG)
         legend_frame.pack(pady=(4, 12))
 
-        self._legend_item(legend_frame, _CHART_ACTIVE, "Активность")
-        self._legend_item(legend_frame, _CHART_INACTIVE, "Простой")
+        self._legend_item(legend_frame, COLOR_GREEN, "Активность")
+        self._legend_item(legend_frame, COLOR_RED, "Простой")
 
         # --- Кнопка закрыть ---
         tk.Button(
             self.win, text="Закрыть", command=self.win.destroy,
-            font=("Segoe UI", MAIN_FONT_SIZE - 1),
+            font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
         ).pack(pady=(0, 12))
 
         # Центрируем окно на экране
@@ -227,7 +228,7 @@ class ReportViewer:
 
         canvas = tk.Canvas(
             self.win, width=canvas_w, height=canvas_h,
-            bg=_BG, highlightthickness=0,
+            bg=COLOR_DARK_BG, highlightthickness=0,
         )
         canvas.pack(padx=16, pady=4)
 
@@ -255,14 +256,14 @@ class ReportViewer:
         canvas.create_rectangle(
             pad_left, pad_top,
             pad_left + chart_width, pad_top + chart_height,
-            fill=_CHART_BG, outline="",
+            fill=COLOR_LIGHT_GRAY, outline="",
         )
 
         # Интервалы активности/простоя
         for start_h, end_h, is_active in intervals:
             x1 = hour_to_x(max(start_h, min_hour))
             x2 = hour_to_x(min(end_h, max_hour))
-            color = _CHART_ACTIVE if is_active else _CHART_INACTIVE
+            color = COLOR_GREEN if is_active else COLOR_RED
             canvas.create_rectangle(
                 x1, pad_top, x2, pad_top + chart_height,
                 fill=color, outline="",
@@ -274,25 +275,25 @@ class ReportViewer:
             # Вертикальная линия сетки
             canvas.create_line(
                 x, pad_top, x, pad_top + chart_height,
-                fill=_CHART_GRID, width=1,
+                fill=COLOR_MUTED, width=1,
             )
             # Подпись часа
             canvas.create_text(
                 x, pad_top + chart_height + 4,
                 text=str(h), anchor=tk.N,
-                fill=_FG, font=("Segoe UI", 8),
+                fill=COLOR_LIGHT_FG, font=(FONT_FAMILY, 8),
             )
 
     def _legend_item(self, parent: tk.Frame, color: str, text: str):
         """Добавляет элемент легенды"""
-        frame = tk.Frame(parent, bg=_BG)
+        frame = tk.Frame(parent, bg=COLOR_DARK_BG)
         frame.pack(side=tk.LEFT, padx=12)
 
-        box = tk.Canvas(frame, width=14, height=14, bg=_BG, highlightthickness=0)
+        box = tk.Canvas(frame, width=14, height=14, bg=COLOR_DARK_BG, highlightthickness=0)
         box.pack(side=tk.LEFT, padx=(0, 4))
         box.create_rectangle(1, 1, 13, 13, fill=color, outline="")
 
         tk.Label(
-            frame, text=text, bg=_BG, fg=_FG,
-            font=("Segoe UI", MAIN_FONT_SIZE - 1),
+            frame, text=text, bg=COLOR_DARK_BG, fg=COLOR_LIGHT_FG,
+            font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
         ).pack(side=tk.LEFT)

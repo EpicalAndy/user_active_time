@@ -11,6 +11,7 @@ import threading
 from ctypes import wintypes
 
 from config import LOG_DIR, STATE_FILE, USERNAME
+from constants import ENCODING
 from constants import (
     NOTIFY_FOR_THIS_SESSION,
     WNDCLASSW,
@@ -51,7 +52,7 @@ def load_state() -> dict:
     """Загружает состояние из файла"""
     if os.path.exists(STATE_FILE):
         try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f:
+            with open(STATE_FILE, "r", encoding=ENCODING) as f:
                 return json.load(f)
         except (json.JSONDecodeError, IOError):
             pass
@@ -61,7 +62,7 @@ def load_state() -> dict:
 def save_state(state: dict):
     """Сохраняет состояние в файл (атомарно через временный файл)"""
     tmp_path = STATE_FILE + ".tmp"
-    with open(tmp_path, "w", encoding="utf-8") as f:
+    with open(tmp_path, "w", encoding=ENCODING) as f:
         json.dump(state, f, indent=2, ensure_ascii=False)
     os.replace(tmp_path, STATE_FILE)
 

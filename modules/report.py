@@ -5,6 +5,7 @@
 import datetime
 import os
 
+from constants import ENCODING
 from utility import calculate_activity_percent, format_date_display, format_duration, get_work_hours, parse_time
 
 
@@ -83,5 +84,5 @@ def write_report(
     filename = get_report_filename(username, date)
     filepath = os.path.join(log_dir, filename)
 
-    with open(filepath, "w", encoding="utf-8") as f:
+    with open(filepath, "w", encoding=ENCODING) as f:
         f.write(report_text)

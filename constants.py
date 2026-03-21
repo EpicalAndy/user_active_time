@@ -1,6 +1,27 @@
 import ctypes
 from ctypes import wintypes
 
+# === Общие константы ===
+
+ENCODING = "utf-8"
+FONT_FAMILY = "Segoe UI"
+
+# === Цвета UI ===
+
+COLOR_DARK_BG = "#2C3E50"       # Основной тёмный фон (заголовок, окно отчёта)
+COLOR_DARKER_BG = "#34495E"     # Вторичный тёмный фон (тулбар)
+COLOR_LIGHT_FG = "#ECF0F1"      # Основной светлый текст
+COLOR_WHITE = "#FFFFFF"         # Белый текст
+COLOR_HOVER = "#5D6D7E"         # Состояние при наведении
+COLOR_MUTED = "#95A5A6"         # Приглушённый текст / сетка
+COLOR_LIGHT_GRAY = "#BDC3C7"    # Светло-серый фон
+COLOR_GRAY = "#7F8C8D"          # Серый (нерабочий день)
+COLOR_GREEN = "#27AE60"         # Успех / активность
+COLOR_YELLOW = "#F39C12"        # Предупреждение
+COLOR_RED = "#E74C3C"           # Опасность / простой
+COLOR_TOOLTIP_BG = "#FFFFE1"    # Фон подсказки
+COLOR_TOOLTIP_FG = "#333333"    # Текст подсказки
+
 # === Константы Windows API ===
 
 WM_WTSSESSION_CHANGE = 0x02B1

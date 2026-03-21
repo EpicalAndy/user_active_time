@@ -27,6 +27,17 @@ from config import (
     MAIN_FONT_SIZE,
 )
 import config
+from constants import (
+    COLOR_DARK_BG,
+    COLOR_GRAY,
+    COLOR_GREEN,
+    COLOR_HOVER,
+    COLOR_LIGHT_FG,
+    COLOR_RED,
+    COLOR_WHITE,
+    COLOR_YELLOW,
+    FONT_FAMILY,
+)
 from modules.events_monitor import get_countdown_remaining
 from modules.session_monitor import checkpoint_session
 from modules.report_viewer import ReportViewer
@@ -34,17 +45,12 @@ from modules.settings_dialog import SettingsDialog
 from modules.toolbar import WidgetToolbar
 from utility import format_duration
 
-# Цветовая схема
-TITLE_BG = "#2C3E50"
-TITLE_FG = "#ECF0F1"
-CLOSE_HOVER = "#E74C3C"
-MINIMIZE_HOVER = "#5D6D7E"
-METRIC_FG = "#FFFFFF"
-
-COLOR_GREEN = "#27AE60"
-COLOR_YELLOW = "#F39C12"
-COLOR_RED = "#E74C3C"
-COLOR_GRAY = "#7F8C8D"
+# Псевдонимы цветов для семантики виджета
+TITLE_BG = COLOR_DARK_BG
+TITLE_FG = COLOR_LIGHT_FG
+CLOSE_HOVER = COLOR_RED
+MINIMIZE_HOVER = COLOR_HOVER
+METRIC_FG = COLOR_WHITE
 
 _WIDGET_POS_FILE = os.path.join(LOG_DIR, "widget_position.json")
 
@@ -141,14 +147,14 @@ class ActivityWidget:
         title_label = tk.Label(
             title_frame, text="Активность",
             bg=TITLE_BG, fg=TITLE_FG,
-            font=("Segoe UI", MAIN_FONT_SIZE), padx=MAIN_FONT_SIZE,
+            font=(FONT_FAMILY, MAIN_FONT_SIZE), padx=MAIN_FONT_SIZE,
         )
         title_label.pack(side=tk.LEFT, fill=tk.Y)
 
         close_btn = tk.Label(
             title_frame, text="  \u2715  ",
             bg=TITLE_BG, fg=TITLE_FG,
-            font=("Segoe UI", MAIN_FONT_SIZE), cursor="hand2",
+            font=(FONT_FAMILY, MAIN_FONT_SIZE), cursor="hand2",
         )
         close_btn.pack(side=tk.RIGHT, fill=tk.Y)
         close_btn.bind("<Button-1>", lambda e: self.close())
@@ -158,7 +164,7 @@ class ActivityWidget:
         self._minimize_btn = tk.Label(
             title_frame, text="  \u2014  ",
             bg=TITLE_BG, fg=TITLE_FG,
-            font=("Segoe UI", MAIN_FONT_SIZE), cursor="hand2",
+            font=(FONT_FAMILY, MAIN_FONT_SIZE), cursor="hand2",
         )
         self._minimize_btn.pack(side=tk.RIGHT, fill=tk.Y)
         self._minimize_btn.bind("<Button-1>", lambda e: self._toggle_minimize())
@@ -171,7 +177,7 @@ class ActivityWidget:
             self._countdown_label = tk.Label(
                 title_frame, text="",
                 bg=TITLE_BG, fg=TITLE_FG,
-                font=("Segoe UI", MAIN_FONT_SIZE - 1),
+                font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
             )
             self._countdown_label.pack(side=tk.LEFT, fill=tk.Y)
 
@@ -194,7 +200,7 @@ class ActivityWidget:
         self._day_off_label = tk.Label(
             self.body_frame, text="Сегодня не рабочий день",
             bg=COLOR_GRAY, fg=METRIC_FG,
-            font=("Segoe UI", MAIN_FONT_SIZE, "bold"),
+            font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"),
         )
 
         self.metric_labels = {}
@@ -215,14 +221,14 @@ class ActivityWidget:
         label = tk.Label(
             frame, text=label_text,
             bg=COLOR_RED, fg=METRIC_FG,
-            font=("Segoe UI", MAIN_FONT_SIZE), anchor=tk.W,
+            font=(FONT_FAMILY, MAIN_FONT_SIZE), anchor=tk.W,
         )
         label.pack(side=tk.LEFT)
 
         value = tk.Label(
             frame, text="\u2014",
             bg=COLOR_RED, fg=METRIC_FG,
-            font=("Segoe UI", MAIN_FONT_SIZE, "bold"), anchor=tk.E,
+            font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"), anchor=tk.E,
         )
         value.pack(side=tk.RIGHT)
 
@@ -344,7 +350,7 @@ class ActivityWidget:
             self._countdown_blink_bold = False
             self._countdown_label.configure(
                 text=text, fg=COLOR_RED,
-                font=("Segoe UI", MAIN_FONT_SIZE - 1, "bold"),
+                font=(FONT_FAMILY, MAIN_FONT_SIZE - 1, "bold"),
             )
         elif COUNTDOWN_WARNING_SECONDS > 0 and remaining <= COUNTDOWN_WARNING_SECONDS:
             # Приближение к неактивности — мигание управляется тикером
@@ -356,7 +362,7 @@ class ActivityWidget:
             self._countdown_blink_bold = False
             self._countdown_label.configure(
                 text=text, fg=TITLE_FG,
-                font=("Segoe UI", MAIN_FONT_SIZE - 1),
+                font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
             )
 
     def _tick(self):
@@ -367,7 +373,7 @@ class ActivityWidget:
             weight = "bold" if self._countdown_blink_bold else "normal"
             fg = COLOR_RED if self._countdown_blink_bold else TITLE_FG
             self._countdown_label.configure(
-                font=("Segoe UI", MAIN_FONT_SIZE - 1, weight), fg=fg,
+                font=(FONT_FAMILY, MAIN_FONT_SIZE - 1, weight), fg=fg,
             )
 
         # 1с — countdown

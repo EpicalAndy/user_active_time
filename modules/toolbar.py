@@ -6,10 +6,18 @@ import tkinter as tk
 from collections.abc import Callable
 
 from config import MAIN_FONT_SIZE
+from constants import (
+    COLOR_DARKER_BG,
+    COLOR_HOVER,
+    COLOR_LIGHT_FG,
+    COLOR_TOOLTIP_BG,
+    COLOR_TOOLTIP_FG,
+    FONT_FAMILY,
+)
 
-TOOLBAR_BG = "#34495E"
-TOOLBAR_FG = "#ECF0F1"
-TOOLBAR_HOVER_BG = "#5D6D7E"
+TOOLBAR_BG = COLOR_DARKER_BG
+TOOLBAR_FG = COLOR_LIGHT_FG
+TOOLBAR_HOVER_BG = COLOR_HOVER
 
 
 class WidgetToolbar:
@@ -32,7 +40,7 @@ class WidgetToolbar:
         btn = tk.Label(
             self.frame, text=icon,
             bg=TOOLBAR_BG, fg=TOOLBAR_FG,
-            font=("Segoe UI", MAIN_FONT_SIZE), cursor="hand2",
+            font=(FONT_FAMILY, MAIN_FONT_SIZE), cursor="hand2",
             width=3, anchor=tk.CENTER,
         )
         btn.pack(side=tk.LEFT, fill=tk.Y)
@@ -51,8 +59,8 @@ class WidgetToolbar:
             tw.attributes("-topmost", True)
             tk.Label(
                 tw, text=tooltip_text,
-                bg="#FFFFE1", fg="#333333",
-                font=("Segoe UI", 9), padx=6, pady=2,
+                bg=COLOR_TOOLTIP_BG, fg=COLOR_TOOLTIP_FG,
+                font=(FONT_FAMILY, 9), padx=6, pady=2,
                 relief=tk.SOLID, borderwidth=1,
             ).pack()
 
