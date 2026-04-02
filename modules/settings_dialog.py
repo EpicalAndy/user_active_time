@@ -59,6 +59,12 @@ class SettingsDialog:
         ph = parent.winfo_height()
         x = px + (pw - dw) // 2
         y = py + (ph - dh) // 2
+
+        # Не даём окну выйти за границы экрана
+        sw = self.dialog.winfo_screenwidth()
+        sh = self.dialog.winfo_screenheight()
+        x = max(0, min(x, sw - dw))
+        y = max(0, min(y, sh - dh))
         self.dialog.geometry(f"+{x}+{y}")
 
     def _create_widgets(self):

@@ -32,7 +32,7 @@ class WidgetToolbar:
     ):
         self.frame = tk.Frame(parent, bg=TOOLBAR_BG, pady=2)
 
-        self._add_button("\U0001F4C2", "Открыть отчёты", on_open_reports)
+        self._add_button("\U0001F4C2", "Открыть папку с отчётами", on_open_reports)
         self._add_button("\U0001F4CA", "Визуализация отчёта", on_view_report)
         self._add_button("\u2699", "Настройки", on_open_settings)
 
