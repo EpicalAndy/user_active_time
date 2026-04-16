@@ -29,6 +29,7 @@ _METRIC_TOGGLES = [
     ("WIDGET_SHOW_SESSION_COUNT", "Количество сессий"),
     ("WIDGET_SHOW_ACTIVITY_PERCENT", "Активность (%)"),
     ("WIDGET_SHOW_FULL_DAY_TIME", "Рабочее время"),
+    ("WIDGET_SHOW_TITLE_PERCENT", "Активность (%) в заголовке"),
 ]
 
 

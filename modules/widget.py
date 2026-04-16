@@ -23,6 +23,7 @@ from config import (
     WIDGET_SHOW_ACTIVITY_PERCENT,
     WIDGET_SHOW_FULL_DAY_TIME,
     WIDGET_SHOW_SESSION_COUNT,
+    WIDGET_SHOW_TITLE_PERCENT,
     WIDGET_UPDATE_INTERVAL,
     MAIN_FONT_SIZE,
 )
@@ -181,10 +182,22 @@ class ActivityWidget:
             )
             self._countdown_label.pack(side=tk.LEFT, fill=tk.Y)
 
+        # Процент активности в заголовке
+        self._title_percent_label = None
+        if WIDGET_SHOW_TITLE_PERCENT:
+            self._title_percent_label = tk.Label(
+                title_frame, text="",
+                bg=TITLE_BG, fg=TITLE_FG,
+                font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
+            )
+            self._title_percent_label.pack(side=tk.LEFT, fill=tk.Y)
+
         # Перетаскивание за заголовок
         drag_widgets: list[tk.Widget] = [title_frame, self._title_label]
         if self._countdown_label:
             drag_widgets.append(self._countdown_label)
+        if self._title_percent_label:
+            drag_widgets.append(self._title_percent_label)
         for w in drag_widgets:
             w.bind("<ButtonPress-1>", self._start_drag)
             w.bind("<B1-Motion>", self._on_drag)
@@ -277,6 +290,8 @@ class ActivityWidget:
             widgets["frame"].pack_forget()
         self._day_off_label.pack(fill=tk.X, pady=8)
         self._apply_body_color(COLOR_GRAY)
+        if self._title_percent_label is not None:
+            self._title_percent_label.configure(text="")
 
     def _show_working_day(self):
         """Переключает виджет в режим рабочего дня"""
@@ -317,6 +332,12 @@ class ActivityWidget:
             )
 
         self._apply_body_color(self._get_body_color(stats["activity_percent"]))
+
+        # Процент активности в заголовке
+        if self._title_percent_label is not None:
+            self._title_percent_label.configure(
+                text=f" {stats['activity_percent']:.1f}%"
+            )
 
         # Уведомление о достижении рекомендуемого порога активности
         if SOUND_NOTIFICATION and stats["activity_percent"] >= RECOMMENDED_ACTIVITY_THRESHOLD:
@@ -444,6 +465,7 @@ class ActivityWidget:
     def _rebuild_body(self):
         """Пересоздаёт тело виджета после изменения настроек"""
         self._reload_config()
+        self._rebuild_title_percent()
         self.body_frame.destroy()
         self._create_body()
         if self._minimized:
@@ -452,17 +474,35 @@ class ActivityWidget:
         self._update_metrics()
         self._resize_window()
 
+    def _rebuild_title_percent(self):
+        """Пересоздаёт или удаляет лейбл процента в заголовке по настройке"""
+        if WIDGET_SHOW_TITLE_PERCENT and self._title_percent_label is None:
+            self._title_percent_label = tk.Label(
+                self._title_frame, text="",
+                bg=TITLE_BG, fg=TITLE_FG,
+                font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
+            )
+            self._title_percent_label.pack(side=tk.LEFT, fill=tk.Y)
+            self._title_percent_label.bind("<ButtonPress-1>", self._start_drag)
+            self._title_percent_label.bind("<B1-Motion>", self._on_drag)
+            self._title_percent_label.bind("<ButtonRelease-1>", lambda e: self._save_position())
+        elif not WIDGET_SHOW_TITLE_PERCENT and self._title_percent_label is not None:
+            self._title_percent_label.destroy()
+            self._title_percent_label = None
+
     def _reload_config(self):
         """Перечитывает значения из модуля config"""
         # Импорты на уровне модуля кэшируют значения — обновляем из config напрямую
         global WIDGET_SHOW_ACTIVE_TIME, WIDGET_SHOW_SESSION_COUNT
         global WIDGET_SHOW_ACTIVITY_PERCENT, WIDGET_SHOW_FULL_DAY_TIME
+        global WIDGET_SHOW_TITLE_PERCENT
         global INPUT_ACTIVITY_TIMEOUT, COUNTDOWN_WARNING_SECONDS, CHECKPOINT_INTERVAL
         global SOUND_NOTIFICATION
         WIDGET_SHOW_ACTIVE_TIME = config.WIDGET_SHOW_ACTIVE_TIME
         WIDGET_SHOW_SESSION_COUNT = config.WIDGET_SHOW_SESSION_COUNT
         WIDGET_SHOW_ACTIVITY_PERCENT = config.WIDGET_SHOW_ACTIVITY_PERCENT
         WIDGET_SHOW_FULL_DAY_TIME = config.WIDGET_SHOW_FULL_DAY_TIME
+        WIDGET_SHOW_TITLE_PERCENT = config.WIDGET_SHOW_TITLE_PERCENT
         INPUT_ACTIVITY_TIMEOUT = config.INPUT_ACTIVITY_TIMEOUT
         COUNTDOWN_WARNING_SECONDS = config.COUNTDOWN_WARNING_SECONDS
         CHECKPOINT_INTERVAL = config.CHECKPOINT_INTERVAL
