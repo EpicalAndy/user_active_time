@@ -24,13 +24,18 @@ _DAYS = [
     ("sunday", "Вс"),
 ]
 
-_METRIC_TOGGLES = [
+_WIDGET_METRIC_TOGGLES = [
     ("WIDGET_SHOW_ACTIVE_TIME", "Активное время"),
     ("WIDGET_SHOW_SESSION_COUNT", "Количество сессий"),
     ("WIDGET_SHOW_ACTIVITY_PERCENT", "Активность (%)"),
     ("WIDGET_SHOW_FULL_DAY_TIME", "Рабочее время"),
-    ("WIDGET_SHOW_TITLE_PERCENT", "Активность (%) в заголовке"),
 ]
+
+_TITLE_METRIC_TOGGLES = [
+    ("WIDGET_SHOW_TITLE_PERCENT", "Активность (%)"),
+]
+
+_ALL_METRIC_TOGGLES = _WIDGET_METRIC_TOGGLES + _TITLE_METRIC_TOGGLES
 
 
 class SettingsDialog:
@@ -71,8 +76,19 @@ class SettingsDialog:
     def _create_widgets(self):
         pad = {"padx": 10, "pady": 4}
 
+        # --- Вкладки ---
+        notebook = ttk.Notebook(self.dialog)
+        notebook.pack(fill=tk.BOTH, expand=True, padx=6, pady=(6, 0))
+
+        tab_general = tk.Frame(notebook)
+        tab_metrics = tk.Frame(notebook)
+        notebook.add(tab_general, text="Общие")
+        notebook.add(tab_metrics, text="Метрики")
+
+        # ===== Вкладка "Общие" =====
+
         # --- Рабочие часы ---
-        hours_frame = ttk.LabelFrame(self.dialog, text="Рабочие часы по дням недели")
+        hours_frame = ttk.LabelFrame(tab_general, text="Рабочие часы по дням недели")
         hours_frame.pack(fill=tk.X, **pad)
 
         self._day_vars: dict[str, tk.DoubleVar] = {}
@@ -90,20 +106,8 @@ class SettingsDialog:
                 textvariable=var, justify=tk.CENTER, format="%.2f",
             ).pack()
 
-        # --- Метрики ---
-        metrics_frame = ttk.LabelFrame(self.dialog, text="Метрики виджета")
-        metrics_frame.pack(fill=tk.X, **pad)
-
-        self._metric_vars: dict[str, tk.BooleanVar] = {}
-        for attr, label in _METRIC_TOGGLES:
-            var = tk.BooleanVar(value=getattr(config, attr))
-            self._metric_vars[attr] = var
-            ttk.Checkbutton(metrics_frame, text=label, variable=var).pack(
-                anchor=tk.W, padx=12, pady=2,
-            )
-
         # --- Уведомления ---
-        notify_frame = ttk.LabelFrame(self.dialog, text="Уведомления")
+        notify_frame = ttk.LabelFrame(tab_general, text="Уведомления")
         notify_frame.pack(fill=tk.X, **pad)
 
         self._sound_var = tk.BooleanVar(value=config.SOUND_NOTIFICATION)
@@ -112,7 +116,7 @@ class SettingsDialog:
         )
 
         # --- Таймеры ---
-        timers_frame = ttk.LabelFrame(self.dialog, text="Таймеры")
+        timers_frame = ttk.LabelFrame(tab_general, text="Таймеры")
         timers_frame.pack(fill=tk.X, **pad)
 
         timer_grid = tk.Frame(timers_frame)
@@ -133,6 +137,32 @@ class SettingsDialog:
         ttk.Spinbox(timer_grid, from_=0, to=300, width=6, textvariable=self._warning_var).grid(
             row=1, column=1, padx=(8, 0), pady=2,
         )
+
+        # ===== Вкладка "Метрики" =====
+
+        self._metric_vars: dict[str, tk.BooleanVar] = {}
+
+        # --- Виджет ---
+        widget_frame = ttk.LabelFrame(tab_metrics, text="Виджет")
+        widget_frame.pack(fill=tk.X, **pad)
+
+        for attr, label in _WIDGET_METRIC_TOGGLES:
+            var = tk.BooleanVar(value=getattr(config, attr))
+            self._metric_vars[attr] = var
+            ttk.Checkbutton(widget_frame, text=label, variable=var).pack(
+                anchor=tk.W, padx=12, pady=2,
+            )
+
+        # --- Заголовок ---
+        title_frame = ttk.LabelFrame(tab_metrics, text="Заголовок")
+        title_frame.pack(fill=tk.X, **pad)
+
+        for attr, label in _TITLE_METRIC_TOGGLES:
+            var = tk.BooleanVar(value=getattr(config, attr))
+            self._metric_vars[attr] = var
+            ttk.Checkbutton(title_frame, text=label, variable=var).pack(
+                anchor=tk.W, padx=12, pady=2,
+            )
 
         # --- Кнопки ---
         btn_frame = tk.Frame(self.dialog)
@@ -156,7 +186,7 @@ class SettingsDialog:
     def _collect_values(self) -> dict:
         return {
             "work_hours": {key: self._day_vars[key].get() for key, _ in _DAYS},
-            "metrics": {attr: self._metric_vars[attr].get() for attr, _ in _METRIC_TOGGLES},
+            "metrics": {attr: self._metric_vars[attr].get() for attr, _ in _ALL_METRIC_TOGGLES},
             "input_activity_timeout": self._timeout_var.get(),
             "countdown_warning_seconds": self._warning_var.get(),
             "sound_notification": self._sound_var.get(),
