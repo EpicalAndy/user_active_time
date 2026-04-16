@@ -144,12 +144,12 @@ class ActivityWidget:
         self._title_frame.pack_propagate(False)
         title_frame = self._title_frame
 
-        title_label = tk.Label(
+        self._title_label = tk.Label(
             title_frame, text="Активность",
             bg=TITLE_BG, fg=TITLE_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE), padx=MAIN_FONT_SIZE,
         )
-        title_label.pack(side=tk.LEFT, fill=tk.Y)
+        self._title_label.pack(side=tk.LEFT, fill=tk.Y)
 
         close_btn = tk.Label(
             title_frame, text="  \u2715  ",
@@ -182,7 +182,7 @@ class ActivityWidget:
             self._countdown_label.pack(side=tk.LEFT, fill=tk.Y)
 
         # Перетаскивание за заголовок
-        drag_widgets: list[tk.Widget] = [title_frame, title_label]
+        drag_widgets: list[tk.Widget] = [title_frame, self._title_label]
         if self._countdown_label:
             drag_widgets.append(self._countdown_label)
         for w in drag_widgets:
@@ -352,6 +352,10 @@ class ActivityWidget:
                 text=text, fg=COLOR_RED,
                 font=(FONT_FAMILY, MAIN_FONT_SIZE - 1, "bold"),
             )
+            self._title_label.configure(
+                fg=COLOR_RED,
+                font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"),
+            )
         elif COUNTDOWN_WARNING_SECONDS > 0 and remaining <= COUNTDOWN_WARNING_SECONDS:
             # Приближение к неактивности — мигание управляется тикером
             self._countdown_label.configure(text=text, fg=TITLE_FG)
@@ -364,6 +368,10 @@ class ActivityWidget:
                 text=text, fg=TITLE_FG,
                 font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
             )
+            self._title_label.configure(
+                fg=TITLE_FG,
+                font=(FONT_FAMILY, MAIN_FONT_SIZE),
+            )
 
     def _tick(self):
         """Единый тикер виджета (шаг 500мс)"""
@@ -374,6 +382,9 @@ class ActivityWidget:
             fg = COLOR_RED if self._countdown_blink_bold else TITLE_FG
             self._countdown_label.configure(
                 font=(FONT_FAMILY, MAIN_FONT_SIZE - 1, weight), fg=fg,
+            )
+            self._title_label.configure(
+                font=(FONT_FAMILY, MAIN_FONT_SIZE, weight), fg=fg,
             )
 
         # 1с — countdown
