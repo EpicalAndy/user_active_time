@@ -23,9 +23,12 @@ COLOR_BLUE = "#3498DB"          # Пользовательское (ручное
 COLOR_TOOLTIP_BG = "#FFFFE1"    # Фон подсказки
 COLOR_TOOLTIP_FG = "#333333"    # Текст подсказки
 
-# === Тексты интерфейса ===
+# === Подсказки кнопок Тулбара ===
 
 TOOLTIP_ADD_ACTIVE_TIME = "Добавить активное время"
+TOOLTIP_OPEN_REPORTS = "Открыть папку с отчётами"
+TOOLTIP_VIEW_REPORT = "Визуализация отчёта"
+TOOLTIP_OPEN_SETTINGS = "Настройки"
 DEFAULT_MANUAL_ACTIVITY_DESCRIPTION = "Добавлено пользовательское время"
 
 # === Константы Windows API ===

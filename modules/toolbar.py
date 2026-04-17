@@ -15,6 +15,9 @@ from constants import (
     COLOR_TOOLTIP_FG,
     FONT_FAMILY,
     TOOLTIP_ADD_ACTIVE_TIME,
+    TOOLTIP_OPEN_REPORTS,
+    TOOLTIP_OPEN_SETTINGS,
+    TOOLTIP_VIEW_REPORT,
 )
 
 TOOLBAR_BG = COLOR_DARKER_BG
@@ -39,9 +42,9 @@ class WidgetToolbar:
         self._add_button("+", TOOLTIP_ADD_ACTIVE_TIME, on_add_active_time, side=tk.LEFT)
 
         # Справа: существующие кнопки (пакуем справа-налево, чтобы сохранить визуальный порядок)
-        self._add_button("\u2699", "Настройки", on_open_settings, side=tk.RIGHT)
-        self._add_button("\U0001F4CA", "Визуализация отчёта", on_view_report, side=tk.RIGHT)
-        self._add_button("\U0001F4C2", "Открыть папку с отчётами", on_open_reports, side=tk.RIGHT)
+        self._add_button("\u2699", TOOLTIP_OPEN_SETTINGS, on_open_settings, side=tk.RIGHT)
+        self._add_button("\U0001F4CA", TOOLTIP_VIEW_REPORT, on_view_report, side=tk.RIGHT)
+        self._add_button("\U0001F4C2", TOOLTIP_OPEN_REPORTS, on_open_reports, side=tk.RIGHT)
 
     def _add_button(
         self,
