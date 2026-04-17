@@ -2,6 +2,7 @@
 Виджет отображения активности на рабочем столе
 """
 
+import datetime
 import json
 import math
 import os
@@ -40,11 +41,12 @@ from constants import (
     FONT_FAMILY,
 )
 from modules.events_monitor import get_countdown_remaining
-from modules.session_monitor import checkpoint_session
+from modules.manual_activity_dialog import ManualActivityDialog
+from modules.session_monitor import add_manual_active_time, checkpoint_session
 from modules.report_viewer import ReportViewer
 from modules.settings_dialog import SettingsDialog
 from modules.toolbar import WidgetToolbar
-from utility import format_duration
+from utility import format_date_key, format_duration
 
 # Псевдонимы цветов для семантики виджета
 TITLE_BG = COLOR_DARK_BG
@@ -122,6 +124,7 @@ class ActivityWidget:
         self._create_title_bar()
         self._toolbar = WidgetToolbar(
             self.window,
+            on_add_active_time=self._add_active_time,
             on_open_reports=lambda: os.startfile(LOG_DIR),
             on_view_report=self._view_report,
             on_open_settings=self._open_settings,
@@ -454,6 +457,17 @@ class ActivityWidget:
     def _view_report(self):
         """Открывает визуализацию отчёта"""
         ReportViewer(self.window)
+
+    def _add_active_time(self):
+        """Открывает диалог ручного добавления активного времени"""
+        dialog = ManualActivityDialog(self.window)
+        dialog.wait()
+        if dialog.result is None:
+            return
+        start, end, desc = dialog.result
+        today = format_date_key(datetime.date.today())
+        add_manual_active_time(today, start, end, desc)
+        self._update_metrics()
 
     def _open_settings(self):
         """Открывает диалог настроек"""

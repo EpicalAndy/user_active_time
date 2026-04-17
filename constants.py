@@ -19,8 +19,14 @@ COLOR_GRAY = "#7F8C8D"          # Серый (нерабочий день)
 COLOR_GREEN = "#27AE60"         # Успех / активность
 COLOR_YELLOW = "#F39C12"        # Предупреждение
 COLOR_RED = "#E74C3C"           # Опасность / простой
+COLOR_BLUE = "#3498DB"          # Пользовательское (ручное) время
 COLOR_TOOLTIP_BG = "#FFFFE1"    # Фон подсказки
 COLOR_TOOLTIP_FG = "#333333"    # Текст подсказки
+
+# === Тексты интерфейса ===
+
+TOOLTIP_ADD_ACTIVE_TIME = "Добавить активное время"
+DEFAULT_MANUAL_ACTIVITY_DESCRIPTION = "Добавлено пользовательское время"
 
 # === Константы Windows API ===
 

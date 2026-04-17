@@ -185,6 +185,36 @@ def log_event(event_type: str):
     print(f"[LOG] {line}")
 
 
+def add_manual_active_time(date_key: str, start_time: str, end_time: str, description: str):
+    """Добавляет ручную запись активного времени за указанный день.
+
+    start_time, end_time — строки формата HH:MM:SS (end > start, тот же день).
+    Добавляет пару событий MANUAL_ADD_START/MANUAL_ADD_END в лог
+    и увеличивает active_seconds. Лог-записи сортируются по времени.
+    """
+    date = parse_date_key(date_key)
+    start_dt = datetime.datetime.combine(date, parse_time(start_time).time())
+    end_dt = datetime.datetime.combine(date, parse_time(end_time).time())
+    duration = int((end_dt - start_dt).total_seconds())
+    if duration <= 0:
+        return
+
+    start_line = f"{format_timestamp(start_dt)} | {USERNAME} | MANUAL_ADD_START ({description})"
+    end_line = f"{format_timestamp(end_dt)} | {USERNAME} | MANUAL_ADD_END ({description})"
+
+    with _state_lock:
+        state = load_state()
+        day_state = get_day_state(state, date_key)
+        day_state["log_entries"].append(start_line)
+        day_state["log_entries"].append(end_line)
+        day_state["log_entries"].sort()
+        day_state["active_seconds"] += duration
+        save_state(state)
+        update_report(date_key, day_state)
+
+    print(f"[MANUAL] {date_key} {start_time}—{end_time} (+{duration}с): {description}")
+
+
 def start_session():
     """Начинает отсчёт активной сессии"""
     global session_start_time

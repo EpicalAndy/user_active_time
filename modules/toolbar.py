@@ -4,6 +4,7 @@
 
 import tkinter as tk
 from collections.abc import Callable
+from typing import Literal
 
 from config import MAIN_FONT_SIZE
 from constants import (
@@ -13,6 +14,7 @@ from constants import (
     COLOR_TOOLTIP_BG,
     COLOR_TOOLTIP_FG,
     FONT_FAMILY,
+    TOOLTIP_ADD_ACTIVE_TIME,
 )
 
 TOOLBAR_BG = COLOR_DARKER_BG
@@ -26,24 +28,35 @@ class WidgetToolbar:
     def __init__(
         self,
         parent: tk.Misc,
+        on_add_active_time: Callable,
         on_open_reports: Callable,
         on_view_report: Callable,
         on_open_settings: Callable,
     ):
         self.frame = tk.Frame(parent, bg=TOOLBAR_BG, pady=2)
 
-        self._add_button("\U0001F4C2", "Открыть папку с отчётами", on_open_reports)
-        self._add_button("\U0001F4CA", "Визуализация отчёта", on_view_report)
-        self._add_button("\u2699", "Настройки", on_open_settings)
+        # Слева: добавление активного времени
+        self._add_button("+", TOOLTIP_ADD_ACTIVE_TIME, on_add_active_time, side=tk.LEFT)
 
-    def _add_button(self, icon: str, tooltip_text: str, command: Callable):
+        # Справа: существующие кнопки (пакуем справа-налево, чтобы сохранить визуальный порядок)
+        self._add_button("\u2699", "Настройки", on_open_settings, side=tk.RIGHT)
+        self._add_button("\U0001F4CA", "Визуализация отчёта", on_view_report, side=tk.RIGHT)
+        self._add_button("\U0001F4C2", "Открыть папку с отчётами", on_open_reports, side=tk.RIGHT)
+
+    def _add_button(
+        self,
+        icon: str,
+        tooltip_text: str,
+        command: Callable,
+        side: Literal["left", "right", "top", "bottom"] = "left",
+    ):
         btn = tk.Label(
             self.frame, text=icon,
             bg=TOOLBAR_BG, fg=TOOLBAR_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE), cursor="hand2",
             width=3, anchor=tk.CENTER,
         )
-        btn.pack(side=tk.LEFT, fill=tk.Y)
+        btn.pack(side=side, fill=tk.Y)
         btn.bind("<Button-1>", lambda e: command())
 
         tip_window = None

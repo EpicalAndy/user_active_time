@@ -10,6 +10,7 @@ from tkinter import filedialog, messagebox
 
 from config import LOG_DIR, MAIN_FONT_SIZE
 from constants import (
+    COLOR_BLUE,
     COLOR_DARK_BG,
     COLOR_GREEN,
     COLOR_LIGHT_FG,
@@ -23,6 +24,13 @@ from constants import (
 # Типы событий → активность
 _ACTIVE_EVENTS = {"LOGON", "UNLOCK", "INPUT_ACTIVE", "MONITOR_START"}
 _INACTIVE_EVENTS = {"LOGOFF", "LOCK", "INPUT_INACTIVE", "MONITOR_STOP"}
+_MANUAL_START_EVENTS = {"MANUAL_ADD_START"}
+_MANUAL_END_EVENTS = {"MANUAL_ADD_END"}
+
+# Состояния интервалов графика
+_STATE_ACTIVE = "active"
+_STATE_INACTIVE = "inactive"
+_STATE_MANUAL = "manual"
 
 _LOG_LINE_RE = re.compile(
     r"^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\s*\|\s*\S+\s*\|\s*(\S+)"
@@ -83,28 +91,41 @@ def _parse_report(filepath: str) -> dict | None:
     return result
 
 
-def _build_intervals(events: list[tuple[datetime.datetime, str]]) -> list[tuple[float, float, bool]]:
+def _build_intervals(events: list[tuple[datetime.datetime, str]]) -> list[tuple[float, float, str]]:
     """
-    Строит интервалы активности/простоя из событий.
-    Возвращает список (start_hour, end_hour, is_active).
+    Строит интервалы активности/простоя/ручного времени из событий.
+    Возвращает список (start_hour, end_hour, state),
+    где state ∈ {"active", "inactive", "manual"}.
     """
     if not events:
         return []
 
+    # Сортируем по времени на случай, если ручные записи были добавлены задним числом
+    events = sorted(events, key=lambda e: e[0])
+
     intervals = []
     is_active = True  # После первого события (MONITOR_START/LOGON) считаем активным
+    is_manual = False  # Ручной интервал перекрывает визуальное состояние
     prev_hour = _time_to_hours(events[0][0])
 
     for ts, event_type in events:
         hour = _time_to_hours(ts)
 
         if hour > prev_hour:
-            intervals.append((prev_hour, hour, is_active))
+            if is_manual:
+                state = _STATE_MANUAL
+            else:
+                state = _STATE_ACTIVE if is_active else _STATE_INACTIVE
+            intervals.append((prev_hour, hour, state))
 
         if event_type in _ACTIVE_EVENTS:
             is_active = True
         elif event_type in _INACTIVE_EVENTS:
             is_active = False
+        elif event_type in _MANUAL_START_EVENTS:
+            is_manual = True
+        elif event_type in _MANUAL_END_EVENTS:
+            is_manual = False
 
         prev_hour = hour
 
@@ -196,6 +217,7 @@ class ReportViewer:
 
         self._legend_item(legend_frame, COLOR_GREEN, "Активность")
         self._legend_item(legend_frame, COLOR_RED, "Простой")
+        self._legend_item(legend_frame, COLOR_BLUE, "Добавленное время")
 
         # --- Кнопка закрыть ---
         tk.Button(
@@ -259,11 +281,16 @@ class ReportViewer:
             fill=COLOR_LIGHT_GRAY, outline="",
         )
 
-        # Интервалы активности/простоя
-        for start_h, end_h, is_active in intervals:
+        # Интервалы активности/простоя/ручного времени
+        state_colors = {
+            _STATE_ACTIVE: COLOR_GREEN,
+            _STATE_INACTIVE: COLOR_RED,
+            _STATE_MANUAL: COLOR_BLUE,
+        }
+        for start_h, end_h, state in intervals:
             x1 = hour_to_x(max(start_h, min_hour))
             x2 = hour_to_x(min(end_h, max_hour))
-            color = COLOR_GREEN if is_active else COLOR_RED
+            color = state_colors.get(state, COLOR_RED)
             canvas.create_rectangle(
                 x1, pad_top, x2, pad_top + chart_height,
                 fill=color, outline="",
