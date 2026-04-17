@@ -47,6 +47,18 @@ session_start_time = None  # Когда началась текущая акти
 _monitor_thread_id = None  # ID потока монитора для остановки
 _state_lock = threading.Lock()  # Защита state.json и session_start_time от гонок потоков
 
+# Префиксы событий, завершающих рабочий день.
+# LOCK сюда не включён: блокировка — короткий перерыв, и без того обновляет
+# last_logout через end_session/record_day_activity.
+_TERMINAL_EVENT_PREFIXES = ("LOGOFF", "MONITOR_STOP")
+
+
+def _bump_last_logout(day_state: dict, candidate: str):
+    """Устанавливает last_logout в максимум из существующего и candidate."""
+    existing = day_state.get("last_logout")
+    if existing is None or candidate > existing:
+        day_state["last_logout"] = candidate
+
 
 def load_state() -> dict:
     """Загружает состояние из файла"""
@@ -179,6 +191,13 @@ def log_event(event_type: str):
         state = load_state()
         day_state = get_day_state(state, date_key)
         day_state["log_entries"].append(line)
+
+        # Завершающие события (LOGOFF, MONITOR_STOP) двигают конец рабочего дня
+        # вперёд. Это важно, если MONITOR_STOP происходит после LOCK,
+        # когда end_session уже ничего не обновляет.
+        if event_type.startswith(_TERMINAL_EVENT_PREFIXES):
+            _bump_last_logout(day_state, format_time(now))
+
         save_state(state)
         update_report(date_key, day_state)
 
@@ -261,7 +280,7 @@ def record_day_activity(day_state: dict, duration: int, last_logout: str):
     day_state["session_count"] += 1
     if day_state["first_login"] is None:
         day_state["first_login"] = "00:00:00"
-    day_state["last_logout"] = last_logout
+    _bump_last_logout(day_state, last_logout)
 
 
 def _subtract_inactive(segments: list, inactive_seconds: int):

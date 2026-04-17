@@ -57,6 +57,10 @@ def _parse_report(filepath: str) -> dict | None:
             result["user"] = line.split(":", 1)[1].strip()
         elif line.startswith("Дата:"):
             result["date"] = line.split(":", 1)[1].strip()
+        elif line.startswith("Начало рабочего дня:"):
+            result["first_login"] = line.split(":", 1)[1].strip()
+        elif line.startswith("Конец рабочего дня:"):
+            result["last_logout"] = line.split(":", 1)[1].strip()
         elif line.startswith("Общее активное время:"):
             result["active_time"] = line.split(":", 1)[1].strip()
         elif line.startswith("Максимальное рабочее время:"):
@@ -180,6 +184,8 @@ class ReportViewer:
         stats = [
             ("Пользователь", data.get("user", "—")),
             ("Дата", data.get("date", "—")),
+            ("Начало рабочего дня", data.get("first_login", "—")),
+            ("Конец рабочего дня", data.get("last_logout", "—")),
             ("Активное время", data.get("active_time", "—")),
             ("Рабочее время", data.get("total_work_time", "—")),
             ("Макс. рабочее время", data.get("max_work_time", "—")),

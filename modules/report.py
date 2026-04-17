@@ -43,6 +43,8 @@ def generate_report(
         f"Пользователь: {username}",
         f"Дата: {format_date_display(date)}",
         "",
+        f"Начало рабочего дня: {first_login or '—'}",
+        f"Конец рабочего дня: {last_logout or '—'}",
         f"Общее активное время: {format_duration(active_seconds)}",
         f"Максимальное рабочее время: {format_duration(max_work_seconds)}",
         f"Общее время работы: {total_work_time}",

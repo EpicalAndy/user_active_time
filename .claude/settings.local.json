@@ -3,7 +3,9 @@
     "allow": [
       "Bash(del:*)",
       "Bash(python -c:*)",
-      "Bash(python -m py_compile constants.py modules/toolbar.py modules/manual_activity_dialog.py modules/session_monitor.py modules/report_viewer.py modules/widget.py)"
+      "Bash(python -m py_compile constants.py modules/toolbar.py modules/manual_activity_dialog.py modules/session_monitor.py modules/report_viewer.py modules/widget.py)",
+      "Bash(python -m py_compile modules/report.py modules/report_viewer.py)",
+      "Bash(python -m py_compile modules/session_monitor.py modules/report.py)"
     ]
   }
 }
