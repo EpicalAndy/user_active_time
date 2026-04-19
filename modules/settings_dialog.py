@@ -29,10 +29,12 @@ _WIDGET_METRIC_TOGGLES = [
     ("WIDGET_SHOW_SESSION_COUNT", "Количество сессий"),
     ("WIDGET_SHOW_ACTIVITY_PERCENT", "Активность (%)"),
     ("WIDGET_SHOW_FULL_DAY_TIME", "Рабочее время"),
+    ("WIDGET_SHOW_REMAINING_TIME", "Осталось до конца дня"),
 ]
 
 _TITLE_METRIC_TOGGLES = [
     ("WIDGET_SHOW_TITLE_PERCENT", "Активность (%)"),
+    ("WIDGET_SHOW_TITLE_REMAINING_TIME", "Осталось до конца дня"),
 ]
 
 _ALL_METRIC_TOGGLES = _WIDGET_METRIC_TOGGLES + _TITLE_METRIC_TOGGLES

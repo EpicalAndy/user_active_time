@@ -172,6 +172,7 @@ def get_current_stats() -> dict:
         "session_count": session_count,
         "activity_percent": activity_percent,
         "full_day_seconds": full_day_seconds,
+        "remaining_work_seconds": max(0, int(work_hours * 3600) - full_day_seconds),
     }
 
 
