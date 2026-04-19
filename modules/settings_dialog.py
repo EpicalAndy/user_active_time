@@ -32,12 +32,14 @@ _WIDGET_METRIC_TOGGLES = [
     ("WIDGET_SHOW_REMAINING_TIME", "Осталось до конца дня"),
 ]
 
-_TITLE_METRIC_TOGGLES = [
+# В заголовке можно выбрать только одну метрику или «Не отображать».
+# Пустой attr — значение «ничего не показывать» (все связанные флаги становятся False).
+_TITLE_METRIC_RADIO = [
     ("WIDGET_SHOW_TITLE_PERCENT", "Активность (%)"),
     ("WIDGET_SHOW_TITLE_REMAINING_TIME", "Осталось до конца дня"),
+    ("", "Не отображать"),
 ]
-
-_ALL_METRIC_TOGGLES = _WIDGET_METRIC_TOGGLES + _TITLE_METRIC_TOGGLES
+_TITLE_METRIC_ATTRS = [attr for attr, _ in _TITLE_METRIC_RADIO if attr]
 
 
 class SettingsDialog:
@@ -155,16 +157,22 @@ class SettingsDialog:
                 anchor=tk.W, padx=12, pady=2,
             )
 
-        # --- Заголовок ---
+        # --- Заголовок (одна метрика одновременно) ---
         title_frame = ttk.LabelFrame(tab_metrics, text="Заголовок")
         title_frame.pack(fill=tk.X, **pad)
 
-        for attr, label in _TITLE_METRIC_TOGGLES:
-            var = tk.BooleanVar(value=getattr(config, attr))
-            self._metric_vars[attr] = var
-            ttk.Checkbutton(title_frame, text=label, variable=var).pack(
-                anchor=tk.W, padx=12, pady=2,
-            )
+        # Начальное значение — первый включённый флаг в конфиге; иначе "ничего"
+        initial = ""
+        for attr in _TITLE_METRIC_ATTRS:
+            if getattr(config, attr):
+                initial = attr
+                break
+        self._title_metric_var = tk.StringVar(value=initial)
+
+        for attr, label in _TITLE_METRIC_RADIO:
+            ttk.Radiobutton(
+                title_frame, text=label, variable=self._title_metric_var, value=attr,
+            ).pack(anchor=tk.W, padx=12, pady=2)
 
         # --- Кнопки ---
         btn_frame = tk.Frame(self.dialog)
@@ -186,9 +194,12 @@ class SettingsDialog:
         self.dialog.destroy()
 
     def _collect_values(self) -> dict:
+        body_metrics = {attr: self._metric_vars[attr].get() for attr, _ in _WIDGET_METRIC_TOGGLES}
+        selected_title = self._title_metric_var.get()
+        title_metrics = {attr: (attr == selected_title) for attr in _TITLE_METRIC_ATTRS}
         return {
             "work_hours": {key: self._day_vars[key].get() for key, _ in _DAYS},
-            "metrics": {attr: self._metric_vars[attr].get() for attr, _ in _ALL_METRIC_TOGGLES},
+            "metrics": {**body_metrics, **title_metrics},
             "input_activity_timeout": self._timeout_var.get(),
             "countdown_warning_seconds": self._warning_var.get(),
             "sound_notification": self._sound_var.get(),
