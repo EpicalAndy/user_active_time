@@ -39,7 +39,7 @@ class WidgetToolbar:
         self.frame = tk.Frame(parent, bg=TOOLBAR_BG, pady=2)
 
         # Слева: добавление активного времени
-        self._add_button("+", TOOLTIP_ADD_ACTIVE_TIME, on_add_active_time, side=tk.LEFT)
+        self._add_button("\u23F1", TOOLTIP_ADD_ACTIVE_TIME, on_add_active_time, side=tk.LEFT)
 
         # Справа: существующие кнопки (пакуем справа-налево, чтобы сохранить визуальный порядок)
         self._add_button("\u2699", TOOLTIP_OPEN_SETTINGS, on_open_settings, side=tk.RIGHT)
