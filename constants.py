@@ -31,6 +31,21 @@ TOOLTIP_VIEW_REPORT = "Визуализация отчёта"
 TOOLTIP_OPEN_SETTINGS = "Настройки"
 DEFAULT_MANUAL_ACTIVITY_DESCRIPTION = "Добавлено пользовательское время"
 
+# === Названия метрик ===
+# *_FULL — расширенная форма для настроек; короткая — для тела виджета и отчёта.
+
+METRIC_ACTIVE_TIME = "Активное время"
+METRIC_SESSION_COUNT = "Сессий"
+METRIC_SESSION_COUNT_FULL = "Количество сессий"
+METRIC_ACTIVITY_PERCENT = "Активность"
+METRIC_ACTIVITY_PERCENT_FULL = "Активность (%)"
+METRIC_FULL_DAY_TIME = "Рабочее время"
+METRIC_REMAINING_TIME = "Осталось рабочего время"
+METRIC_REMAINING_TIME_FULL = "Осталось до конца дня"
+METRIC_FIRST_LOGIN = "Начало рабочего дня"
+METRIC_LAST_LOGOUT = "Конец рабочего дня"
+METRIC_HIDE_OPTION = "Не отображать"
+
 # === Константы Windows API ===
 
 WM_WTSSESSION_CHANGE = 0x02B1

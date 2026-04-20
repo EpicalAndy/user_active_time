@@ -8,7 +8,16 @@ import tkinter as tk
 from tkinter import ttk
 
 import config
-from constants import ENCODING, FONT_FAMILY
+from constants import (
+    ENCODING,
+    FONT_FAMILY,
+    METRIC_ACTIVE_TIME,
+    METRIC_ACTIVITY_PERCENT_FULL,
+    METRIC_FULL_DAY_TIME,
+    METRIC_HIDE_OPTION,
+    METRIC_REMAINING_TIME_FULL,
+    METRIC_SESSION_COUNT_FULL,
+)
 
 # Путь к config.py
 _CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.py")
@@ -25,19 +34,19 @@ _DAYS = [
 ]
 
 _WIDGET_METRIC_TOGGLES = [
-    ("WIDGET_SHOW_ACTIVE_TIME", "Активное время"),
-    ("WIDGET_SHOW_SESSION_COUNT", "Количество сессий"),
-    ("WIDGET_SHOW_ACTIVITY_PERCENT", "Активность (%)"),
-    ("WIDGET_SHOW_FULL_DAY_TIME", "Рабочее время"),
-    ("WIDGET_SHOW_REMAINING_TIME", "Осталось до конца дня"),
+    ("WIDGET_SHOW_ACTIVE_TIME", METRIC_ACTIVE_TIME),
+    ("WIDGET_SHOW_SESSION_COUNT", METRIC_SESSION_COUNT_FULL),
+    ("WIDGET_SHOW_ACTIVITY_PERCENT", METRIC_ACTIVITY_PERCENT_FULL),
+    ("WIDGET_SHOW_FULL_DAY_TIME", METRIC_FULL_DAY_TIME),
+    ("WIDGET_SHOW_REMAINING_TIME", METRIC_REMAINING_TIME_FULL),
 ]
 
 # В заголовке можно выбрать только одну метрику или «Не отображать».
 # Пустой attr — значение «ничего не показывать» (все связанные флаги становятся False).
 _TITLE_METRIC_RADIO = [
-    ("WIDGET_SHOW_TITLE_PERCENT", "Активность (%)"),
-    ("WIDGET_SHOW_TITLE_REMAINING_TIME", "Осталось до конца дня"),
-    ("", "Не отображать"),
+    ("WIDGET_SHOW_TITLE_PERCENT", METRIC_ACTIVITY_PERCENT_FULL),
+    ("WIDGET_SHOW_TITLE_REMAINING_TIME", METRIC_REMAINING_TIME_FULL),
+    ("", METRIC_HIDE_OPTION),
 ]
 _TITLE_METRIC_ATTRS = [attr for attr, _ in _TITLE_METRIC_RADIO if attr]
 

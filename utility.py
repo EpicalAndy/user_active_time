@@ -22,6 +22,13 @@ def format_duration(seconds: int) -> str:
     return f"{hours}ч {minutes}м {secs}с"
 
 
+def format_duration_short(seconds: int) -> str:
+    """Форматирует секунды в краткий вид без секунд: Xч Yм"""
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    return f"{hours}ч {minutes}м"
+
+
 def format_date_key(dt: datetime.datetime | datetime.date) -> str:
     """Форматирует дату в ключ состояния: YYYY-MM-DD"""
     return dt.strftime(DATE_KEY_FORMAT)

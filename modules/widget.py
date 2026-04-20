@@ -41,6 +41,11 @@ from constants import (
     COLOR_WHITE,
     COLOR_YELLOW,
     FONT_FAMILY,
+    METRIC_ACTIVE_TIME,
+    METRIC_ACTIVITY_PERCENT,
+    METRIC_FULL_DAY_TIME,
+    METRIC_REMAINING_TIME,
+    METRIC_SESSION_COUNT,
 )
 from modules.events_monitor import get_countdown_remaining
 from modules.manual_activity_dialog import ManualActivityDialog
@@ -48,7 +53,7 @@ from modules.session_monitor import add_manual_active_time, checkpoint_session
 from modules.report_viewer import ReportViewer
 from modules.settings_dialog import SettingsDialog
 from modules.toolbar import WidgetToolbar
-from utility import format_date_key, format_duration
+from utility import format_date_key, format_duration_short
 
 # Псевдонимы цветов для семантики виджета
 TITLE_BG = COLOR_DARK_BG
@@ -237,15 +242,15 @@ class ActivityWidget:
         self.metric_labels = {}
 
         if WIDGET_SHOW_ACTIVE_TIME:
-            self.metric_labels["active_time"] = self._add_metric("Активное время:")
+            self.metric_labels["active_time"] = self._add_metric(f"{METRIC_ACTIVE_TIME}:")
         if WIDGET_SHOW_SESSION_COUNT:
-            self.metric_labels["session_count"] = self._add_metric("Сессий:")
+            self.metric_labels["session_count"] = self._add_metric(f"{METRIC_SESSION_COUNT}:")
         if WIDGET_SHOW_ACTIVITY_PERCENT:
-            self.metric_labels["activity_percent"] = self._add_metric("Активность:")
+            self.metric_labels["activity_percent"] = self._add_metric(f"{METRIC_ACTIVITY_PERCENT}:")
         if WIDGET_SHOW_FULL_DAY_TIME:
-            self.metric_labels["full_day_time"] = self._add_metric("Рабочее время:")
+            self.metric_labels["full_day_time"] = self._add_metric(f"{METRIC_FULL_DAY_TIME}:")
         if WIDGET_SHOW_REMAINING_TIME:
-            self.metric_labels["remaining_time"] = self._add_metric("Осталось:")
+            self.metric_labels["remaining_time"] = self._add_metric(f"{METRIC_REMAINING_TIME}:")
 
     def _add_metric(self, label_text: str) -> dict:
         frame = tk.Frame(self.body_frame, bg=COLOR_RED)
@@ -338,7 +343,7 @@ class ActivityWidget:
 
         if "active_time" in self.metric_labels:
             self.metric_labels["active_time"]["value"].configure(
-                text=format_duration(stats["active_seconds"])
+                text=format_duration_short(stats["active_seconds"])
             )
         if "session_count" in self.metric_labels:
             self.metric_labels["session_count"]["value"].configure(
@@ -350,11 +355,11 @@ class ActivityWidget:
             )
         if "full_day_time" in self.metric_labels:
             self.metric_labels["full_day_time"]["value"].configure(
-                text=format_duration(stats["full_day_seconds"])
+                text=format_duration_short(stats["full_day_seconds"])
             )
         if "remaining_time" in self.metric_labels:
             self.metric_labels["remaining_time"]["value"].configure(
-                text=format_duration(max(0, stats.get("remaining_work_seconds", 0)))
+                text=format_duration_short(max(0, stats.get("remaining_work_seconds", 0)))
             )
 
         self._apply_body_color(self._get_body_color(stats["activity_percent"]))

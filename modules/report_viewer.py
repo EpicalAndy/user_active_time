@@ -19,6 +19,11 @@ from constants import (
     COLOR_RED,
     ENCODING,
     FONT_FAMILY,
+    METRIC_ACTIVE_TIME,
+    METRIC_ACTIVITY_PERCENT,
+    METRIC_FIRST_LOGIN,
+    METRIC_LAST_LOGOUT,
+    METRIC_SESSION_COUNT,
 )
 
 # Типы событий → активность
@@ -57,9 +62,9 @@ def _parse_report(filepath: str) -> dict | None:
             result["user"] = line.split(":", 1)[1].strip()
         elif line.startswith("Дата:"):
             result["date"] = line.split(":", 1)[1].strip()
-        elif line.startswith("Начало рабочего дня:"):
+        elif line.startswith(f"{METRIC_FIRST_LOGIN}:"):
             result["first_login"] = line.split(":", 1)[1].strip()
-        elif line.startswith("Конец рабочего дня:"):
+        elif line.startswith(f"{METRIC_LAST_LOGOUT}:"):
             result["last_logout"] = line.split(":", 1)[1].strip()
         elif line.startswith("Общее активное время:"):
             result["active_time"] = line.split(":", 1)[1].strip()
@@ -184,13 +189,13 @@ class ReportViewer:
         stats = [
             ("Пользователь", data.get("user", "—")),
             ("Дата", data.get("date", "—")),
-            ("Начало рабочего дня", data.get("first_login", "—")),
-            ("Конец рабочего дня", data.get("last_logout", "—")),
-            ("Активное время", data.get("active_time", "—")),
+            (METRIC_FIRST_LOGIN, data.get("first_login", "—")),
+            (METRIC_LAST_LOGOUT, data.get("last_logout", "—")),
+            (METRIC_ACTIVE_TIME, data.get("active_time", "—")),
             ("Рабочее время", data.get("total_work_time", "—")),
             ("Макс. рабочее время", data.get("max_work_time", "—")),
-            ("Сессий", data.get("session_count", "—")),
-            ("Активность", data.get("activity_percent", "—")),
+            (METRIC_SESSION_COUNT, data.get("session_count", "—")),
+            (METRIC_ACTIVITY_PERCENT, data.get("activity_percent", "—")),
         ]
 
         for label_text, value_text in stats:
