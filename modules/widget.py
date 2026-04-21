@@ -44,7 +44,7 @@ from constants import (
     METRIC_ACTIVE_TIME,
     METRIC_ACTIVITY_PERCENT,
     METRIC_FULL_DAY_TIME,
-    METRIC_REMAINING_TIME,
+    METRIC_REMAINING_TIME_FULL,
     METRIC_SESSION_COUNT,
 )
 from modules.events_monitor import get_countdown_remaining
@@ -250,7 +250,7 @@ class ActivityWidget:
         if WIDGET_SHOW_FULL_DAY_TIME:
             self.metric_labels["full_day_time"] = self._add_metric(f"{METRIC_FULL_DAY_TIME}:")
         if WIDGET_SHOW_REMAINING_TIME:
-            self.metric_labels["remaining_time"] = self._add_metric(f"{METRIC_REMAINING_TIME}:")
+            self.metric_labels["remaining_time"] = self._add_metric(f"{METRIC_REMAINING_TIME_FULL}:")
 
     def _add_metric(self, label_text: str) -> dict:
         frame = tk.Frame(self.body_frame, bg=COLOR_RED)
