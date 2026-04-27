@@ -58,51 +58,31 @@ class ManualActivityDialog:
         self.dialog.geometry(f"+{x}+{y}")
 
     def _create_widgets(self):
-        pad = {"padx": 12, "pady": 4}
-
-        # --- Список добавленных диапазонов ---
-        tk.Label(
-            self.dialog, text="Добавленные диапазоны:", anchor=tk.W,
-            font=(FONT_FAMILY, MAIN_FONT_SIZE),
-        ).pack(fill=tk.X, padx=12, pady=(8, 2))
-
-        self._entries_frame = tk.Frame(self.dialog, relief=tk.SUNKEN, bd=1)
-        self._entries_frame.pack(fill=tk.X, padx=12, pady=(0, 4))
-
-        del_frame = tk.Frame(self.dialog)
-        del_frame.pack(fill=tk.X, padx=12, pady=(0, 8))
-        self._delete_btn = ttk.Button(
-            del_frame, text="Удалить", command=self._delete_selected,
-        )
-        self._delete_btn.pack(side=tk.RIGHT)
-
-        ttk.Separator(self.dialog, orient=tk.HORIZONTAL).pack(
-            fill=tk.X, padx=12, pady=(0, 4),
-        )
+        # === Блок «Добавить диапазон» ===
+        add_frame = ttk.LabelFrame(self.dialog, text="Добавить диапазон")
+        add_frame.pack(fill=tk.X, padx=10, pady=(8, 4))
 
         # --- Время "С" ---
-        from_frame = tk.Frame(self.dialog)
-        from_frame.pack(fill=tk.X, **pad)
-        tk.Label(from_frame, text="С:", width=10, anchor=tk.W,
+        from_frame = tk.Frame(add_frame)
+        from_frame.pack(fill=tk.X, padx=8, pady=(8, 4))
+        tk.Label(from_frame, text="С:", width=4, anchor=tk.W,
                  font=(FONT_FAMILY, MAIN_FONT_SIZE)).pack(side=tk.LEFT)
-
         self._from_hour = tk.StringVar()
         self._from_minute = tk.StringVar()
         self._add_time_widgets(from_frame, self._from_hour, self._from_minute)
 
         # --- Время "По" ---
-        to_frame = tk.Frame(self.dialog)
-        to_frame.pack(fill=tk.X, **pad)
-        tk.Label(to_frame, text="По:", width=10, anchor=tk.W,
+        to_frame = tk.Frame(add_frame)
+        to_frame.pack(fill=tk.X, padx=8, pady=4)
+        tk.Label(to_frame, text="По:", width=4, anchor=tk.W,
                  font=(FONT_FAMILY, MAIN_FONT_SIZE)).pack(side=tk.LEFT)
-
         self._to_hour = tk.StringVar()
         self._to_minute = tk.StringVar()
         self._add_time_widgets(to_frame, self._to_hour, self._to_minute)
 
         # --- Описание ---
-        desc_frame = tk.Frame(self.dialog)
-        desc_frame.pack(fill=tk.X, padx=12, pady=(8, 4))
+        desc_frame = tk.Frame(add_frame)
+        desc_frame.pack(fill=tk.X, padx=8, pady=(8, 4))
         tk.Label(desc_frame, text="Описание:", anchor=tk.W,
                  font=(FONT_FAMILY, MAIN_FONT_SIZE)).pack(anchor=tk.W)
         self._desc_entry = tk.Entry(desc_frame, font=(FONT_FAMILY, MAIN_FONT_SIZE))
@@ -110,32 +90,49 @@ class ManualActivityDialog:
 
         # --- Сообщение об ошибке валидации ---
         self._error_label = tk.Label(
-            self.dialog, text="", fg=COLOR_RED,
+            add_frame, text="", fg=COLOR_RED,
             font=(FONT_FAMILY, 9), anchor=tk.W,
         )
-        self._error_label.pack(fill=tk.X, padx=12, pady=(2, 0))
+        self._error_label.pack(fill=tk.X, padx=8, pady=(2, 0))
 
         # --- Кнопка "Подтвердить" ---
-        btn_frame = tk.Frame(self.dialog)
-        btn_frame.pack(fill=tk.X, padx=12, pady=(4, 12))
+        confirm_frame = tk.Frame(add_frame)
+        confirm_frame.pack(fill=tk.X, padx=8, pady=(4, 8))
         self._confirm_btn = ttk.Button(
-            btn_frame, text="Подтвердить", command=self._confirm,
+            confirm_frame, text="Подтвердить", command=self._confirm,
         )
         self._confirm_btn.pack(side=tk.RIGHT)
 
         for var in (self._from_hour, self._from_minute, self._to_hour, self._to_minute):
             var.trace_add("write", lambda *_: self._update_confirm_state())
 
+        # === Блок «Добавленные диапазоны» ===
+        list_frame = ttk.LabelFrame(self.dialog, text="Добавленные диапазоны")
+        list_frame.pack(fill=tk.X, padx=10, pady=(4, 10))
+
+        self._entries_frame = tk.Frame(list_frame)
+        self._entries_frame.pack(fill=tk.X, padx=8, pady=(8, 4))
+
+        del_frame = tk.Frame(list_frame)
+        del_frame.pack(fill=tk.X, padx=8, pady=(0, 8))
+        self._delete_btn = ttk.Button(
+            del_frame, text="Удалить", command=self._delete_selected,
+        )
+        self._delete_btn.pack(side=tk.RIGHT)
+
     def _add_time_widgets(self, parent: tk.Frame, hour_var: tk.StringVar, minute_var: tk.StringVar):
         ttk.Spinbox(
             parent, from_=0, to=23, width=4, textvariable=hour_var,
             format="%02.0f", justify=tk.CENTER,
         ).pack(side=tk.LEFT)
-        tk.Label(parent, text=":", font=(FONT_FAMILY, MAIN_FONT_SIZE)).pack(side=tk.LEFT, padx=2)
+        tk.Label(parent, text="часы",
+                 font=(FONT_FAMILY, MAIN_FONT_SIZE)).pack(side=tk.LEFT, padx=(4, 10))
         ttk.Spinbox(
             parent, from_=0, to=59, width=4, textvariable=minute_var,
             format="%02.0f", justify=tk.CENTER,
         ).pack(side=tk.LEFT)
+        tk.Label(parent, text="минуты",
+                 font=(FONT_FAMILY, MAIN_FONT_SIZE)).pack(side=tk.LEFT, padx=(4, 0))
 
     def _refresh_entries(self):
         """Перерисовывает список добавленных диапазонов из state.json"""
@@ -226,7 +223,13 @@ class ManualActivityDialog:
 
         add_manual_active_time(self.date_key, from_str, to_str, desc)
         self.changed = True
-        self.dialog.destroy()
+
+        self._from_hour.set("")
+        self._from_minute.set("")
+        self._to_hour.set("")
+        self._to_minute.set("")
+        self._desc_entry.delete(0, tk.END)
+        self._refresh_entries()
 
     def _cancel(self):
         self.dialog.destroy()
