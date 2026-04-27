@@ -9,6 +9,10 @@ import threading
 # Корневая директория проекта в sys.path для импортов из modules/
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Пользовательский config.py подключаем до любых импортов, читающих config.
+from bootstrap import setup_user_config
+setup_user_config()
+
 from modules.session_monitor import main as run_monitor
 from modules.widget import ActivityWidget, is_widget_enabled
 

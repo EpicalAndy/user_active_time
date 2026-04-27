@@ -2,12 +2,12 @@
 Диалог настроек приложения
 """
 
-import os
 import re
 import tkinter as tk
 from tkinter import ttk
 
 import config
+from bootstrap import USER_CONFIG_PATH as _CONFIG_PATH
 from constants import (
     ENCODING,
     FONT_FAMILY,
@@ -18,9 +18,6 @@ from constants import (
     METRIC_REMAINING_TIME_FULL,
     METRIC_SESSION_COUNT_FULL,
 )
-
-# Путь к config.py
-_CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.py")
 
 # Дни недели: ключ в WORK_HOURS_BY_DAY → отображаемое название
 _DAYS = [
