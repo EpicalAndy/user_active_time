@@ -49,7 +49,7 @@ from constants import (
 )
 from modules.events_monitor import get_countdown_remaining
 from modules.manual_activity_dialog import ManualActivityDialog
-from modules.session_monitor import add_manual_active_time, checkpoint_session
+from modules.session_monitor import checkpoint_session
 from modules.report_viewer import ReportViewer
 from modules.settings_dialog import SettingsDialog
 from modules.toolbar import WidgetToolbar
@@ -494,15 +494,12 @@ class ActivityWidget:
         ReportViewer(self.window)
 
     def _add_active_time(self):
-        """Открывает диалог ручного добавления активного времени"""
-        dialog = ManualActivityDialog(self.window)
-        dialog.wait()
-        if dialog.result is None:
-            return
-        start, end, desc = dialog.result
+        """Открывает диалог управления ручным активным временем"""
         today = format_date_key(datetime.date.today())
-        add_manual_active_time(today, start, end, desc)
-        self._update_metrics()
+        dialog = ManualActivityDialog(self.window, today)
+        dialog.wait()
+        if dialog.changed:
+            self._update_metrics()
 
     def _open_settings(self):
         """Открывает диалог настроек"""

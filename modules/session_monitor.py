@@ -235,6 +235,85 @@ def add_manual_active_time(date_key: str, start_time: str, end_time: str, descri
     print(f"[MANUAL] {date_key} {start_time}—{end_time} (+{duration}с): {description}")
 
 
+def _parse_manual_entries(log_entries: list) -> list:
+    """Извлекает пары MANUAL_ADD_START/END из лога.
+
+    Возвращает список словарей с ключами start, end, description (HH:MM:SS).
+    Сопоставляет каждый START с ближайшим последующим END с тем же описанием.
+    """
+    pending_starts = []
+    pairs = []
+    for line in log_entries:
+        parts = line.split(" | ", 2)
+        if len(parts) != 3:
+            continue
+        ts_str, _, event = parts
+        if " " not in ts_str:
+            continue
+        time_str = ts_str.split(" ", 1)[1]
+        if event.startswith("MANUAL_ADD_START (") and event.endswith(")"):
+            desc = event[len("MANUAL_ADD_START ("):-1]
+            pending_starts.append((time_str, desc))
+        elif event.startswith("MANUAL_ADD_END (") and event.endswith(")"):
+            desc = event[len("MANUAL_ADD_END ("):-1]
+            for i, (s_time, s_desc) in enumerate(pending_starts):
+                if s_desc == desc and s_time < time_str:
+                    pairs.append({
+                        "start": s_time,
+                        "end": time_str,
+                        "description": desc,
+                    })
+                    pending_starts.pop(i)
+                    break
+    return pairs
+
+
+def get_manual_active_entries(date_key: str) -> list:
+    """Возвращает список ручных записей активного времени за указанный день."""
+    with _state_lock:
+        state = load_state()
+        day_state = state.get(date_key)
+        if day_state is None:
+            return []
+        return _parse_manual_entries(day_state.get("log_entries", []))
+
+
+def remove_manual_active_time(date_key: str, start_time: str, end_time: str, description: str) -> bool:
+    """Удаляет первую найденную ручную запись с указанными параметрами.
+
+    Возвращает True, если запись найдена и удалена.
+    """
+    date = parse_date_key(date_key)
+    start_dt = datetime.datetime.combine(date, parse_time(start_time).time())
+    end_dt = datetime.datetime.combine(date, parse_time(end_time).time())
+    duration = int((end_dt - start_dt).total_seconds())
+    if duration <= 0:
+        return False
+
+    start_line = f"{format_timestamp(start_dt)} | {USERNAME} | MANUAL_ADD_START ({description})"
+    end_line = f"{format_timestamp(end_dt)} | {USERNAME} | MANUAL_ADD_END ({description})"
+
+    with _state_lock:
+        state = load_state()
+        day_state = state.get(date_key)
+        if day_state is None:
+            return False
+
+        log_entries = day_state.get("log_entries", [])
+        try:
+            log_entries.remove(start_line)
+            log_entries.remove(end_line)
+        except ValueError:
+            return False
+
+        day_state["active_seconds"] = max(0, day_state["active_seconds"] - duration)
+        save_state(state)
+        update_report(date_key, day_state)
+
+    print(f"[MANUAL] Удалено {date_key} {start_time}—{end_time} (-{duration}с): {description}")
+    return True
+
+
 def start_session():
     """Начинает отсчёт активной сессии"""
     global session_start_time
