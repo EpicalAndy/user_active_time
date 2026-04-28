@@ -178,7 +178,7 @@ class ReportViewer:
         self.win = tk.Toplevel(parent)
         self.win.title(f"Отчёт — {data.get('date', filename)}")
         self.win.resizable(False, False)
-        self.win.transient(parent)
+        self.win.transient(parent.winfo_toplevel())
         self.win.grab_set()
         self.win.configure(bg=COLOR_DARK_BG)
 

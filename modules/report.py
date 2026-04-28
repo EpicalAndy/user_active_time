@@ -25,7 +25,7 @@ def generate_report(
 ) -> str:
     """Генерирует текст отчёта за день"""
     work_hours = get_work_hours(date)
-    max_work_seconds = work_hours * 3600
+    max_work_seconds = int(work_hours * 3600)
 
     # Общее время работы (первый логин - последний разлогин)
     if first_login and last_logout:
