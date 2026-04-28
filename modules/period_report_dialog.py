@@ -11,6 +11,7 @@ from constants import (
     COLOR_RED,
     FONT_FAMILY,
     PERIOD_DIALOG_BUILD_BUTTON,
+    PERIOD_DIALOG_CALENDAR_BUTTON,
     PERIOD_DIALOG_DATE_PLACEHOLDER,
     PERIOD_DIALOG_ERROR_INVALID,
     PERIOD_DIALOG_ERROR_NO_DATA_TEMPLATE,
@@ -21,6 +22,7 @@ from constants import (
     PERIOD_DIALOG_TITLE,
     PERIOD_DIALOG_TO_LABEL,
 )
+from modules.calendar_popup import CalendarPopup
 from modules.period_report import build_period_report
 from modules.period_report_viewer import PeriodReportViewer
 from utility import format_date_display
@@ -68,25 +70,12 @@ class PeriodReportDialog:
     def _create_widgets(self):
         pad = {"padx": 12, "pady": 6}
 
-        from_frame = tk.Frame(self.dialog)
-        from_frame.pack(fill=tk.X, **pad)
-        tk.Label(from_frame, text=PERIOD_DIALOG_FROM_LABEL, width=4, anchor=tk.W,
-                 font=(FONT_FAMILY, MAIN_FONT_SIZE)).pack(side=tk.LEFT)
-        from_entry = tk.Entry(from_frame, textvariable=self._from_var, width=14,
-                              font=(FONT_FAMILY, MAIN_FONT_SIZE), justify=tk.CENTER)
-        from_entry.pack(side=tk.LEFT)
-        tk.Label(from_frame, text=f"  ({PERIOD_DIALOG_DATE_PLACEHOLDER})",
-                 font=(FONT_FAMILY, 9)).pack(side=tk.LEFT)
-
-        to_frame = tk.Frame(self.dialog)
-        to_frame.pack(fill=tk.X, **pad)
-        tk.Label(to_frame, text=PERIOD_DIALOG_TO_LABEL, width=4, anchor=tk.W,
-                 font=(FONT_FAMILY, MAIN_FONT_SIZE)).pack(side=tk.LEFT)
-        to_entry = tk.Entry(to_frame, textvariable=self._to_var, width=14,
-                            font=(FONT_FAMILY, MAIN_FONT_SIZE), justify=tk.CENTER)
-        to_entry.pack(side=tk.LEFT)
-        tk.Label(to_frame, text=f"  ({PERIOD_DIALOG_DATE_PLACEHOLDER})",
-                 font=(FONT_FAMILY, 9)).pack(side=tk.LEFT)
+        self._build_date_row(
+            label=PERIOD_DIALOG_FROM_LABEL, var=self._from_var, pad=pad,
+        )
+        self._build_date_row(
+            label=PERIOD_DIALOG_TO_LABEL, var=self._to_var, pad=pad,
+        )
 
         self._error_label = tk.Label(
             self.dialog, text="", fg=COLOR_RED,
@@ -103,6 +92,30 @@ class PeriodReportDialog:
 
         for var in (self._from_var, self._to_var):
             var.trace_add("write", lambda *_: self._update_state())
+
+    def _build_date_row(self, label: str, var: tk.StringVar, pad: dict):
+        row = tk.Frame(self.dialog)
+        row.pack(fill=tk.X, **pad)
+        tk.Label(row, text=label, width=4, anchor=tk.W,
+                 font=(FONT_FAMILY, MAIN_FONT_SIZE)).pack(side=tk.LEFT)
+        tk.Entry(
+            row, textvariable=var, width=14,
+            font=(FONT_FAMILY, MAIN_FONT_SIZE), justify=tk.CENTER,
+        ).pack(side=tk.LEFT)
+        ttk.Button(
+            row, text=PERIOD_DIALOG_CALENDAR_BUTTON, width=3,
+            command=lambda: self._open_calendar(var),
+        ).pack(side=tk.LEFT, padx=(4, 0))
+        tk.Label(row, text=f"  ({PERIOD_DIALOG_DATE_PLACEHOLDER})",
+                 font=(FONT_FAMILY, 9)).pack(side=tk.LEFT)
+
+    def _open_calendar(self, target_var: tk.StringVar):
+        initial = self._parse_date(target_var.get())
+        CalendarPopup(
+            self.dialog,
+            on_select=lambda d: target_var.set(format_date_display(d)),
+            initial_date=initial,
+        )
 
     def _parse_date(self, s: str) -> datetime.date | None:
         s = s.strip()

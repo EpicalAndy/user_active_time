@@ -4,7 +4,8 @@
       "Bash(python -m py_compile constants.py modules/toolbar.py modules/widget.py)",
       "Read(//c/Users/aaubi/active_time//**)",
       "Bash(python -m py_compile constants.py modules/period_report.py modules/period_report_dialog.py modules/period_report_viewer.py modules/widget.py)",
-      "Bash(python -m py_compile modules/toolbar.py)"
+      "Bash(python -m py_compile modules/toolbar.py)",
+      "Bash(python -m py_compile constants.py modules/calendar_popup.py modules/period_report_dialog.py)"
     ]
   }
 }
