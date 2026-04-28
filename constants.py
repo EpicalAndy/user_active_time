@@ -36,6 +36,40 @@ REPORT_MENU_FOLDER = "Папка с отчётами"
 REPORT_MENU_DAILY = "Дневной отчёт"
 REPORT_MENU_PERIOD = "Отчёт за период"
 
+# === Диалог «Отчёт за период» ===
+
+PERIOD_DIALOG_TITLE = "Отчёт за период"
+PERIOD_DIALOG_FROM_LABEL = "С:"
+PERIOD_DIALOG_TO_LABEL = "По:"
+PERIOD_DIALOG_DATE_PLACEHOLDER = "дд.мм.гггг"
+PERIOD_DIALOG_BUILD_BUTTON = "Построить отчёт"
+PERIOD_DIALOG_ERROR_INVALID = "Введите корректные даты в формате дд.мм.гггг"
+PERIOD_DIALOG_ERROR_RANGE = "Дата «По» должна быть позже даты «С»"
+PERIOD_DIALOG_ERROR_SAME_DAY = "Период должен охватывать больше одного дня"
+PERIOD_DIALOG_ERROR_NO_DATA_TITLE = "Нет данных"
+PERIOD_DIALOG_ERROR_NO_DATA_TEMPLATE = (
+    "Нет отчётов по граничным датам периода: {dates}.\n\n"
+    "Выберите даты, для которых есть отчёты в папке."
+)
+
+# === Окно отчёта за период ===
+
+PERIOD_REPORT_WINDOW_TITLE = "Отчёт за период"
+PERIOD_REPORT_PERIOD_LABEL = "Период"
+PERIOD_REPORT_TOTALS_LABEL = "Итого за период"
+PERIOD_REPORT_BREAKDOWN_LABEL = "По дням"
+PERIOD_REPORT_TOTAL_ACTIVE = "Общее активное время"
+PERIOD_REPORT_TOTAL_WORK = "Общее время работы"
+PERIOD_REPORT_TOTAL_MAX_WORK = "Максимальное рабочее время (норма)"
+PERIOD_REPORT_COL_DATE = "Дата"
+PERIOD_REPORT_COL_ACTIVE = "Активное"
+PERIOD_REPORT_COL_WORK = "Работа"
+PERIOD_REPORT_COL_MAX = "Норма"
+PERIOD_REPORT_COL_ACTIVE_PCT = "Акт. %"
+PERIOD_REPORT_COL_WORK_PCT = "Раб. %"
+PERIOD_REPORT_CLOSE = "Закрыть"
+PERIOD_REPORT_NO_NORM = "—"
+
 # === Названия метрик ===
 # *_FULL — расширенная форма для настроек; короткая — для тела виджета и отчёта.
 

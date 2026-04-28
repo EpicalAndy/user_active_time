@@ -49,6 +49,7 @@ from constants import (
 )
 from modules.events_monitor import get_countdown_remaining
 from modules.manual_activity_dialog import ManualActivityDialog
+from modules.period_report_dialog import PeriodReportDialog
 from modules.session_monitor import checkpoint_session
 from modules.report_viewer import ReportViewer
 from modules.settings_dialog import SettingsDialog
@@ -136,7 +137,7 @@ class ActivityWidget:
             on_open_reports=lambda: os.startfile(LOG_DIR),
             on_view_report=self._view_report,
             on_open_settings=self._open_settings,
-            on_period_report=None,
+            on_period_report=self._open_period_report,
         )
         self._toolbar.pack(fill=tk.X)
         self._create_body()
@@ -493,6 +494,10 @@ class ActivityWidget:
     def _view_report(self):
         """Открывает визуализацию отчёта"""
         ReportViewer(self.window)
+
+    def _open_period_report(self):
+        """Открывает диалог построения отчёта за период"""
+        PeriodReportDialog(self.window)
 
     def _add_active_time(self):
         """Открывает диалог управления ручным активным временем"""
