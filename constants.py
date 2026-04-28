@@ -26,10 +26,15 @@ COLOR_TOOLTIP_FG = "#333333"    # Текст подсказки
 # === Подсказки кнопок Тулбара ===
 
 TOOLTIP_ADD_ACTIVE_TIME = "Добавить активное время"
-TOOLTIP_OPEN_REPORTS = "Открыть папку с отчётами"
-TOOLTIP_VIEW_REPORT = "Визуализация отчёта"
 TOOLTIP_OPEN_SETTINGS = "Настройки"
 DEFAULT_MANUAL_ACTIVITY_DESCRIPTION = "Добавлено пользовательское время"
+
+# === Меню «Отчёты» ===
+
+REPORTS_MENU_LABEL = "Отчёты"
+REPORT_MENU_FOLDER = "Папка с отчётами"
+REPORT_MENU_DAILY = "Дневной отчёт"
+REPORT_MENU_PERIOD = "Отчёт за период"
 
 # === Названия метрик ===
 # *_FULL — расширенная форма для настроек; короткая — для тела виджета и отчёта.

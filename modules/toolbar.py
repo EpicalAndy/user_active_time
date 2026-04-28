@@ -14,10 +14,12 @@ from constants import (
     COLOR_TOOLTIP_BG,
     COLOR_TOOLTIP_FG,
     FONT_FAMILY,
+    REPORT_MENU_DAILY,
+    REPORT_MENU_FOLDER,
+    REPORT_MENU_PERIOD,
+    REPORTS_MENU_LABEL,
     TOOLTIP_ADD_ACTIVE_TIME,
-    TOOLTIP_OPEN_REPORTS,
     TOOLTIP_OPEN_SETTINGS,
-    TOOLTIP_VIEW_REPORT,
 )
 
 TOOLBAR_BG = COLOR_DARKER_BG
@@ -35,16 +37,25 @@ class WidgetToolbar:
         on_open_reports: Callable,
         on_view_report: Callable,
         on_open_settings: Callable,
+        on_period_report: Callable | None = None,
     ):
         self.frame = tk.Frame(parent, bg=TOOLBAR_BG, pady=2)
 
         # Слева: добавление активного времени
-        self._add_button("\u23F1", TOOLTIP_ADD_ACTIVE_TIME, on_add_active_time, side=tk.LEFT)
+        self._add_button("⏱", TOOLTIP_ADD_ACTIVE_TIME, on_add_active_time, side=tk.LEFT)
 
-        # Справа: существующие кнопки (пакуем справа-налево, чтобы сохранить визуальный порядок)
-        self._add_button("\u2699", TOOLTIP_OPEN_SETTINGS, on_open_settings, side=tk.RIGHT)
-        self._add_button("\U0001F4CA", TOOLTIP_VIEW_REPORT, on_view_report, side=tk.RIGHT)
-        self._add_button("\U0001F4C2", TOOLTIP_OPEN_REPORTS, on_open_reports, side=tk.RIGHT)
+        # Справа: настройки и выпадающий список «Отчёты»
+        # Пакуем справа-налево, чтобы сохранить визуальный порядок.
+        self._add_button("⚙", TOOLTIP_OPEN_SETTINGS, on_open_settings, side=tk.RIGHT)
+        self._add_dropdown(
+            REPORTS_MENU_LABEL,
+            [
+                (REPORT_MENU_FOLDER, on_open_reports),
+                (REPORT_MENU_DAILY, on_view_report),
+                (REPORT_MENU_PERIOD, on_period_report),
+            ],
+            side=tk.RIGHT,
+        )
 
     def _add_button(
         self,
@@ -62,34 +73,69 @@ class WidgetToolbar:
         btn.pack(side=side, fill=tk.Y)
         btn.bind("<Button-1>", lambda e: command())
 
-        tip_window = None
+        self._attach_hover(btn)
+        self._attach_tooltip(btn, tooltip_text)
+        return btn
 
-        def on_enter(e):
-            nonlocal tip_window
-            btn.configure(bg=TOOLBAR_HOVER_BG)
+    def _add_dropdown(
+        self,
+        label: str,
+        items: list[tuple[str, Callable | None]],
+        side: Literal["left", "right", "top", "bottom"] = "left",
+    ):
+        btn = tk.Label(
+            self.frame, text=label,
+            bg=TOOLBAR_BG, fg=TOOLBAR_FG,
+            font=(FONT_FAMILY, MAIN_FONT_SIZE), cursor="hand2",
+            padx=8, anchor=tk.CENTER,
+        )
+        btn.pack(side=side, fill=tk.Y)
+
+        menu = tk.Menu(btn, tearoff=0)
+        for item_label, command in items:
+            if command is None:
+                menu.add_command(label=item_label, state=tk.DISABLED)
+            else:
+                menu.add_command(label=item_label, command=command)
+
+        def on_click(_e):
             x = btn.winfo_rootx()
             y = btn.winfo_rooty() + btn.winfo_height()
-            tip_window = tw = tk.Toplevel(btn)
+            menu.tk_popup(x, y)
+
+        btn.bind("<Button-1>", on_click)
+        self._attach_hover(btn)
+        return btn
+
+    def _attach_hover(self, widget: tk.Label):
+        widget.bind("<Enter>", lambda _e: widget.configure(background=TOOLBAR_HOVER_BG), add="+")
+        widget.bind("<Leave>", lambda _e: widget.configure(background=TOOLBAR_BG), add="+")
+
+    def _attach_tooltip(self, widget: tk.Label, text: str):
+        tip_window: list[tk.Toplevel | None] = [None]
+
+        def on_enter(_e):
+            x = widget.winfo_rootx()
+            y = widget.winfo_rooty() + widget.winfo_height()
+            tw = tk.Toplevel(widget)
             tw.wm_overrideredirect(True)
             tw.wm_geometry(f"+{x}+{y}")
             tw.attributes("-topmost", True)
             tk.Label(
-                tw, text=tooltip_text,
+                tw, text=text,
                 bg=COLOR_TOOLTIP_BG, fg=COLOR_TOOLTIP_FG,
                 font=(FONT_FAMILY, 9), padx=6, pady=2,
                 relief=tk.SOLID, borderwidth=1,
             ).pack()
+            tip_window[0] = tw
 
-        def on_leave(e):
-            nonlocal tip_window
-            btn.configure(bg=TOOLBAR_BG)
-            if tip_window:
-                tip_window.destroy()
-                tip_window = None
+        def on_leave(_e):
+            if tip_window[0] is not None:
+                tip_window[0].destroy()
+                tip_window[0] = None
 
-        btn.bind("<Enter>", on_enter)
-        btn.bind("<Leave>", on_leave)
-        return btn
+        widget.bind("<Enter>", on_enter, add="+")
+        widget.bind("<Leave>", on_leave, add="+")
 
     def pack(self, **kwargs):
         self.frame.pack(**kwargs)

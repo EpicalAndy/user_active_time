@@ -136,6 +136,7 @@ class ActivityWidget:
             on_open_reports=lambda: os.startfile(LOG_DIR),
             on_view_report=self._view_report,
             on_open_settings=self._open_settings,
+            on_period_report=None,
         )
         self._toolbar.pack(fill=tk.X)
         self._create_body()
