@@ -11,6 +11,7 @@ from constants import (
     COLOR_DARKER_BG,
     COLOR_HOVER,
     COLOR_LIGHT_FG,
+    COLOR_MUTED,
     COLOR_TOOLTIP_BG,
     COLOR_TOOLTIP_FG,
     FONT_FAMILY,
@@ -47,6 +48,7 @@ class WidgetToolbar:
         # Справа: настройки и выпадающий список «Отчёты»
         # Пакуем справа-налево, чтобы сохранить визуальный порядок.
         self._add_button("⚙", TOOLTIP_OPEN_SETTINGS, on_open_settings, side=tk.RIGHT)
+        self._add_separator(side=tk.RIGHT)
         self._add_dropdown(
             REPORTS_MENU_LABEL,
             [
@@ -106,6 +108,11 @@ class WidgetToolbar:
         btn.bind("<Button-1>", on_click)
         self._attach_hover(btn)
         return btn
+
+    def _add_separator(self, side: Literal["left", "right", "top", "bottom"] = "left"):
+        sep = tk.Frame(self.frame, bg=COLOR_MUTED, width=1)
+        sep.pack(side=side, fill=tk.Y, padx=6, pady=4)
+        return sep
 
     def _attach_hover(self, widget: tk.Label):
         widget.bind("<Enter>", lambda _e: widget.configure(background=TOOLBAR_HOVER_BG), add="+")
