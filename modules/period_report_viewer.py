@@ -25,6 +25,8 @@ from constants import (
     PERIOD_REPORT_COL_MAX,
     PERIOD_REPORT_COL_WORK,
     PERIOD_REPORT_COL_WORK_PCT,
+    PERIOD_REPORT_DEFICIT_ACTIVE,
+    PERIOD_REPORT_DEFICIT_WORK,
     PERIOD_REPORT_NO_NORM,
     PERIOD_REPORT_PERIOD_LABEL,
     PERIOD_REPORT_TOTAL_ACTIVE,
@@ -123,6 +125,10 @@ class PeriodReportViewer:
         active_pct = percent(totals["active_seconds"], max_work)
         work_pct = percent(totals["total_work_seconds"], max_work)
 
+        recommended_active = int(max_work * RECOMMENDED_ACTIVITY_THRESHOLD / 100)
+        active_deficit = max(0, recommended_active - totals["active_seconds"])
+        work_deficit = max(0, max_work - totals["total_work_seconds"])
+
         self._stat_row(
             totals_frame, PERIOD_REPORT_TOTAL_ACTIVE,
             f"{format_duration_short(totals['active_seconds'])}  ({_fmt_pct(active_pct)})",
@@ -134,6 +140,14 @@ class PeriodReportViewer:
         self._stat_row(
             totals_frame, PERIOD_REPORT_TOTAL_MAX_WORK,
             format_duration_short(max_work),
+        )
+        self._stat_row(
+            totals_frame, PERIOD_REPORT_DEFICIT_ACTIVE,
+            format_duration_short(active_deficit),
+        )
+        self._stat_row(
+            totals_frame, PERIOD_REPORT_DEFICIT_WORK,
+            format_duration_short(work_deficit),
         )
 
         # --- Разделитель ---
