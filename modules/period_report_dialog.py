@@ -25,6 +25,7 @@ from constants import (
 from modules.calendar_popup import CalendarPopup
 from modules.period_report import build_period_report
 from modules.period_report_viewer import PeriodReportViewer
+from modules.ui_utils import center_on_parent
 from utility import format_date_display
 
 _DATE_FMT = "%d.%m.%Y"
@@ -48,24 +49,8 @@ class PeriodReportDialog:
 
         self._create_widgets()
         self._update_state()
-        self._center_on_parent(parent)
+        center_on_parent(self.dialog, parent)
         self.dialog.focus_set()
-
-    def _center_on_parent(self, parent: tk.Misc):
-        self.dialog.update_idletasks()
-        dw = self.dialog.winfo_width()
-        dh = self.dialog.winfo_height()
-        px = parent.winfo_rootx()
-        py = parent.winfo_rooty()
-        pw = parent.winfo_width()
-        ph = parent.winfo_height()
-        x = px + (pw - dw) // 2
-        y = py + (ph - dh) // 2
-        sw = self.dialog.winfo_screenwidth()
-        sh = self.dialog.winfo_screenheight()
-        x = max(0, min(x, sw - dw))
-        y = max(0, min(y, sh - dh))
-        self.dialog.geometry(f"+{x}+{y}")
 
     def _create_widgets(self):
         pad = {"padx": 12, "pady": 6}

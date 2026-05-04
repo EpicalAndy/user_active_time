@@ -27,6 +27,7 @@ from constants import (
     METRIC_LAST_LOGOUT,
     METRIC_SESSION_COUNT,
 )
+from modules.ui_utils import center_on_screen
 from utility import calculate_activity_percent, format_duration
 
 # Типы событий → активность
@@ -243,13 +244,7 @@ class ReportViewer:
             font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
         ).pack(pady=(0, 12))
 
-        # Центрируем окно на экране
-        self.win.update_idletasks()
-        w = self.win.winfo_width()
-        h = self.win.winfo_height()
-        sw = self.win.winfo_screenwidth()
-        sh = self.win.winfo_screenheight()
-        self.win.geometry(f"+{(sw - w) // 2}+{(sh - h) // 2}")
+        center_on_screen(self.win)
 
     def _draw_chart(self, data: dict):
         """Рисует столбчатый график активности на Canvas"""

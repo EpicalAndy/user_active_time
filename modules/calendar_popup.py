@@ -15,6 +15,7 @@ from constants import (
     COLOR_MUTED,
     FONT_FAMILY,
 )
+from modules.ui_utils import center_on_parent
 
 _MONTH_NAMES = [
     "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -52,7 +53,7 @@ class CalendarPopup:
         self._grid_frame = tk.Frame(self.win, bg=COLOR_DARK_BG)
         self._grid_frame.pack(padx=8, pady=(0, 8))
         self._render_grid()
-        self._center_on_parent(parent)
+        center_on_parent(self.win, parent)
 
     def _build_header(self):
         header = tk.Frame(self.win, bg=COLOR_DARK_BG)
@@ -130,19 +131,3 @@ class CalendarPopup:
                 parent.grab_set()
         except tk.TclError:
             pass
-
-    def _center_on_parent(self, parent: tk.Misc):
-        self.win.update_idletasks()
-        dw = self.win.winfo_width()
-        dh = self.win.winfo_height()
-        px = parent.winfo_rootx()
-        py = parent.winfo_rooty()
-        pw = parent.winfo_width()
-        ph = parent.winfo_height()
-        x = px + (pw - dw) // 2
-        y = py + (ph - dh) // 2
-        sw = self.win.winfo_screenwidth()
-        sh = self.win.winfo_screenheight()
-        x = max(0, min(x, sw - dw))
-        y = max(0, min(y, sh - dh))
-        self.win.geometry(f"+{x}+{y}")

@@ -36,6 +36,7 @@ from constants import (
     PERIOD_REPORT_WINDOW_TITLE,
 )
 from modules.period_report import percent
+from modules.ui_utils import center_on_screen
 from utility import format_date_display, format_duration_short
 
 # Теги Treeview для цветовой подсветки строк
@@ -98,7 +99,7 @@ class PeriodReportViewer:
         self.win.resizable(False, False)
 
         self._render(start, end, report)
-        self._center_on_screen()
+        center_on_screen(self.win)
 
     def _render(self, start: datetime.date, end: datetime.date, report: dict):
         totals = report["totals"]
@@ -241,11 +242,3 @@ class PeriodReportViewer:
         tree.configure(yscrollcommand=scrollbar.set)
         tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-    def _center_on_screen(self):
-        self.win.update_idletasks()
-        w = self.win.winfo_width()
-        h = self.win.winfo_height()
-        sw = self.win.winfo_screenwidth()
-        sh = self.win.winfo_screenheight()
-        self.win.geometry(f"+{(sw - w) // 2}+{(sh - h) // 2}")
