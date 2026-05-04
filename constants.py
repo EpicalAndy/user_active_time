@@ -74,27 +74,12 @@ PERIOD_REPORT_COL_WORK_PCT = "Раб. %"
 PERIOD_REPORT_CLOSE = "Закрыть"
 PERIOD_REPORT_NO_NORM = "—"
 
-# === Поля метрик в дневном TXT-отчёте ===
-# Внутренние ключи (стабильные, в файл не меняются) и дефолтные русские метки.
-# Метки записываются в секцию [Поля метрик] файла отчёта при его создании.
-# Парсер периодного отчёта берёт метки оттуда; если секции нет — использует
-# эти дефолты (что обеспечивает обратную совместимость со старыми файлами).
+# === Дневной JSON-отчёт ===
+# Файлы отчётов: {username}_dd.mm.yyyy.json. Версия схемы повышается при
+# несовместимых изменениях формата.
 
-REPORT_FIELDS_SECTION_HEADER = "[Поля метрик]"
-
-REPORT_KEY_ACTIVE_TIME = "active_time"
-REPORT_KEY_TOTAL_WORK = "total_work"
-REPORT_KEY_MAX_WORK = "max_work"
-
-REPORT_FIELD_ACTIVE_TIME = "Общее активное время"
-REPORT_FIELD_TOTAL_WORK = "Общее время работы"
-REPORT_FIELD_MAX_WORK = "Максимальное рабочее время"
-
-REPORT_DEFAULT_FIELD_LABELS: dict[str, str] = {
-    REPORT_KEY_ACTIVE_TIME: REPORT_FIELD_ACTIVE_TIME,
-    REPORT_KEY_TOTAL_WORK: REPORT_FIELD_TOTAL_WORK,
-    REPORT_KEY_MAX_WORK: REPORT_FIELD_MAX_WORK,
-}
+REPORT_JSON_VERSION = 1
+REPORT_JSON_EXT = ".json"
 
 # === Названия метрик ===
 # *_FULL — расширенная форма для настроек; короткая — для тела виджета и отчёта.

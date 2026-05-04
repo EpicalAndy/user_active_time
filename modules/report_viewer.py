@@ -1,8 +1,10 @@
 """
-Визуализация отчёта об активности — окно со статистикой и графиком активности/простоя
+Визуализация отчёта об активности — окно со статистикой и графиком активности/простоя.
+Источник — дневной JSON-отчёт.
 """
 
 import datetime
+import json
 import os
 import re
 import tkinter as tk
@@ -25,6 +27,7 @@ from constants import (
     METRIC_LAST_LOGOUT,
     METRIC_SESSION_COUNT,
 )
+from utility import calculate_activity_percent, format_duration
 
 # Типы событий → активность
 _ACTIVE_EVENTS = {"LOGON", "UNLOCK", "INPUT_ACTIVE", "MONITOR_START"}
@@ -42,62 +45,68 @@ _LOG_LINE_RE = re.compile(
 )
 
 
+def _format_dash(seconds) -> str:
+    """Форматирует секунды; «—» если None или ноль для опциональных метрик."""
+    if seconds is None:
+        return "—"
+    return format_duration(int(seconds))
+
+
 def _parse_report(filepath: str) -> dict | None:
-    """Парсит файл отчёта. Возвращает dict с данными или None если невалидный."""
+    """Загружает дневной JSON-отчёт. Возвращает dict с готовыми к показу значениями
+    либо None, если файл нельзя интерпретировать.
+    """
     try:
         with open(filepath, "r", encoding=ENCODING) as f:
-            text = f.read()
-    except (IOError, UnicodeDecodeError):
+            data = json.load(f)
+    except (IOError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict) or "active_seconds" not in data:
         return None
 
-    # Проверяем обязательные маркеры
-    if "Пользователь:" not in text or "Лог активности:" not in text:
-        return None
+    # Дата: в файле YYYY-MM-DD, отображаем dd.mm.yyyy
+    date_iso = data.get("date") or ""
+    try:
+        date_obj = datetime.date.fromisoformat(date_iso) if date_iso else None
+        date_display = date_obj.strftime("%d.%m.%Y") if date_obj else "—"
+    except ValueError:
+        date_display = date_iso or "—"
 
-    result = {}
+    active_seconds = int(data.get("active_seconds") or 0)
+    max_work_seconds = int(data.get("max_work_seconds") or 0)
+    total_work_seconds = data.get("total_work_seconds")
 
-    # Парсим заголовок
-    for line in text.splitlines():
-        if line.startswith("Пользователь:"):
-            result["user"] = line.split(":", 1)[1].strip()
-        elif line.startswith("Дата:"):
-            result["date"] = line.split(":", 1)[1].strip()
-        elif line.startswith(f"{METRIC_FIRST_LOGIN}:"):
-            result["first_login"] = line.split(":", 1)[1].strip()
-        elif line.startswith(f"{METRIC_LAST_LOGOUT}:"):
-            result["last_logout"] = line.split(":", 1)[1].strip()
-        elif line.startswith("Общее активное время:"):
-            result["active_time"] = line.split(":", 1)[1].strip()
-        elif line.startswith("Максимальное рабочее время:"):
-            result["max_work_time"] = line.split(":", 1)[1].strip()
-        elif line.startswith("Общее время работы:"):
-            result["total_work_time"] = line.split(":", 1)[1].strip()
-        elif line.startswith("Количество активных сессий:"):
-            result["session_count"] = line.split(":", 1)[1].strip()
-        elif line.startswith("Процент активности:"):
-            result["activity_percent"] = line.split(":", 1)[1].strip()
+    # Процент считаем здесь — в файле его нет (производное значение).
+    if max_work_seconds > 0:
+        pct = calculate_activity_percent(active_seconds, max_work_seconds / 3600)
+        activity_percent = f"{pct:.1f}%"
+    else:
+        activity_percent = "—"
 
-    if "date" not in result:
-        return None
-
-    # Парсим лог-записи
-    log_section = text.split("Лог активности:", 1)
-    if len(log_section) < 2:
-        return None
-
+    # Парсим строки лога (формат строки не менялся при переходе на JSON).
     events = []
-    for line in log_section[1].strip().splitlines():
-        m = _LOG_LINE_RE.match(line.strip())
-        if m:
-            ts_str, event_type = m.group(1), m.group(2)
-            try:
-                ts = datetime.datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                continue
-            events.append((ts, event_type))
+    for line in data.get("log") or []:
+        m = _LOG_LINE_RE.match(str(line).strip())
+        if not m:
+            continue
+        try:
+            ts = datetime.datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            continue
+        events.append((ts, m.group(2)))
 
-    result["events"] = events
-    return result
+    return {
+        "user": data.get("username") or "—",
+        "date": date_display,
+        "first_login": data.get("first_login") or "—",
+        "last_logout": data.get("last_logout") or "—",
+        "active_time": _format_dash(active_seconds),
+        "max_work_time": _format_dash(max_work_seconds),
+        "total_work_time": _format_dash(total_work_seconds),
+        "session_count": str(data.get("session_count") or 0),
+        "activity_percent": activity_percent,
+        "events": events,
+    }
 
 
 def _build_intervals(events: list[tuple[datetime.datetime, str]]) -> list[tuple[float, float, str]]:
@@ -155,7 +164,7 @@ class ReportViewer:
             parent=parent,
             title="Выберите файл отчёта",
             initialdir=LOG_DIR,
-            filetypes=[("Текстовые файлы", "*.txt"), ("Все файлы", "*.*")],
+            filetypes=[("JSON-отчёты", "*.json"), ("Все файлы", "*.*")],
         )
 
         if not filepath:
@@ -165,9 +174,7 @@ class ReportViewer:
         if data is None:
             messagebox.showerror(
                 "Ошибка",
-                "Выбранный файл не является отчётом об активности.\n\n"
-                "Файл должен содержать строки «Пользователь:», «Дата:» "
-                "и раздел «Лог активности:».",
+                "Выбранный файл не является дневным JSON-отчётом об активности.",
                 parent=parent,
             )
             return

@@ -8,7 +8,11 @@
       "Bash(python -m py_compile constants.py modules/calendar_popup.py modules/period_report_dialog.py)",
       "Bash(python -m py_compile modules/report_viewer.py)",
       "Bash(python -m py_compile modules/report.py)",
-      "Bash(python -m py_compile constants.py modules/report.py modules/period_report.py)"
+      "Bash(python -m py_compile constants.py modules/report.py modules/period_report.py)",
+      "Bash(python -m py_compile constants.py modules/report.py modules/period_report.py modules/report_viewer.py scripts/migrate_reports_to_json.py)",
+      "Bash(cp -r /c/Users/aaubi/active_time /c/Users/aaubi/active_time.backup_pre_json)",
+      "Read(//c/Users/aaubi/**)",
+      "Bash(python scripts/migrate_reports_to_json.py)"
     ]
   }
 }

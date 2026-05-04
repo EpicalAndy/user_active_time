@@ -1,78 +1,23 @@
 """
-Сборка отчёта за произвольный период из дневных отчётов в LOG_DIR.
+Сборка отчёта за произвольный период из дневных JSON-отчётов в LOG_DIR.
 
-Источник данных — текстовые дневные отчёты (`{username}_dd.mm.yyyy.txt`).
-Все метрики, включая норму (максимальное рабочее время), берутся из файла —
-агрегатор не обращается к текущим настройкам. Это сохраняет историческую
-консистентность: дневной и периодный отчёты показывают одинаковые цифры.
+Источник данных — `{username}_dd.mm.yyyy.json`. Все метрики, включая норму,
+читаются из файла; конфиг используется только как fallback, если в файле
+поле отсутствует (например, повреждённый отчёт).
 """
 
 import datetime
+import json
 import os
-import re
 from collections.abc import Iterable
 
 from config import LOG_DIR, USERNAME
-from constants import (
-    ENCODING,
-    REPORT_DEFAULT_FIELD_LABELS,
-    REPORT_FIELDS_SECTION_HEADER,
-    REPORT_KEY_ACTIVE_TIME,
-    REPORT_KEY_MAX_WORK,
-    REPORT_KEY_TOTAL_WORK,
-)
+from constants import ENCODING, REPORT_JSON_EXT
 from utility import format_date_display, get_work_hours
-
-# «Xч Yм Zс» (целые или дробные)
-_DURATION_RE = re.compile(
-    r"(\d+(?:\.\d+)?)\s*ч\s+(\d+(?:\.\d+)?)\s*м\s+(\d+(?:\.\d+)?)\s*с"
-)
-# Секция [Поля метрик] с парами «key = label» — собирает строки до пустой строки.
-_FIELDS_SECTION_RE = re.compile(
-    rf"^{re.escape(REPORT_FIELDS_SECTION_HEADER)}\s*\n((?:[^\n]+\n)+?)\s*\n",
-    re.MULTILINE,
-)
-_FIELD_LINE_RE = re.compile(r"^\s*(\w+)\s*=\s*(.+?)\s*$")
-
-
-def _parse_duration(text: str) -> int | None:
-    """Парсит «Xч Yм Zс» в секунды. None если строка не распознана."""
-    m = _DURATION_RE.search(text)
-    if not m:
-        return None
-    h, mn, s = float(m.group(1)), float(m.group(2)), float(m.group(3))
-    return int(h * 3600 + mn * 60 + s)
-
-
-def _resolve_field_labels(text: str) -> dict[str, str]:
-    """Читает [Поля метрик] и накладывает на дефолты.
-
-    Если секции нет — возвращает дефолты as-is. Если есть, но в ней не описаны
-    отдельные ключи, — для них тоже берутся дефолты.
-    """
-    labels = dict(REPORT_DEFAULT_FIELD_LABELS)
-    m = _FIELDS_SECTION_RE.search(text)
-    if not m:
-        return labels
-    for line in m.group(1).splitlines():
-        pair = _FIELD_LINE_RE.match(line)
-        if not pair:
-            continue
-        key, value = pair.group(1), pair.group(2)
-        if key in labels and value:
-            labels[key] = value
-    return labels
-
-
-def _find_metric(text: str, label: str) -> int | None:
-    """Ищет в тексте строку «{label}: ...» и парсит длительность."""
-    pattern = re.compile(rf"^{re.escape(label)}:\s*(.+)$", re.MULTILINE)
-    m = pattern.search(text)
-    return _parse_duration(m.group(1)) if m else None
 
 
 def get_report_path(date: datetime.date) -> str:
-    return os.path.join(LOG_DIR, f"{USERNAME}_{format_date_display(date)}.txt")
+    return os.path.join(LOG_DIR, f"{USERNAME}_{format_date_display(date)}{REPORT_JSON_EXT}")
 
 
 def daterange(start: datetime.date, end: datetime.date) -> Iterable[datetime.date]:
@@ -84,27 +29,28 @@ def daterange(start: datetime.date, end: datetime.date) -> Iterable[datetime.dat
 
 
 def _read_day_metrics(date: datetime.date) -> dict | None:
-    """Возвращает метрики из дневного отчёта или None, если файла нет / не парсится."""
+    """Загружает дневной JSON и возвращает метрики или None, если файла нет / битый."""
     path = get_report_path(date)
     if not os.path.exists(path):
         return None
     try:
         with open(path, "r", encoding=ENCODING) as f:
-            text = f.read()
-    except (IOError, UnicodeDecodeError):
+            data = json.load(f)
+    except (IOError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
         return None
 
-    labels = _resolve_field_labels(text)
-
-    active_seconds = _find_metric(text, labels[REPORT_KEY_ACTIVE_TIME])
-    if active_seconds is None:
+    active_seconds = data.get("active_seconds")
+    if not isinstance(active_seconds, int):
         return None
-    total_work_seconds = _find_metric(text, labels[REPORT_KEY_TOTAL_WORK]) or 0
 
-    # Норма берётся из файла. Fallback на конфиг — для случая, когда строки
-    # совсем нет (очень старые отчёты).
-    max_work_seconds = _find_metric(text, labels[REPORT_KEY_MAX_WORK])
-    if max_work_seconds is None:
+    total_work_seconds = data.get("total_work_seconds") or 0
+    if not isinstance(total_work_seconds, int):
+        total_work_seconds = 0
+
+    max_work_seconds = data.get("max_work_seconds")
+    if not isinstance(max_work_seconds, int):
         max_work_seconds = int(get_work_hours(date) * 3600)
 
     return {
@@ -121,9 +67,6 @@ def build_period_report(start: datetime.date, end: datetime.date) -> dict:
     Возвращает:
         {"missing_boundary": [date, ...]}  — если отсутствует одна или обе крайние даты
         {"days": [...], "totals": {...}}   — успешно собранные данные
-
-    Норма для всего периода считается по всем календарным дням (даже без файла),
-    т.к. описывает «сколько должно быть отработано по настройкам».
     """
     missing_boundary = [d for d in (start, end) if _read_day_metrics(d) is None]
     if missing_boundary:
