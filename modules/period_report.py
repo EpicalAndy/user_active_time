@@ -2,8 +2,9 @@
 Сборка отчёта за произвольный период из дневных отчётов в LOG_DIR.
 
 Источник данных — текстовые дневные отчёты (`{username}_dd.mm.yyyy.txt`).
-Норма (максимальное рабочее время) берётся из текущих настроек, а не из файла,
-чтобы изменения настроек применялись и к историческим отчётам.
+Все метрики, включая норму (максимальное рабочее время), берутся из файла —
+агрегатор не обращается к текущим настройкам. Это сохраняет историческую
+консистентность: дневной и периодный отчёты показывают одинаковые цифры.
 """
 
 import datetime
@@ -21,6 +22,7 @@ _DURATION_RE = re.compile(
 )
 _ACTIVE_TIME_RE = re.compile(r"^Общее активное время:\s*(.+)$", re.MULTILINE)
 _TOTAL_WORK_RE = re.compile(r"^Общее время работы:\s*(.+)$", re.MULTILINE)
+_MAX_WORK_RE = re.compile(r"^Максимальное рабочее время:\s*(.+)$", re.MULTILINE)
 
 
 def _parse_duration(text: str) -> int | None:
@@ -65,7 +67,13 @@ def _read_day_metrics(date: datetime.date) -> dict | None:
     if total_work_seconds is None:
         total_work_seconds = 0
 
-    max_work_seconds = int(get_work_hours(date) * 3600)
+    # Норма берётся из файла. Fallback на конфиг — для совместимости со старыми
+    # отчётами, где этой строки могло не быть.
+    max_match = _MAX_WORK_RE.search(text)
+    max_work_seconds = _parse_duration(max_match.group(1)) if max_match else None
+    if max_work_seconds is None:
+        max_work_seconds = int(get_work_hours(date) * 3600)
+
     return {
         "date": date,
         "active_seconds": active_seconds,
@@ -97,7 +105,7 @@ def build_period_report(start: datetime.date, end: datetime.date) -> dict:
     totals = {
         "active_seconds": sum(d["active_seconds"] for d in days),
         "total_work_seconds": sum(d["total_work_seconds"] for d in days),
-        "max_work_seconds": sum(int(get_work_hours(d) * 3600) for d in daterange(start, end)),
+        "max_work_seconds": sum(d["max_work_seconds"] for d in days),
     }
 
     return {"days": days, "totals": totals, "missing_boundary": []}
