@@ -5,7 +5,18 @@
 import datetime
 import os
 
-from constants import ENCODING, METRIC_FIRST_LOGIN, METRIC_LAST_LOGOUT
+from constants import (
+    ENCODING,
+    METRIC_FIRST_LOGIN,
+    METRIC_LAST_LOGOUT,
+    REPORT_FIELD_ACTIVE_TIME,
+    REPORT_FIELD_MAX_WORK,
+    REPORT_FIELD_TOTAL_WORK,
+    REPORT_FIELDS_SECTION_HEADER,
+    REPORT_KEY_ACTIVE_TIME,
+    REPORT_KEY_MAX_WORK,
+    REPORT_KEY_TOTAL_WORK,
+)
 from utility import calculate_activity_percent, format_date_display, format_duration, get_work_hours, parse_time
 
 
@@ -43,11 +54,16 @@ def generate_report(
         f"Пользователь: {username}",
         f"Дата: {format_date_display(date)}",
         "",
+        REPORT_FIELDS_SECTION_HEADER,
+        f"{REPORT_KEY_ACTIVE_TIME} = {REPORT_FIELD_ACTIVE_TIME}",
+        f"{REPORT_KEY_TOTAL_WORK} = {REPORT_FIELD_TOTAL_WORK}",
+        f"{REPORT_KEY_MAX_WORK} = {REPORT_FIELD_MAX_WORK}",
+        "",
         f"{METRIC_FIRST_LOGIN}: {first_login or '—'}",
         f"{METRIC_LAST_LOGOUT}: {last_logout or '—'}",
-        f"Общее активное время: {format_duration(active_seconds)}",
-        f"Максимальное рабочее время: {format_duration(max_work_seconds)}",
-        f"Общее время работы: {total_work_time}",
+        f"{REPORT_FIELD_ACTIVE_TIME}: {format_duration(active_seconds)}",
+        f"{REPORT_FIELD_MAX_WORK}: {format_duration(max_work_seconds)}",
+        f"{REPORT_FIELD_TOTAL_WORK}: {total_work_time}",
         f"Количество активных сессий: {session_count}",
         f"Процент активности: {activity_percent:.1f}%",
         "",

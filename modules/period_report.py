@@ -13,16 +13,26 @@ import re
 from collections.abc import Iterable
 
 from config import LOG_DIR, USERNAME
-from constants import ENCODING
+from constants import (
+    ENCODING,
+    REPORT_DEFAULT_FIELD_LABELS,
+    REPORT_FIELDS_SECTION_HEADER,
+    REPORT_KEY_ACTIVE_TIME,
+    REPORT_KEY_MAX_WORK,
+    REPORT_KEY_TOTAL_WORK,
+)
 from utility import format_date_display, get_work_hours
 
 # «Xч Yм Zс» (целые или дробные)
 _DURATION_RE = re.compile(
     r"(\d+(?:\.\d+)?)\s*ч\s+(\d+(?:\.\d+)?)\s*м\s+(\d+(?:\.\d+)?)\s*с"
 )
-_ACTIVE_TIME_RE = re.compile(r"^Общее активное время:\s*(.+)$", re.MULTILINE)
-_TOTAL_WORK_RE = re.compile(r"^Общее время работы:\s*(.+)$", re.MULTILINE)
-_MAX_WORK_RE = re.compile(r"^Максимальное рабочее время:\s*(.+)$", re.MULTILINE)
+# Секция [Поля метрик] с парами «key = label» — собирает строки до пустой строки.
+_FIELDS_SECTION_RE = re.compile(
+    rf"^{re.escape(REPORT_FIELDS_SECTION_HEADER)}\s*\n((?:[^\n]+\n)+?)\s*\n",
+    re.MULTILINE,
+)
+_FIELD_LINE_RE = re.compile(r"^\s*(\w+)\s*=\s*(.+?)\s*$")
 
 
 def _parse_duration(text: str) -> int | None:
@@ -32,6 +42,33 @@ def _parse_duration(text: str) -> int | None:
         return None
     h, mn, s = float(m.group(1)), float(m.group(2)), float(m.group(3))
     return int(h * 3600 + mn * 60 + s)
+
+
+def _resolve_field_labels(text: str) -> dict[str, str]:
+    """Читает [Поля метрик] и накладывает на дефолты.
+
+    Если секции нет — возвращает дефолты as-is. Если есть, но в ней не описаны
+    отдельные ключи, — для них тоже берутся дефолты.
+    """
+    labels = dict(REPORT_DEFAULT_FIELD_LABELS)
+    m = _FIELDS_SECTION_RE.search(text)
+    if not m:
+        return labels
+    for line in m.group(1).splitlines():
+        pair = _FIELD_LINE_RE.match(line)
+        if not pair:
+            continue
+        key, value = pair.group(1), pair.group(2)
+        if key in labels and value:
+            labels[key] = value
+    return labels
+
+
+def _find_metric(text: str, label: str) -> int | None:
+    """Ищет в тексте строку «{label}: ...» и парсит длительность."""
+    pattern = re.compile(rf"^{re.escape(label)}:\s*(.+)$", re.MULTILINE)
+    m = pattern.search(text)
+    return _parse_duration(m.group(1)) if m else None
 
 
 def get_report_path(date: datetime.date) -> str:
@@ -57,20 +94,16 @@ def _read_day_metrics(date: datetime.date) -> dict | None:
     except (IOError, UnicodeDecodeError):
         return None
 
-    active_match = _ACTIVE_TIME_RE.search(text)
-    if not active_match:
+    labels = _resolve_field_labels(text)
+
+    active_seconds = _find_metric(text, labels[REPORT_KEY_ACTIVE_TIME])
+    if active_seconds is None:
         return None
-    active_seconds = _parse_duration(active_match.group(1)) or 0
+    total_work_seconds = _find_metric(text, labels[REPORT_KEY_TOTAL_WORK]) or 0
 
-    total_match = _TOTAL_WORK_RE.search(text)
-    total_work_seconds = _parse_duration(total_match.group(1)) if total_match else None
-    if total_work_seconds is None:
-        total_work_seconds = 0
-
-    # Норма берётся из файла. Fallback на конфиг — для совместимости со старыми
-    # отчётами, где этой строки могло не быть.
-    max_match = _MAX_WORK_RE.search(text)
-    max_work_seconds = _parse_duration(max_match.group(1)) if max_match else None
+    # Норма берётся из файла. Fallback на конфиг — для случая, когда строки
+    # совсем нет (очень старые отчёты).
+    max_work_seconds = _find_metric(text, labels[REPORT_KEY_MAX_WORK])
     if max_work_seconds is None:
         max_work_seconds = int(get_work_hours(date) * 3600)
 

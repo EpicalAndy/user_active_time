@@ -7,7 +7,8 @@
       "Bash(python -m py_compile modules/toolbar.py)",
       "Bash(python -m py_compile constants.py modules/calendar_popup.py modules/period_report_dialog.py)",
       "Bash(python -m py_compile modules/report_viewer.py)",
-      "Bash(python -m py_compile modules/report.py)"
+      "Bash(python -m py_compile modules/report.py)",
+      "Bash(python -m py_compile constants.py modules/report.py modules/period_report.py)"
     ]
   }
 }
