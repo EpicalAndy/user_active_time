@@ -41,7 +41,7 @@ class PeriodReportDialog:
         self.dialog.title(PERIOD_DIALOG_TITLE)
         self.dialog.resizable(False, False)
         self.dialog.grab_set()
-        self.dialog.transient(parent)
+        self.dialog.transient(parent.winfo_toplevel())
         self.dialog.protocol("WM_DELETE_WINDOW", self._cancel)
 
         self._from_var = tk.StringVar()

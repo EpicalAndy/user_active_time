@@ -5,6 +5,7 @@
 import re
 import tkinter as tk
 from tkinter import ttk
+from typing import Any
 
 import config
 from bootstrap import USER_CONFIG_PATH as _CONFIG_PATH
@@ -62,7 +63,7 @@ class SettingsDialog:
         self.dialog.title("Настройки")
         self.dialog.resizable(False, False)
         self.dialog.grab_set()
-        self.dialog.transient(parent)
+        self.dialog.transient(parent.winfo_toplevel())
         self.dialog.protocol("WM_DELETE_WINDOW", self._cancel)
 
         self._create_widgets()
@@ -70,7 +71,7 @@ class SettingsDialog:
         self.dialog.focus_set()
 
     def _create_widgets(self):
-        pad = {"padx": 10, "pady": 4}
+        pad: dict[str, Any] = {"padx": 10, "pady": 4}
 
         # --- Вкладки ---
         notebook = ttk.Notebook(self.dialog)

@@ -40,7 +40,7 @@ class CalendarPopup:
 
         self.win = tk.Toplevel(parent)
         self.win.title(CALENDAR_POPUP_TITLE)
-        self.win.transient(parent)
+        self.win.transient(parent.winfo_toplevel())
         self.win.resizable(False, False)
         self.win.configure(bg=COLOR_DARK_BG)
         self.win.grab_set()

@@ -94,7 +94,7 @@ class PeriodReportViewer:
     ):
         self.win = tk.Toplevel(parent)
         self.win.title(PERIOD_REPORT_WINDOW_TITLE)
-        self.win.transient(parent)
+        self.win.transient(parent.winfo_toplevel())
         self.win.configure(bg=COLOR_DARK_BG)
         self.win.resizable(False, False)
 
