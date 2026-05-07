@@ -23,9 +23,11 @@ from config import (
     WIDGET_SHOW_ACTIVE_TIME,
     WIDGET_SHOW_ACTIVITY_PERCENT,
     WIDGET_SHOW_FULL_DAY_TIME,
+    WIDGET_SHOW_RECOMMENDED_REMAINING,
     WIDGET_SHOW_REMAINING_TIME,
     WIDGET_SHOW_SESSION_COUNT,
     WIDGET_SHOW_TITLE_PERCENT,
+    WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING,
     WIDGET_SHOW_TITLE_REMAINING_TIME,
     WIDGET_UPDATE_INTERVAL,
     MAIN_FONT_SIZE,
@@ -44,6 +46,7 @@ from constants import (
     METRIC_ACTIVE_TIME,
     METRIC_ACTIVITY_PERCENT,
     METRIC_FULL_DAY_TIME,
+    METRIC_RECOMMENDED_REMAINING_FULL,
     METRIC_REMAINING_TIME_FULL,
     METRIC_SESSION_COUNT,
 )
@@ -110,6 +113,7 @@ def is_widget_enabled() -> bool:
         WIDGET_SHOW_ACTIVITY_PERCENT,
         WIDGET_SHOW_FULL_DAY_TIME,
         WIDGET_SHOW_REMAINING_TIME,
+        WIDGET_SHOW_RECOMMENDED_REMAINING,
     ])
 
 
@@ -215,6 +219,16 @@ class ActivityWidget:
             )
             self._title_remaining_label.pack(side=tk.LEFT, fill=tk.Y)
 
+        # Оставшееся время до рекомендуемой нормы активности в заголовке
+        self._title_recommended_remaining_label = None
+        if WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING:
+            self._title_recommended_remaining_label = tk.Label(
+                title_frame, text="",
+                bg=TITLE_BG, fg=TITLE_FG,
+                font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
+            )
+            self._title_recommended_remaining_label.pack(side=tk.LEFT, fill=tk.Y)
+
         # Перетаскивание за заголовок
         drag_widgets: list[tk.Widget] = [title_frame, self._title_label]
         if self._countdown_label:
@@ -223,6 +237,8 @@ class ActivityWidget:
             drag_widgets.append(self._title_percent_label)
         if self._title_remaining_label:
             drag_widgets.append(self._title_remaining_label)
+        if self._title_recommended_remaining_label:
+            drag_widgets.append(self._title_recommended_remaining_label)
         for w in drag_widgets:
             w.bind("<ButtonPress-1>", self._start_drag)
             w.bind("<B1-Motion>", self._on_drag)
@@ -253,6 +269,8 @@ class ActivityWidget:
             self.metric_labels["full_day_time"] = self._add_metric(f"{METRIC_FULL_DAY_TIME}:")
         if WIDGET_SHOW_REMAINING_TIME:
             self.metric_labels["remaining_time"] = self._add_metric(f"{METRIC_REMAINING_TIME_FULL}:")
+        if WIDGET_SHOW_RECOMMENDED_REMAINING:
+            self.metric_labels["recommended_remaining"] = self._add_metric(f"{METRIC_RECOMMENDED_REMAINING_FULL}:")
 
     def _add_metric(self, label_text: str) -> dict:
         frame = tk.Frame(self.body_frame, bg=COLOR_RED)
@@ -321,6 +339,8 @@ class ActivityWidget:
             self._title_percent_label.configure(text="")
         if self._title_remaining_label is not None:
             self._title_remaining_label.configure(text="")
+        if self._title_recommended_remaining_label is not None:
+            self._title_recommended_remaining_label.configure(text="")
 
     def _show_working_day(self):
         """Переключает виджет в режим рабочего дня"""
@@ -363,6 +383,10 @@ class ActivityWidget:
             self.metric_labels["remaining_time"]["value"].configure(
                 text=format_duration_short(max(0, stats.get("remaining_work_seconds", 0)))
             )
+        if "recommended_remaining" in self.metric_labels:
+            self.metric_labels["recommended_remaining"]["value"].configure(
+                text=format_duration_short(max(0, stats.get("recommended_remaining_seconds", 0)))
+            )
 
         self._apply_body_color(self._get_body_color(stats["activity_percent"]))
 
@@ -378,6 +402,13 @@ class ActivityWidget:
             hours = remaining // 3600
             minutes = (remaining % 3600) // 60
             self._title_remaining_label.configure(text=f" {hours}ч {minutes}м")
+
+        # Оставшееся время до рекомендуемой нормы активности в заголовке
+        if self._title_recommended_remaining_label is not None:
+            recommended = max(0, stats.get("recommended_remaining_seconds", 0))
+            hours = recommended // 3600
+            minutes = (recommended % 3600) // 60
+            self._title_recommended_remaining_label.configure(text=f" {hours}ч {minutes}м")
 
         # Уведомление о достижении рекомендуемого порога активности
         if SOUND_NOTIFICATION and stats["activity_percent"] >= RECOMMENDED_ACTIVITY_THRESHOLD:
@@ -530,6 +561,9 @@ class ActivityWidget:
         """Пересоздаёт или удаляет лейблы в заголовке по настройкам"""
         self._rebuild_title_label("_title_percent_label", WIDGET_SHOW_TITLE_PERCENT)
         self._rebuild_title_label("_title_remaining_label", WIDGET_SHOW_TITLE_REMAINING_TIME)
+        self._rebuild_title_label(
+            "_title_recommended_remaining_label", WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING,
+        )
 
     def _rebuild_title_label(self, attr: str, show: bool):
         """Пересоздаёт или удаляет один лейбл заголовка по настройке"""
@@ -554,8 +588,9 @@ class ActivityWidget:
         # Импорты на уровне модуля кэшируют значения — обновляем из config напрямую
         global WIDGET_SHOW_ACTIVE_TIME, WIDGET_SHOW_SESSION_COUNT
         global WIDGET_SHOW_ACTIVITY_PERCENT, WIDGET_SHOW_FULL_DAY_TIME
-        global WIDGET_SHOW_REMAINING_TIME
+        global WIDGET_SHOW_REMAINING_TIME, WIDGET_SHOW_RECOMMENDED_REMAINING
         global WIDGET_SHOW_TITLE_PERCENT, WIDGET_SHOW_TITLE_REMAINING_TIME
+        global WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING
         global INPUT_ACTIVITY_TIMEOUT, COUNTDOWN_WARNING_SECONDS, CHECKPOINT_INTERVAL
         global SOUND_NOTIFICATION
         WIDGET_SHOW_ACTIVE_TIME = config.WIDGET_SHOW_ACTIVE_TIME
@@ -563,8 +598,10 @@ class ActivityWidget:
         WIDGET_SHOW_ACTIVITY_PERCENT = config.WIDGET_SHOW_ACTIVITY_PERCENT
         WIDGET_SHOW_FULL_DAY_TIME = config.WIDGET_SHOW_FULL_DAY_TIME
         WIDGET_SHOW_REMAINING_TIME = config.WIDGET_SHOW_REMAINING_TIME
+        WIDGET_SHOW_RECOMMENDED_REMAINING = config.WIDGET_SHOW_RECOMMENDED_REMAINING
         WIDGET_SHOW_TITLE_PERCENT = config.WIDGET_SHOW_TITLE_PERCENT
         WIDGET_SHOW_TITLE_REMAINING_TIME = config.WIDGET_SHOW_TITLE_REMAINING_TIME
+        WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING = config.WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING
         INPUT_ACTIVITY_TIMEOUT = config.INPUT_ACTIVITY_TIMEOUT
         COUNTDOWN_WARNING_SECONDS = config.COUNTDOWN_WARNING_SECONDS
         CHECKPOINT_INTERVAL = config.CHECKPOINT_INTERVAL
