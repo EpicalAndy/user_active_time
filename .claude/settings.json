@@ -18,7 +18,8 @@
       "Bash(python scripts/migrate_reports_to_json.py --log-dir \"C:/does/not/exist\")",
       "Bash(python -m py_compile modules/ui_utils.py modules/manual_activity_dialog.py modules/period_report_dialog.py modules/period_report_viewer.py modules/calendar_popup.py modules/settings_dialog.py modules/report_viewer.py)",
       "Bash(python -m py_compile modules/events_monitor.py)",
-      "Bash(python -m py_compile modules/manual_activity_dialog.py modules/calendar_popup.py modules/period_report_viewer.py modules/period_report_dialog.py)"
+      "Bash(python -m py_compile modules/manual_activity_dialog.py modules/calendar_popup.py modules/period_report_viewer.py modules/period_report_dialog.py)",
+      "Bash(python -m py_compile constants.py modules/heatmap_viewer.py modules/toolbar.py modules/widget.py)"
     ],
     "additionalDirectories": [
       "C:\\Users\\aaubi\\active_time.backup_pre_json"

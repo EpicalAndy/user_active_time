@@ -51,6 +51,7 @@ from constants import (
     METRIC_SESSION_COUNT,
 )
 from modules.events_monitor import get_countdown_remaining
+from modules.heatmap_viewer import HeatmapViewer
 from modules.manual_activity_dialog import ManualActivityDialog
 from modules.period_report_dialog import PeriodReportDialog
 from modules.session_monitor import checkpoint_session
@@ -142,6 +143,7 @@ class ActivityWidget:
             on_view_report=self._view_report,
             on_open_settings=self._open_settings,
             on_period_report=self._open_period_report,
+            on_heatmap=self._open_heatmap,
         )
         self._toolbar.pack(fill=tk.X)
         self._create_body()
@@ -529,6 +531,10 @@ class ActivityWidget:
     def _open_period_report(self):
         """Открывает диалог построения отчёта за период"""
         PeriodReportDialog(self.window)
+
+    def _open_heatmap(self):
+        """Открывает окно тепловой карты активности"""
+        HeatmapViewer(self.window)
 
     def _add_active_time(self):
         """Открывает диалог управления ручным активным временем"""

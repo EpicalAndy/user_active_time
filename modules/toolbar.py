@@ -17,6 +17,7 @@ from constants import (
     FONT_FAMILY,
     REPORT_MENU_DAILY,
     REPORT_MENU_FOLDER,
+    REPORT_MENU_HEATMAP,
     REPORT_MENU_PERIOD,
     REPORTS_MENU_LABEL,
     TOOLTIP_ADD_ACTIVE_TIME,
@@ -39,6 +40,7 @@ class WidgetToolbar:
         on_view_report: Callable,
         on_open_settings: Callable,
         on_period_report: Callable | None = None,
+        on_heatmap: Callable | None = None,
     ):
         self.frame = tk.Frame(parent, bg=TOOLBAR_BG, pady=2)
 
@@ -54,6 +56,7 @@ class WidgetToolbar:
             [
                 (REPORT_MENU_FOLDER, on_open_reports),
                 (REPORT_MENU_DAILY, on_view_report),
+                (REPORT_MENU_HEATMAP, on_heatmap),
                 (REPORT_MENU_PERIOD, on_period_report),
             ],
             side=tk.RIGHT,

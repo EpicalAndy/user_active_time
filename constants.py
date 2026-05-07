@@ -34,7 +34,21 @@ DEFAULT_MANUAL_ACTIVITY_DESCRIPTION = "Добавлено пользовател
 REPORTS_MENU_LABEL = "Отчёты"
 REPORT_MENU_FOLDER = "Папка с отчётами"
 REPORT_MENU_DAILY = "Дневной отчёт"
+REPORT_MENU_HEATMAP = "Тепловая карта"
 REPORT_MENU_PERIOD = "Отчёт за период"
+
+# === Окно тепловой карты ===
+
+HEATMAP_WINDOW_TITLE = "Тепловая карта активности"
+HEATMAP_LEGEND_HIGH = "≥ {threshold}% (норма)"
+HEATMAP_LEGEND_MID = "{min}–{max}%"
+HEATMAP_LEGEND_LOW = "< {threshold}%"
+HEATMAP_LEGEND_NO_DATA = "Нет данных"
+HEATMAP_CLOSE = "Закрыть"
+HEATMAP_TOOLTIP_NO_DATA = "Нет данных"
+HEATMAP_TOOLTIP_ACTIVE = "Активное"
+HEATMAP_TOOLTIP_NORM = "Норма"
+HEATMAP_TOOLTIP_PERCENT = "Активность"
 
 # === Диалог «Отчёт за период» ===
 
