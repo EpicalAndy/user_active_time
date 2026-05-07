@@ -111,6 +111,16 @@ class SettingsDialog:
             anchor=tk.W, padx=12, pady=2,
         )
 
+        # --- Трекеры ---
+        trackers_frame = ttk.LabelFrame(tab_general, text="Трекеры")
+        trackers_frame.pack(fill=tk.X, **pad)
+
+        self._track_mouse_move_var = tk.BooleanVar(value=config.TRACK_MOUSE_MOVE)
+        ttk.Checkbutton(
+            trackers_frame, text="Считать движение мыши за активность",
+            variable=self._track_mouse_move_var,
+        ).pack(anchor=tk.W, padx=12, pady=2)
+
         # --- Таймеры ---
         timers_frame = ttk.LabelFrame(tab_general, text="Таймеры")
         timers_frame.pack(fill=tk.X, **pad)
@@ -195,6 +205,7 @@ class SettingsDialog:
             "input_activity_timeout": self._timeout_var.get(),
             "countdown_warning_seconds": self._warning_var.get(),
             "sound_notification": self._sound_var.get(),
+            "track_mouse_move": self._track_mouse_move_var.get(),
         }
 
     def _write_config_file(self, values: dict):
@@ -215,6 +226,11 @@ class SettingsDialog:
         content = re.sub(
             r"^SOUND_NOTIFICATION\s*=\s*.+$",
             f"SOUND_NOTIFICATION = {values['sound_notification']}",
+            content, flags=re.MULTILINE,
+        )
+        content = re.sub(
+            r"^TRACK_MOUSE_MOVE\s*=\s*.+$",
+            f"TRACK_MOUSE_MOVE = {values['track_mouse_move']}",
             content, flags=re.MULTILINE,
         )
 
@@ -246,6 +262,7 @@ class SettingsDialog:
     def _apply_runtime(self, values: dict):
         """Обновляет атрибуты модуля config в памяти"""
         config.SOUND_NOTIFICATION = values["sound_notification"]
+        config.TRACK_MOUSE_MOVE = values["track_mouse_move"]
         config.INPUT_ACTIVITY_TIMEOUT = values["input_activity_timeout"]
         config.COUNTDOWN_WARNING_SECONDS = values["countdown_warning_seconds"]
         for attr, val in values["metrics"].items():

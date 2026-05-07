@@ -8,7 +8,8 @@ import threading
 import time
 from ctypes import wintypes
 
-from config import INPUT_ACTIVITY_TIMEOUT, TRACK_MOUSE_MOVE
+import config
+from config import INPUT_ACTIVITY_TIMEOUT
 from constants import (
     HOOKPROC,
     WH_KEYBOARD_LL,
@@ -57,10 +58,14 @@ def _keyboard_hook_callback(nCode, wParam, lParam):
 
 
 def _mouse_hook_callback(nCode, wParam, lParam):
-    """Callback низкоуровневого хука мыши"""
+    """Callback низкоуровневого хука мыши.
+
+    `config.TRACK_MOUSE_MOVE` читается динамически при каждом событии,
+    чтобы изменения настройки применялись без перезапуска приложения.
+    """
     global _last_input_mono, _last_input_source
     if nCode >= 0 and _session_running and not _screen_locked:
-        if wParam != WM_MOUSEMOVE or TRACK_MOUSE_MOVE:
+        if wParam != WM_MOUSEMOVE or config.TRACK_MOUSE_MOVE:
             _last_input_source = "мышь"
             _last_input_mono = time.monotonic()
     return user32.CallNextHookEx(None, nCode, wParam, lParam)
