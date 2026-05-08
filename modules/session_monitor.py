@@ -166,16 +166,7 @@ def get_current_stats() -> dict:
             login_time = datetime.datetime.combine(datetime.date.today(), parse_time(first_login).time())
             full_day_seconds = max(0, int((now - login_time).total_seconds()))
 
-    remaining_work_seconds = max(0, int(work_hours * 3600) - full_day_seconds)
     recommended_active_seconds = int(work_hours * 3600 * RECOMMENDED_ACTIVITY_THRESHOLD / 100)
-    # Дефицит до порога ограничиваем оставшимся рабочим временем: нельзя «добрать»
-    # активного времени больше, чем физически осталось до конца дня. Ситуация
-    # возникает, например, при сокращении нормы рабочих часов задним числом —
-    # тогда чистый дефицит может превышать остаток дня.
-    recommended_remaining_seconds = min(
-        max(0, recommended_active_seconds - active_seconds),
-        remaining_work_seconds,
-    )
 
     return {
         "is_working_day": True,
@@ -183,9 +174,8 @@ def get_current_stats() -> dict:
         "session_count": session_count,
         "activity_percent": activity_percent,
         "full_day_seconds": full_day_seconds,
-        "remaining_work_seconds": remaining_work_seconds,
-        "recommended_active_seconds": recommended_active_seconds,
-        "recommended_remaining_seconds": recommended_remaining_seconds,
+        "remaining_work_seconds": max(0, int(work_hours * 3600) - full_day_seconds),
+        "recommended_remaining_seconds": max(0, recommended_active_seconds - active_seconds),
     }
 
 

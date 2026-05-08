@@ -128,7 +128,6 @@ class ActivityWidget:
         self._countdown_blinking = False
         self._is_working_day = True
         self._goal_notified = False
-        self._prev_active_seconds: int | None = None
         self._tick_count = 0
         self._checkpoint_count = 1  # начинаем с 1, чтобы не срабатывать на первом тике
         self.root = tk.Tk()
@@ -413,25 +412,15 @@ class ActivityWidget:
             minutes = (recommended % 3600) // 60
             self._title_recommended_remaining_label.configure(text=f" {hours}ч {minutes}м")
 
-        # Уведомление о достижении рекомендуемого порога активности.
-        # Триггер — фактическое пересечение порога ростом активного времени,
-        # а не сравнение текущего процента с порогом. Это исключает ложное
-        # срабатывание при сокращении нормы рабочих часов задним числом
-        # (когда процент скакнёт выше порога, но активного времени не прибавилось).
-        active = stats["active_seconds"]
-        threshold = stats.get("recommended_active_seconds", 0)
-        crossed_now = (
-            self._prev_active_seconds is not None
-            and self._prev_active_seconds < threshold <= active
-        )
-        if SOUND_NOTIFICATION and crossed_now and not self._goal_notified:
-            self._goal_notified = True
-            winsound.PlaySound(
-                _NOTIFICATION_WAV_PATH, winsound.SND_FILENAME | winsound.SND_ASYNC
-            )
-        if active < threshold:
+        # Уведомление о достижении рекомендуемого порога активности
+        if SOUND_NOTIFICATION and stats["activity_percent"] >= RECOMMENDED_ACTIVITY_THRESHOLD:
+            if not self._goal_notified:
+                self._goal_notified = True
+                winsound.PlaySound(
+                    _NOTIFICATION_WAV_PATH, winsound.SND_FILENAME | winsound.SND_ASYNC
+                )
+        else:
             self._goal_notified = False
-        self._prev_active_seconds = active
 
     def _update_countdown(self):
         if self._countdown_label is None:
