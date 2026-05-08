@@ -6,7 +6,20 @@
       "Bash(python -m py_compile constants.py modules/toolbar.py modules/manual_activity_dialog.py modules/session_monitor.py modules/report_viewer.py modules/widget.py)",
       "Bash(python -m py_compile modules/report.py modules/report_viewer.py)",
       "Bash(python -m py_compile modules/session_monitor.py modules/report.py)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(git -C /home/andy/Projects/user_active_time status)",
+      "Bash(git -C /home/andy/Projects/user_active_time log --oneline -10)",
+      "Bash(git -C /home/andy/Projects/user_active_time diff --stat HEAD)",
+      "Bash(git -C /home/andy/Projects/user_active_time diff --name-only --diff-filter=U)",
+      "Bash(git -C /home/andy/Projects/user_active_time log --oneline 18bb9fa..HEAD)",
+      "Bash(git -C /home/andy/Projects/user_active_time show --stat HEAD)",
+      "Bash(git -C /home/andy/Projects/user_active_time rev-parse HEAD)",
+      "Bash(git -C /home/andy/Projects/user_active_time show HEAD --stat)",
+      "Bash(git -C /home/andy/Projects/user_active_time show fb67e60 --stat)",
+      "Bash(git -C /home/andy/Projects/user_active_time revert --abort)",
+      "Bash(git -C /home/andy/Projects/user_active_time revert --no-edit 66345ad fb67e60 5b6bde7)",
+      "Bash(git -C /home/andy/Projects/user_active_time log --oneline -8)",
+      "Bash(git -C /home/andy/Projects/user_active_time diff c00c936..HEAD --stat)"
     ]
   }
 }
