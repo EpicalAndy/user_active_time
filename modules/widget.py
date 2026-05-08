@@ -387,8 +387,9 @@ class ActivityWidget:
                 text=format_duration_short(max(0, stats.get("remaining_work_seconds", 0)))
             )
         if "recommended_remaining" in self.metric_labels:
+            recommended = stats.get("recommended_remaining_seconds")
             self.metric_labels["recommended_remaining"]["value"].configure(
-                text=format_duration_short(max(0, stats.get("recommended_remaining_seconds", 0)))
+                text=format_duration_short(recommended) if recommended is not None else "—"
             )
 
         self._apply_body_color(self._get_body_color(stats["activity_percent"]))
@@ -408,10 +409,13 @@ class ActivityWidget:
 
         # Оставшееся время до рекомендуемой нормы активности в заголовке
         if self._title_recommended_remaining_label is not None:
-            recommended = max(0, stats.get("recommended_remaining_seconds", 0))
-            hours = recommended // 3600
-            minutes = (recommended % 3600) // 60
-            self._title_recommended_remaining_label.configure(text=f" {hours}ч {minutes}м")
+            recommended = stats.get("recommended_remaining_seconds")
+            if recommended is None:
+                self._title_recommended_remaining_label.configure(text=" —")
+            else:
+                hours = recommended // 3600
+                minutes = (recommended % 3600) // 60
+                self._title_recommended_remaining_label.configure(text=f" {hours}ч {minutes}м")
 
         # Уведомление о достижении рекомендуемого порога активности.
         # Триггер — фактическое пересечение порога ростом активного времени,

@@ -168,13 +168,13 @@ def get_current_stats() -> dict:
 
     remaining_work_seconds = max(0, int(work_hours * 3600) - full_day_seconds)
     recommended_active_seconds = int(work_hours * 3600 * RECOMMENDED_ACTIVITY_THRESHOLD / 100)
-    # Дефицит до порога ограничиваем оставшимся рабочим временем: нельзя «добрать»
-    # активного времени больше, чем физически осталось до конца дня. Ситуация
-    # возникает, например, при сокращении нормы рабочих часов задним числом —
-    # тогда чистый дефицит может превышать остаток дня.
-    recommended_remaining_seconds = min(
-        max(0, recommended_active_seconds - active_seconds),
-        remaining_work_seconds,
+    recommended_deficit = max(0, recommended_active_seconds - active_seconds)
+    # Если дефицит активности больше, чем осталось рабочего времени, порог
+    # сегодня уже недостижим (например, после сокращения нормы задним числом).
+    # В этом случае возвращаем None — UI отрисует прочерк, чтобы инвариант
+    # «до нормы < до конца дня» сохранялся, когда показывается число.
+    recommended_remaining_seconds = (
+        recommended_deficit if recommended_deficit <= remaining_work_seconds else None
     )
 
     return {
