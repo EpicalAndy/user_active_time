@@ -18,7 +18,9 @@ from config import (
     LOG_DIR,
     INPUT_ACTIVITY_TIMEOUT,
     MIN_ACTIVITY_THRESHOLD,
+    MIN_WORK_TIME_THRESHOLD,
     RECOMMENDED_ACTIVITY_THRESHOLD,
+    RECOMMENDED_WORK_TIME_THRESHOLD,
     SOUND_NOTIFICATION,
     WIDGET_SHOW_ACTIVE_TIME,
     WIDGET_SHOW_ACTIVITY_PERCENT,
@@ -35,10 +37,12 @@ from config import (
 import config
 from constants import (
     COLOR_DARK_BG,
+    COLOR_DARKER_BG,
     COLOR_GRAY,
     COLOR_GREEN,
     COLOR_HOVER,
     COLOR_LIGHT_FG,
+    COLOR_MUTED,
     COLOR_RED,
     COLOR_WHITE,
     COLOR_YELLOW,
@@ -66,6 +70,20 @@ TITLE_FG = COLOR_LIGHT_FG
 CLOSE_HOVER = COLOR_RED
 MINIMIZE_HOVER = COLOR_HOVER
 METRIC_FG = COLOR_WHITE
+BODY_BG = COLOR_DARK_BG  # нейтральный фон тела; цвет дают сами метрики
+SEPARATOR_COLOR = COLOR_MUTED  # тонкая линия между тулбаром и телом
+
+# Шкалы цветовой подсветки метрик: какая метрика по какой шкале считается.
+_SCALE_ACTIVITY = "activity"
+_SCALE_WORK_TIME = "work_time"
+_METRIC_COLOR_SCALES: dict[str, str] = {
+    "active_time": _SCALE_ACTIVITY,
+    "activity_percent": _SCALE_ACTIVITY,
+    "recommended_remaining": _SCALE_ACTIVITY,
+    "full_day_time": _SCALE_WORK_TIME,
+    "remaining_time": _SCALE_WORK_TIME,
+    # session_count — без цветовой шкалы
+}
 
 _WIDGET_POS_FILE = os.path.join(LOG_DIR, "widget_position.json")
 
@@ -146,6 +164,8 @@ class ActivityWidget:
             on_heatmap=self._open_heatmap,
         )
         self._toolbar.pack(fill=tk.X)
+        self._toolbar_separator = tk.Frame(self.window, bg=SEPARATOR_COLOR, height=1)
+        self._toolbar_separator.pack(fill=tk.X)
         self._create_body()
         self._position_window()
         self._tick()
@@ -249,7 +269,7 @@ class ActivityWidget:
     # --- Тело ---
 
     def _create_body(self):
-        self.body_frame = tk.Frame(self.window, bg=COLOR_RED, padx=12, pady=8)
+        self.body_frame = tk.Frame(self.window, bg=BODY_BG, padx=12, pady=8)
         self.body_frame.pack(fill=tk.BOTH, expand=True)
 
         # Сообщение для нерабочего дня (скрыто по умолчанию)
@@ -275,22 +295,24 @@ class ActivityWidget:
             self.metric_labels["recommended_remaining"] = self._add_metric(f"{METRIC_RECOMMENDED_REMAINING_FULL}:")
 
     def _add_metric(self, label_text: str) -> dict:
-        frame = tk.Frame(self.body_frame, bg=COLOR_RED)
+        frame = tk.Frame(self.body_frame, bg=BODY_BG)
         frame.pack(fill=tk.X, pady=2)
 
         label = tk.Label(
             frame, text=label_text,
-            bg=COLOR_RED, fg=METRIC_FG,
+            bg=BODY_BG, fg=METRIC_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE), anchor=tk.W,
+            padx=4,
         )
-        label.pack(side=tk.LEFT)
+        label.pack(side=tk.LEFT, fill=tk.Y)
 
         value = tk.Label(
             frame, text="\u2014",
-            bg=COLOR_RED, fg=METRIC_FG,
+            bg=BODY_BG, fg=METRIC_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"), anchor=tk.E,
+            padx=4,
         )
-        value.pack(side=tk.RIGHT)
+        value.pack(side=tk.RIGHT, fill=tk.Y)
 
         return {"frame": frame, "label": label, "value": value}
 
@@ -316,16 +338,39 @@ class ActivityWidget:
 
     # --- Обновление данных ---
 
-    def _get_body_color(self, activity_percent: float) -> str:
-        if activity_percent >= RECOMMENDED_ACTIVITY_THRESHOLD:
+    def _color_for_percent(self, pct: float, recommended: float, minimum: float) -> str:
+        """Зелёный/жёлтый/красный по двум порогам."""
+        if pct >= recommended:
             return COLOR_GREEN
-        elif activity_percent >= MIN_ACTIVITY_THRESHOLD:
+        if pct >= minimum:
             return COLOR_YELLOW
         return COLOR_RED
 
-    def _apply_body_color(self, color: str):
-        self.body_frame.configure(bg=color)
-        for widgets in self.metric_labels.values():
+    def _metric_color(self, metric_id: str, stats: dict) -> str | None:
+        """Цвет фона для конкретной метрики или None, если у неё нет шкалы."""
+        scale = _METRIC_COLOR_SCALES.get(metric_id)
+        if scale == _SCALE_ACTIVITY:
+            return self._color_for_percent(
+                stats["activity_percent"],
+                RECOMMENDED_ACTIVITY_THRESHOLD,
+                MIN_ACTIVITY_THRESHOLD,
+            )
+        if scale == _SCALE_WORK_TIME:
+            max_work = stats.get("max_work_seconds", 0)
+            if max_work <= 0:
+                return None
+            pct = stats["full_day_seconds"] / max_work * 100
+            return self._color_for_percent(
+                pct,
+                RECOMMENDED_WORK_TIME_THRESHOLD,
+                MIN_WORK_TIME_THRESHOLD,
+            )
+        return None
+
+    def _apply_metric_colors(self, stats: dict):
+        """Каждая метрика красится по своей шкале; без шкалы — фон тела."""
+        for metric_id, widgets in self.metric_labels.items():
+            color = self._metric_color(metric_id, stats) or BODY_BG
             widgets["frame"].configure(bg=color)
             widgets["label"].configure(bg=color)
             widgets["value"].configure(bg=color)
@@ -335,8 +380,10 @@ class ActivityWidget:
         self._is_working_day = False
         for widgets in self.metric_labels.values():
             widgets["frame"].pack_forget()
+        # В нерабочем дне метрики скрыты, поэтому единственный сигнал — серый фон тела.
+        self.body_frame.configure(bg=COLOR_GRAY)
+        self._day_off_label.configure(bg=COLOR_GRAY)
         self._day_off_label.pack(fill=tk.X, pady=8)
-        self._apply_body_color(COLOR_GRAY)
         if self._title_percent_label is not None:
             self._title_percent_label.configure(text="")
         if self._title_remaining_label is not None:
@@ -348,6 +395,8 @@ class ActivityWidget:
         """Переключает виджет в режим рабочего дня"""
         self._is_working_day = True
         self._day_off_label.pack_forget()
+        # Восстанавливаем нейтральный фон тела (после возможного дня-выходного).
+        self.body_frame.configure(bg=BODY_BG)
         for widgets in self.metric_labels.values():
             widgets["frame"].pack(fill=tk.X, pady=2)
 
@@ -390,7 +439,7 @@ class ActivityWidget:
                 text=format_duration_short(max(0, stats.get("recommended_remaining_seconds", 0)))
             )
 
-        self._apply_body_color(self._get_body_color(stats["activity_percent"]))
+        self._apply_metric_colors(stats)
 
         # Процент активности в заголовке
         if self._title_percent_label is not None:
@@ -517,9 +566,11 @@ class ActivityWidget:
         """Сворачивает/разворачивает тело виджета"""
         if self._minimized:
             self._toolbar.pack(fill=tk.X)
+            self._toolbar_separator.pack(fill=tk.X)
             self.body_frame.pack(fill=tk.BOTH, expand=True)
         else:
             self._toolbar.pack_forget()
+            self._toolbar_separator.pack_forget()
             self.body_frame.pack_forget()
         self._minimized = not self._minimized
         self._resize_window()
@@ -559,6 +610,7 @@ class ActivityWidget:
         self._create_body()
         if self._minimized:
             self._toolbar.pack_forget()
+            self._toolbar_separator.pack_forget()
             self.body_frame.pack_forget()
         self._update_metrics()
         self._resize_window()
@@ -599,6 +651,8 @@ class ActivityWidget:
         global WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING
         global INPUT_ACTIVITY_TIMEOUT, COUNTDOWN_WARNING_SECONDS, CHECKPOINT_INTERVAL
         global SOUND_NOTIFICATION
+        global RECOMMENDED_ACTIVITY_THRESHOLD, MIN_ACTIVITY_THRESHOLD
+        global RECOMMENDED_WORK_TIME_THRESHOLD, MIN_WORK_TIME_THRESHOLD
         WIDGET_SHOW_ACTIVE_TIME = config.WIDGET_SHOW_ACTIVE_TIME
         WIDGET_SHOW_SESSION_COUNT = config.WIDGET_SHOW_SESSION_COUNT
         WIDGET_SHOW_ACTIVITY_PERCENT = config.WIDGET_SHOW_ACTIVITY_PERCENT
@@ -612,6 +666,10 @@ class ActivityWidget:
         COUNTDOWN_WARNING_SECONDS = config.COUNTDOWN_WARNING_SECONDS
         CHECKPOINT_INTERVAL = config.CHECKPOINT_INTERVAL
         SOUND_NOTIFICATION = config.SOUND_NOTIFICATION
+        RECOMMENDED_ACTIVITY_THRESHOLD = config.RECOMMENDED_ACTIVITY_THRESHOLD
+        MIN_ACTIVITY_THRESHOLD = config.MIN_ACTIVITY_THRESHOLD
+        RECOMMENDED_WORK_TIME_THRESHOLD = config.RECOMMENDED_WORK_TIME_THRESHOLD
+        MIN_WORK_TIME_THRESHOLD = config.MIN_WORK_TIME_THRESHOLD
 
     def _resize_window(self):
         """Пересчитывает размер окна под содержимое"""

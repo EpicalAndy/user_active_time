@@ -32,9 +32,14 @@ STATE_FILE = os.path.join(LOG_DIR, "state.json")
 # Текущий пользователь
 USERNAME = os.getenv("USERNAME", "unknown")
 
-# Пороги активности (в процентах)
+# Пороги активности (в процентах от нормы)
 RECOMMENDED_ACTIVITY_THRESHOLD = 80
 MIN_ACTIVITY_THRESHOLD = 70
+
+# Пороги общего рабочего времени (в процентах от нормы).
+# Используются для подсветки метрик «Рабочее время» и «Осталось до конца дня».
+RECOMMENDED_WORK_TIME_THRESHOLD = 100
+MIN_WORK_TIME_THRESHOLD = 80
 
 # Звуковое уведомление при достижении рекомендуемого порога активности
 SOUND_NOTIFICATION = False

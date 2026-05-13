@@ -168,14 +168,17 @@ def get_current_stats() -> dict:
 
     recommended_active_seconds = int(work_hours * 3600 * RECOMMENDED_ACTIVITY_THRESHOLD / 100)
 
+    max_work_seconds = int(work_hours * 3600)
+
     return {
         "is_working_day": True,
         "active_seconds": active_seconds,
         "session_count": session_count,
         "activity_percent": activity_percent,
         "full_day_seconds": full_day_seconds,
-        "remaining_work_seconds": max(0, int(work_hours * 3600) - full_day_seconds),
+        "remaining_work_seconds": max(0, max_work_seconds - full_day_seconds),
         "recommended_remaining_seconds": max(0, recommended_active_seconds - active_seconds),
+        "max_work_seconds": max_work_seconds,
     }
 
 
