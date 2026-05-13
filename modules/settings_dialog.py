@@ -177,6 +177,51 @@ class SettingsDialog:
                 title_frame, text=label, variable=self._title_metric_var, value=attr,
             ).pack(anchor=tk.W, padx=12, pady=2)
 
+        # --- Пороги ---
+        thresholds_frame = ttk.LabelFrame(tab_metrics, text="Пороги (%)")
+        thresholds_frame.pack(fill=tk.X, **pad)
+
+        thr_grid = tk.Frame(thresholds_frame)
+        thr_grid.pack(fill=tk.X, padx=8, pady=6)
+
+        # Шапка
+        tk.Label(thr_grid, text="Активность", font=(FONT_FAMILY, 9)).grid(
+            row=0, column=1, padx=(8, 4), pady=(0, 2),
+        )
+        tk.Label(thr_grid, text="Рабочее время", font=(FONT_FAMILY, 9)).grid(
+            row=0, column=2, padx=(4, 0), pady=(0, 2),
+        )
+
+        # Строка «Рекомендуемый»
+        tk.Label(thr_grid, text="Рекомендуемый:", font=(FONT_FAMILY, 9)).grid(
+            row=1, column=0, sticky=tk.W, pady=2,
+        )
+        self._recommended_activity_var = tk.IntVar(value=config.RECOMMENDED_ACTIVITY_THRESHOLD)
+        ttk.Spinbox(
+            thr_grid, from_=0, to=200, width=6,
+            textvariable=self._recommended_activity_var, justify=tk.CENTER,
+        ).grid(row=1, column=1, padx=(8, 4), pady=2)
+        self._recommended_work_var = tk.IntVar(value=config.RECOMMENDED_WORK_TIME_THRESHOLD)
+        ttk.Spinbox(
+            thr_grid, from_=0, to=200, width=6,
+            textvariable=self._recommended_work_var, justify=tk.CENTER,
+        ).grid(row=1, column=2, padx=(4, 0), pady=2)
+
+        # Строка «Минимальный»
+        tk.Label(thr_grid, text="Минимальный:", font=(FONT_FAMILY, 9)).grid(
+            row=2, column=0, sticky=tk.W, pady=2,
+        )
+        self._min_activity_var = tk.IntVar(value=config.MIN_ACTIVITY_THRESHOLD)
+        ttk.Spinbox(
+            thr_grid, from_=0, to=200, width=6,
+            textvariable=self._min_activity_var, justify=tk.CENTER,
+        ).grid(row=2, column=1, padx=(8, 4), pady=2)
+        self._min_work_var = tk.IntVar(value=config.MIN_WORK_TIME_THRESHOLD)
+        ttk.Spinbox(
+            thr_grid, from_=0, to=200, width=6,
+            textvariable=self._min_work_var, justify=tk.CENTER,
+        ).grid(row=2, column=2, padx=(4, 0), pady=2)
+
         # --- Кнопки ---
         btn_frame = tk.Frame(self.dialog)
         btn_frame.pack(fill=tk.X, padx=10, pady=8)
@@ -207,6 +252,10 @@ class SettingsDialog:
             "countdown_warning_seconds": self._warning_var.get(),
             "sound_notification": self._sound_var.get(),
             "track_mouse_move": self._track_mouse_move_var.get(),
+            "recommended_activity_threshold": self._recommended_activity_var.get(),
+            "min_activity_threshold": self._min_activity_var.get(),
+            "recommended_work_time_threshold": self._recommended_work_var.get(),
+            "min_work_time_threshold": self._min_work_var.get(),
         }
 
     def _write_config_file(self, values: dict):
@@ -234,6 +283,19 @@ class SettingsDialog:
             f"TRACK_MOUSE_MOVE = {values['track_mouse_move']}",
             content, flags=re.MULTILINE,
         )
+
+        # Пороги
+        for key, attr in (
+            ("recommended_activity_threshold", "RECOMMENDED_ACTIVITY_THRESHOLD"),
+            ("min_activity_threshold", "MIN_ACTIVITY_THRESHOLD"),
+            ("recommended_work_time_threshold", "RECOMMENDED_WORK_TIME_THRESHOLD"),
+            ("min_work_time_threshold", "MIN_WORK_TIME_THRESHOLD"),
+        ):
+            content = re.sub(
+                rf"^{attr}\s*=\s*.+$",
+                f"{attr} = {values[key]}",
+                content, flags=re.MULTILINE,
+            )
 
         # Метрики
         for attr, val in values["metrics"].items():
@@ -266,6 +328,10 @@ class SettingsDialog:
         config.TRACK_MOUSE_MOVE = values["track_mouse_move"]
         config.INPUT_ACTIVITY_TIMEOUT = values["input_activity_timeout"]
         config.COUNTDOWN_WARNING_SECONDS = values["countdown_warning_seconds"]
+        config.RECOMMENDED_ACTIVITY_THRESHOLD = values["recommended_activity_threshold"]
+        config.MIN_ACTIVITY_THRESHOLD = values["min_activity_threshold"]
+        config.RECOMMENDED_WORK_TIME_THRESHOLD = values["recommended_work_time_threshold"]
+        config.MIN_WORK_TIME_THRESHOLD = values["min_work_time_threshold"]
         for attr, val in values["metrics"].items():
             setattr(config, attr, val)
         for key, val in values["work_hours"].items():
