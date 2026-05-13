@@ -269,7 +269,9 @@ class ActivityWidget:
     # --- Тело ---
 
     def _create_body(self):
-        self.body_frame = tk.Frame(self.window, bg=BODY_BG, padx=12, pady=8)
+        # padx=0 — полоски метрик идут до краёв окна;
+        # pady=2 совпадает с зазором между метриками (см. _add_metric).
+        self.body_frame = tk.Frame(self.window, bg=BODY_BG, padx=0, pady=2)
         self.body_frame.pack(fill=tk.BOTH, expand=True)
 
         # Сообщение для нерабочего дня (скрыто по умолчанию)
