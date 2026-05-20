@@ -22,10 +22,18 @@
       "Bash(python -m py_compile constants.py modules/heatmap_viewer.py modules/toolbar.py modules/widget.py)",
       "Bash(python -m py_compile config.py modules/widget.py modules/session_monitor.py)",
       "Bash(python -m py_compile modules/widget.py)",
-      "Bash(python -m py_compile config.py constants.py modules/session_monitor.py modules/widget.py modules/settings_dialog.py)"
+      "Bash(python -m py_compile config.py constants.py modules/session_monitor.py modules/widget.py modules/settings_dialog.py)",
+      "Bash(python -m py_compile modules/widget/__init__.py modules/widget/widget.py modules/widget/toolbar.py)",
+      "Bash(ls modules/__pycache__/widget* 2>&1 | head -5; echo ---; rm -f modules/__pycache__/widget.cpython-*.pyc modules/__pycache__/toolbar.cpython-*.pyc && echo \"Stale .pyc cleaned\")",
+      "Bash(python -m py_compile modules/widget/*.py)",
+      "Bash(awk 'NR>=121 && NR<=210 {next} {print}' modules/widget/widget.py)",
+      "Bash(mv /tmp/w.py modules/widget/widget.py)",
+      "Bash(sed -n '115,130p' modules/widget/widget.py)",
+      "Bash(awk 'NR>=198 && NR<=208 {next} NR>=265 && NR<=290 {next} {print}' modules/widget/widget.py)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\aaubi\\active_time.backup_pre_json"
+      "C:\\Users\\aaubi\\active_time.backup_pre_json",
+      "H:\\Projects\\py\\user_active_time\\modules\\__pycache__"
     ]
   }
 }
