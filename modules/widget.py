@@ -306,7 +306,7 @@ class ActivityWidget:
 
         label = tk.Label(
             frame, text=label_text,
-            bg=BODY_BG, fg=METRIC_FG,
+            bg=BODY_BG, fg=COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE), anchor=tk.W,
             padx=4,
         )
@@ -374,12 +374,13 @@ class ActivityWidget:
         return None
 
     def _apply_metric_colors(self, stats: dict):
-        """Каждая метрика красится по своей шкале; без шкалы — фон тела."""
+        """Цвет идёт только на текст значения; фон и лейбл остаются нейтральными.
+
+        Метрики без шкалы (`session_count`, `work_day_end`) получают METRIC_FG.
+        """
         for metric_id, widgets in self.metric_labels.items():
-            color = self._metric_color(metric_id, stats) or BODY_BG
-            widgets["frame"].configure(bg=color)
-            widgets["label"].configure(bg=color)
-            widgets["value"].configure(bg=color)
+            color = self._metric_color(metric_id, stats) or METRIC_FG
+            widgets["value"].configure(fg=color)
 
     def _show_day_off(self):
         """Переключает виджет в режим нерабочего дня"""
