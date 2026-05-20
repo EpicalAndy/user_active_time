@@ -170,6 +170,16 @@ def get_current_stats() -> dict:
 
     max_work_seconds = int(work_hours * 3600)
 
+    # Расчётное время окончания дня = первый логин + норма (формат HH:MM).
+    # Если за день ещё не было сессий — None.
+    work_day_end = None
+    if first_login and max_work_seconds > 0:
+        login_dt = datetime.datetime.combine(
+            datetime.date.today(), parse_time(first_login).time(),
+        )
+        end_dt = login_dt + datetime.timedelta(seconds=max_work_seconds)
+        work_day_end = end_dt.strftime("%H:%M")
+
     return {
         "is_working_day": True,
         "active_seconds": active_seconds,
@@ -179,6 +189,7 @@ def get_current_stats() -> dict:
         "remaining_work_seconds": max(0, max_work_seconds - full_day_seconds),
         "recommended_remaining_seconds": max(0, recommended_active_seconds - active_seconds),
         "max_work_seconds": max_work_seconds,
+        "work_day_end": work_day_end,
     }
 
 

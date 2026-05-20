@@ -28,6 +28,7 @@ from config import (
     WIDGET_SHOW_RECOMMENDED_REMAINING,
     WIDGET_SHOW_REMAINING_TIME,
     WIDGET_SHOW_SESSION_COUNT,
+    WIDGET_SHOW_WORK_DAY_END,
     WIDGET_SHOW_TITLE_PERCENT,
     WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING,
     WIDGET_SHOW_TITLE_REMAINING_TIME,
@@ -53,6 +54,7 @@ from constants import (
     METRIC_RECOMMENDED_REMAINING_FULL,
     METRIC_REMAINING_TIME_FULL,
     METRIC_SESSION_COUNT,
+    METRIC_WORK_DAY_END_FULL,
 )
 from modules.events_monitor import get_countdown_remaining
 from modules.heatmap_viewer import HeatmapViewer
@@ -295,6 +297,8 @@ class ActivityWidget:
             self.metric_labels["remaining_time"] = self._add_metric(f"{METRIC_REMAINING_TIME_FULL}:")
         if WIDGET_SHOW_RECOMMENDED_REMAINING:
             self.metric_labels["recommended_remaining"] = self._add_metric(f"{METRIC_RECOMMENDED_REMAINING_FULL}:")
+        if WIDGET_SHOW_WORK_DAY_END:
+            self.metric_labels["work_day_end"] = self._add_metric(f"{METRIC_WORK_DAY_END_FULL}:")
 
     def _add_metric(self, label_text: str) -> dict:
         frame = tk.Frame(self.body_frame, bg=BODY_BG)
@@ -439,6 +443,10 @@ class ActivityWidget:
         if "recommended_remaining" in self.metric_labels:
             self.metric_labels["recommended_remaining"]["value"].configure(
                 text=format_duration_short(max(0, stats.get("recommended_remaining_seconds", 0)))
+            )
+        if "work_day_end" in self.metric_labels:
+            self.metric_labels["work_day_end"]["value"].configure(
+                text=stats.get("work_day_end") or "—"
             )
 
         self._apply_metric_colors(stats)
@@ -649,6 +657,7 @@ class ActivityWidget:
         global WIDGET_SHOW_ACTIVE_TIME, WIDGET_SHOW_SESSION_COUNT
         global WIDGET_SHOW_ACTIVITY_PERCENT, WIDGET_SHOW_FULL_DAY_TIME
         global WIDGET_SHOW_REMAINING_TIME, WIDGET_SHOW_RECOMMENDED_REMAINING
+        global WIDGET_SHOW_WORK_DAY_END
         global WIDGET_SHOW_TITLE_PERCENT, WIDGET_SHOW_TITLE_REMAINING_TIME
         global WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING
         global INPUT_ACTIVITY_TIMEOUT, COUNTDOWN_WARNING_SECONDS, CHECKPOINT_INTERVAL
@@ -661,6 +670,7 @@ class ActivityWidget:
         WIDGET_SHOW_FULL_DAY_TIME = config.WIDGET_SHOW_FULL_DAY_TIME
         WIDGET_SHOW_REMAINING_TIME = config.WIDGET_SHOW_REMAINING_TIME
         WIDGET_SHOW_RECOMMENDED_REMAINING = config.WIDGET_SHOW_RECOMMENDED_REMAINING
+        WIDGET_SHOW_WORK_DAY_END = config.WIDGET_SHOW_WORK_DAY_END
         WIDGET_SHOW_TITLE_PERCENT = config.WIDGET_SHOW_TITLE_PERCENT
         WIDGET_SHOW_TITLE_REMAINING_TIME = config.WIDGET_SHOW_TITLE_REMAINING_TIME
         WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING = config.WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING
