@@ -23,6 +23,7 @@ from constants import (
     METRIC_RECOMMENDED_REMAINING_FULL,
     METRIC_RECOMMENDED_REMAINING_PERCENT_FULL,
     METRIC_REMAINING_TIME_FULL,
+    METRIC_REMAINING_TIME_PERCENT_FULL,
     METRIC_SESSION_COUNT,
     METRIC_WORK_DAY_END_FULL,
 )
@@ -42,6 +43,7 @@ _METRIC_COLOR_SCALES: dict[str, str] = {
     "full_day_time": _SCALE_WORK_TIME,
     "full_day_time_percent": _SCALE_WORK_TIME,
     "remaining_time": _SCALE_WORK_TIME,
+    "remaining_time_percent": _SCALE_WORK_TIME,
     # session_count, work_day_end — без цветовой шкалы
 }
 
@@ -61,6 +63,15 @@ def _work_time_percent(stats: dict) -> float | None:
     if max_work <= 0:
         return None
     return stats["full_day_seconds"] / max_work * 100
+
+
+def _remaining_time_percent(stats: dict) -> float | None:
+    """% оставшегося до конца дня относительно нормы; None если нормы нет."""
+    max_work = stats.get("max_work_seconds", 0)
+    if max_work <= 0:
+        return None
+    remaining = max(0, stats.get("remaining_work_seconds", 0))
+    return remaining / max_work * 100
 
 
 def _recommended_remaining_percent(stats: dict) -> float | None:
@@ -106,25 +117,38 @@ class WidgetBody:
     def _build_metrics(self):
         # Парные метрики «время + процент» склеиваются в одну строку, если
         # оба чекбокса включены. Процент-only остаётся отдельной строкой
-        # (в позиции активности — после session_count, как было раньше).
+        # на месте парного «времени».
+        # Порядок повторяет диалог настроек: время-пары, затем прочие.
         if config.WIDGET_SHOW_ACTIVE_TIME:
             self._metric_labels["active_time"] = self._add_metric(f"{METRIC_ACTIVE_TIME}:")
-        if config.WIDGET_SHOW_SESSION_COUNT:
-            self._metric_labels["session_count"] = self._add_metric(f"{METRIC_SESSION_COUNT}:")
-        if config.WIDGET_SHOW_ACTIVITY_PERCENT and not config.WIDGET_SHOW_ACTIVE_TIME:
+        elif config.WIDGET_SHOW_ACTIVITY_PERCENT:
             self._metric_labels["activity_percent"] = self._add_metric(f"{METRIC_ACTIVITY_PERCENT}:")
+
         if config.WIDGET_SHOW_FULL_DAY_TIME:
             self._metric_labels["full_day_time"] = self._add_metric(f"{METRIC_FULL_DAY_TIME}:")
-        if config.WIDGET_SHOW_FULL_DAY_TIME_PERCENT and not config.WIDGET_SHOW_FULL_DAY_TIME:
-            self._metric_labels["full_day_time_percent"] = self._add_metric(f"{METRIC_FULL_DAY_TIME_PERCENT_FULL}:")
-        if config.WIDGET_SHOW_REMAINING_TIME:
-            self._metric_labels["remaining_time"] = self._add_metric(f"{METRIC_REMAINING_TIME_FULL}:")
+        elif config.WIDGET_SHOW_FULL_DAY_TIME_PERCENT:
+            self._metric_labels["full_day_time_percent"] = self._add_metric(
+                f"{METRIC_FULL_DAY_TIME_PERCENT_FULL}:",
+            )
+
         if config.WIDGET_SHOW_RECOMMENDED_REMAINING:
-            self._metric_labels["recommended_remaining"] = self._add_metric(f"{METRIC_RECOMMENDED_REMAINING_FULL}:")
-        if config.WIDGET_SHOW_RECOMMENDED_REMAINING_PERCENT and not config.WIDGET_SHOW_RECOMMENDED_REMAINING:
+            self._metric_labels["recommended_remaining"] = self._add_metric(
+                f"{METRIC_RECOMMENDED_REMAINING_FULL}:",
+            )
+        elif config.WIDGET_SHOW_RECOMMENDED_REMAINING_PERCENT:
             self._metric_labels["recommended_remaining_percent"] = self._add_metric(
                 f"{METRIC_RECOMMENDED_REMAINING_PERCENT_FULL}:",
             )
+
+        if config.WIDGET_SHOW_REMAINING_TIME:
+            self._metric_labels["remaining_time"] = self._add_metric(f"{METRIC_REMAINING_TIME_FULL}:")
+        elif config.WIDGET_SHOW_REMAINING_TIME_PERCENT:
+            self._metric_labels["remaining_time_percent"] = self._add_metric(
+                f"{METRIC_REMAINING_TIME_PERCENT_FULL}:",
+            )
+
+        if config.WIDGET_SHOW_SESSION_COUNT:
+            self._metric_labels["session_count"] = self._add_metric(f"{METRIC_SESSION_COUNT}:")
         if config.WIDGET_SHOW_WORK_DAY_END:
             self._metric_labels["work_day_end"] = self._add_metric(f"{METRIC_WORK_DAY_END_FULL}:")
 
@@ -202,8 +226,16 @@ class WidgetBody:
                 text=f"{pct:.1f}%" if pct is not None else "—",
             )
         if "remaining_time" in labels:
-            labels["remaining_time"]["value"].configure(
-                text=format_duration_short(max(0, stats.get("remaining_work_seconds", 0))),
+            text = format_duration_short(max(0, stats.get("remaining_work_seconds", 0)))
+            if config.WIDGET_SHOW_REMAINING_TIME_PERCENT:
+                pct = _remaining_time_percent(stats)
+                if pct is not None:
+                    text += f" ({pct:.1f}%)"
+            labels["remaining_time"]["value"].configure(text=text)
+        if "remaining_time_percent" in labels:
+            pct = _remaining_time_percent(stats)
+            labels["remaining_time_percent"]["value"].configure(
+                text=f"{pct:.1f}%" if pct is not None else "—",
             )
         if "recommended_remaining" in labels:
             text = format_duration_short(max(0, stats.get("recommended_remaining_seconds", 0)))

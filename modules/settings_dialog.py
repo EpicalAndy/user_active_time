@@ -20,6 +20,7 @@ from constants import (
     METRIC_RECOMMENDED_REMAINING_FULL,
     METRIC_RECOMMENDED_REMAINING_PERCENT_FULL,
     METRIC_REMAINING_TIME_FULL,
+    METRIC_REMAINING_TIME_PERCENT_FULL,
     METRIC_SESSION_COUNT_FULL,
     METRIC_WORK_DAY_END_FULL,
 )
@@ -36,17 +37,29 @@ _DAYS = [
     ("sunday", "Вс"),
 ]
 
-_WIDGET_METRIC_TOGGLES = [
+# Раскладка чекбоксов «Виджет» — три группы: время | проценты | остальное.
+_WIDGET_METRIC_TIME_TOGGLES = [
     ("WIDGET_SHOW_ACTIVE_TIME", METRIC_ACTIVE_TIME),
-    ("WIDGET_SHOW_SESSION_COUNT", METRIC_SESSION_COUNT_FULL),
-    ("WIDGET_SHOW_ACTIVITY_PERCENT", METRIC_ACTIVITY_PERCENT_FULL),
     ("WIDGET_SHOW_FULL_DAY_TIME", METRIC_FULL_DAY_TIME),
-    ("WIDGET_SHOW_FULL_DAY_TIME_PERCENT", METRIC_FULL_DAY_TIME_PERCENT_FULL),
-    ("WIDGET_SHOW_REMAINING_TIME", METRIC_REMAINING_TIME_FULL),
     ("WIDGET_SHOW_RECOMMENDED_REMAINING", METRIC_RECOMMENDED_REMAINING_FULL),
+    ("WIDGET_SHOW_REMAINING_TIME", METRIC_REMAINING_TIME_FULL),
+]
+_WIDGET_METRIC_PERCENT_TOGGLES = [
+    ("WIDGET_SHOW_ACTIVITY_PERCENT", METRIC_ACTIVITY_PERCENT_FULL),
+    ("WIDGET_SHOW_FULL_DAY_TIME_PERCENT", METRIC_FULL_DAY_TIME_PERCENT_FULL),
     ("WIDGET_SHOW_RECOMMENDED_REMAINING_PERCENT", METRIC_RECOMMENDED_REMAINING_PERCENT_FULL),
+    ("WIDGET_SHOW_REMAINING_TIME_PERCENT", METRIC_REMAINING_TIME_PERCENT_FULL),
+]
+_WIDGET_METRIC_OTHER_TOGGLES = [
+    ("WIDGET_SHOW_SESSION_COUNT", METRIC_SESSION_COUNT_FULL),
     ("WIDGET_SHOW_WORK_DAY_END", METRIC_WORK_DAY_END_FULL),
 ]
+# Полный плоский список — для collect_values, write/apply.
+_WIDGET_METRIC_TOGGLES = (
+    _WIDGET_METRIC_TIME_TOGGLES
+    + _WIDGET_METRIC_PERCENT_TOGGLES
+    + _WIDGET_METRIC_OTHER_TOGGLES
+)
 
 # В заголовке можно выбрать только одну метрику или «Не отображать».
 # Пустой attr — значение «ничего не показывать» (все связанные флаги становятся False).
@@ -159,7 +172,30 @@ class SettingsDialog:
         widget_frame = ttk.LabelFrame(tab_metrics, text="Виджет")
         widget_frame.pack(fill=tk.X, **pad)
 
-        for attr, label in _WIDGET_METRIC_TOGGLES:
+        # Время | Проценты — две колонки наверху.
+        cols = tk.Frame(widget_frame)
+        cols.pack(fill=tk.X, padx=8, pady=(4, 0))
+        time_col = tk.Frame(cols)
+        time_col.pack(side=tk.LEFT, fill=tk.X, expand=True, anchor=tk.N)
+        percent_col = tk.Frame(cols)
+        percent_col.pack(side=tk.LEFT, fill=tk.X, expand=True, anchor=tk.N)
+
+        for attr, label in _WIDGET_METRIC_TIME_TOGGLES:
+            var = tk.BooleanVar(value=getattr(config, attr))
+            self._metric_vars[attr] = var
+            ttk.Checkbutton(time_col, text=label, variable=var).pack(
+                anchor=tk.W, pady=2,
+            )
+
+        for attr, label in _WIDGET_METRIC_PERCENT_TOGGLES:
+            var = tk.BooleanVar(value=getattr(config, attr))
+            self._metric_vars[attr] = var
+            ttk.Checkbutton(percent_col, text=label, variable=var).pack(
+                anchor=tk.W, pady=2,
+            )
+
+        # Остальные — внизу на всю ширину.
+        for attr, label in _WIDGET_METRIC_OTHER_TOGGLES:
             var = tk.BooleanVar(value=getattr(config, attr))
             self._metric_vars[attr] = var
             ttk.Checkbutton(widget_frame, text=label, variable=var).pack(
