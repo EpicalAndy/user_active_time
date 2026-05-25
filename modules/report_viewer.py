@@ -22,10 +22,8 @@ from constants import (
     ENCODING,
     FONT_FAMILY,
     METRIC_ACTIVE_TIME,
-    METRIC_ACTIVITY_PERCENT,
-    METRIC_FIRST_LOGIN,
-    METRIC_LAST_LOGOUT,
-    METRIC_SESSION_COUNT,
+    METRIC_FULL_DAY_TIME,
+    METRIC_SESSION_COUNT_FULL,
 )
 from modules.ui_utils import center_on_screen
 from utility import calculate_activity_percent, format_duration
@@ -77,12 +75,10 @@ def _parse_report(filepath: str) -> dict | None:
     max_work_seconds = int(data.get("max_work_seconds") or 0)
     total_work_seconds = data.get("total_work_seconds")
 
-    # Процент считаем здесь — в файле его нет (производное значение).
-    if max_work_seconds > 0:
-        pct = calculate_activity_percent(active_seconds, max_work_seconds / 3600)
-        activity_percent = f"{pct:.1f}%"
-    else:
-        activity_percent = "—"
+    # Парные метрики «время + процент» собираем заранее, чтобы _show_window
+    # оставался простым рендером.
+    active_combined = _combine_time_percent(active_seconds, max_work_seconds)
+    work_combined = _combine_time_percent(total_work_seconds, max_work_seconds)
 
     # Парсим строки лога (формат строки не менялся при переходе на JSON).
     events = []
@@ -96,18 +92,38 @@ def _parse_report(filepath: str) -> dict | None:
             continue
         events.append((ts, m.group(2)))
 
+    first_login = data.get("first_login")
+    last_logout = data.get("last_logout")
+    if first_login or last_logout:
+        day_bounds = f"{first_login or '—'} — {last_logout or '—'}"
+    else:
+        day_bounds = "—"
+
     return {
         "user": data.get("username") or "—",
         "date": date_display,
-        "first_login": data.get("first_login") or "—",
-        "last_logout": data.get("last_logout") or "—",
-        "active_time": _format_dash(active_seconds),
+        "day_bounds": day_bounds,
+        "active_combined": active_combined,
+        "work_combined": work_combined,
         "max_work_time": _format_dash(max_work_seconds),
-        "total_work_time": _format_dash(total_work_seconds),
         "session_count": str(data.get("session_count") or 0),
-        "activity_percent": activity_percent,
         "events": events,
     }
+
+
+def _combine_time_percent(seconds, max_work_seconds: int) -> str:
+    """Форматирует «Xч Yм Zс (NN.N%)» по секундам и норме.
+
+    Возвращает «—», если seconds None или 0 без нормы; без скобок — если
+    нормы нет (поделить не на что).
+    """
+    if not seconds:
+        return "—"
+    time_str = format_duration(int(seconds))
+    if max_work_seconds <= 0:
+        return time_str
+    pct = calculate_activity_percent(int(seconds), max_work_seconds / 3600)
+    return f"{time_str} ({pct:.1f}%)"
 
 
 def _build_intervals(events: list[tuple[datetime.datetime, str]]) -> list[tuple[float, float, str]]:
@@ -197,13 +213,11 @@ class ReportViewer:
         stats = [
             ("Пользователь", data.get("user", "—")),
             ("Дата", data.get("date", "—")),
-            (METRIC_FIRST_LOGIN, data.get("first_login", "—")),
-            (METRIC_LAST_LOGOUT, data.get("last_logout", "—")),
-            (METRIC_ACTIVE_TIME, data.get("active_time", "—")),
-            ("Рабочее время", data.get("total_work_time", "—")),
-            ("Макс. рабочее время", data.get("max_work_time", "—")),
-            (METRIC_SESSION_COUNT, data.get("session_count", "—")),
-            (METRIC_ACTIVITY_PERCENT, data.get("activity_percent", "—")),
+            ("Начало и конец рабочего дня", data.get("day_bounds", "—")),
+            (METRIC_ACTIVE_TIME, data.get("active_combined", "—")),
+            (METRIC_FULL_DAY_TIME, data.get("work_combined", "—")),
+            ("Максимальное рабочее время", data.get("max_work_time", "—")),
+            (METRIC_SESSION_COUNT_FULL, data.get("session_count", "—")),
         ]
 
         for label_text, value_text in stats:
