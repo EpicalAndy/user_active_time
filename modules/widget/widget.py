@@ -35,6 +35,10 @@ from utility import format_date_key
 WINDOW_BG = COLOR_DARK_BG  # фон окна (под телом и тулбаром)
 SEPARATOR_COLOR = COLOR_MUTED  # тонкая линия между тулбаром и телом
 
+# Ширина виджета — даёт место длинным меткам вроде «До рекомендуемой нормы:»
+# плюс склеенным значениям вида «5ч 51м (86.6%)».
+WIDGET_WIDTH = 280
+
 _WIDGET_POS_FILE = os.path.join(LOG_DIR, "widget_position.json")
 
 
@@ -97,7 +101,7 @@ class ActivityWidget:
 
     def _position_window(self):
         self.window.update_idletasks()
-        width = 250
+        width = WIDGET_WIDTH
         screen_w = self.window.winfo_screenwidth()
         screen_h = self.window.winfo_screenheight()
         win_h = self.window.winfo_reqheight()
@@ -228,7 +232,7 @@ class ActivityWidget:
     def _resize_window(self):
         """Пересчитывает размер окна под содержимое"""
         self.window.update_idletasks()
-        width = 250
+        width = WIDGET_WIDTH
         win_h = self.window.winfo_reqheight()
         x = self.window.winfo_x()
         y = self.window.winfo_y()
