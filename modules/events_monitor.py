@@ -9,7 +9,6 @@ import time
 from ctypes import wintypes
 
 import config
-from config import INPUT_ACTIVITY_TIMEOUT
 from constants import (
     HOOKPROC,
     WH_KEYBOARD_LL,
@@ -113,14 +112,21 @@ def _hook_thread_func():
 
 
 def _timer_thread_func():
-    """Поток таймера: проверяет таймаут неактивности каждую секунду"""
+    """Поток таймера: проверяет таймаут неактивности каждую секунду.
+
+    Таймаут читается из config внутри цикла — изменения через диалог
+    настроек применяются на следующей итерации, без перезапуска.
+    """
     global _is_active, _countdown_start_mono
     global _inactive_start_mono, _total_inactive_seconds
 
-    timeout = INPUT_ACTIVITY_TIMEOUT
-
     while not _stop_event.wait(timeout=1.0):
         if not _session_running or _screen_locked:
+            continue
+
+        timeout = config.INPUT_ACTIVITY_TIMEOUT
+        # Если параметр выставлен в 0 на лету — пауза до восстановления.
+        if timeout <= 0:
             continue
 
         now_mono = time.monotonic()
@@ -153,7 +159,7 @@ def start(log_callback):
     """Запускает мониторинг ввода"""
     global _log_callback, _hook_thread, _timer_thread
 
-    if INPUT_ACTIVITY_TIMEOUT <= 0:
+    if config.INPUT_ACTIVITY_TIMEOUT <= 0:
         print("[EVENTS] Мониторинг ввода отключен (INPUT_ACTIVITY_TIMEOUT = 0)")
         return
 
@@ -171,14 +177,14 @@ def start(log_callback):
     _hook_thread.start()
     _timer_thread.start()
 
-    print(f"[EVENTS] Мониторинг ввода запущен (таймаут: {INPUT_ACTIVITY_TIMEOUT}с)")
+    print(f"[EVENTS] Мониторинг ввода запущен (таймаут: {config.INPUT_ACTIVITY_TIMEOUT}с)")
 
 
 def stop():
     """Останавливает мониторинг ввода"""
     global _hook_thread, _timer_thread
 
-    if INPUT_ACTIVITY_TIMEOUT <= 0:
+    if config.INPUT_ACTIVITY_TIMEOUT <= 0:
         return
 
     _stop_event.set()
@@ -199,7 +205,7 @@ def stop():
 
 def get_session_inactive_seconds() -> int:
     """Возвращает суммарное неактивное время (секунды) за текущую сессию"""
-    if INPUT_ACTIVITY_TIMEOUT <= 0:
+    if config.INPUT_ACTIVITY_TIMEOUT <= 0:
         return 0
     total = _total_inactive_seconds
     # Если сейчас неактивен — прибавляем текущий незавершённый период
@@ -210,12 +216,12 @@ def get_session_inactive_seconds() -> int:
 
 def get_countdown_remaining() -> int | None:
     """Возвращает секунды до перехода в неактивное состояние, или None если отключено/неактивен"""
-    if INPUT_ACTIVITY_TIMEOUT <= 0 or not _session_running or _screen_locked:
+    if config.INPUT_ACTIVITY_TIMEOUT <= 0 or not _session_running or _screen_locked:
         return None
     if not _is_active:
         return 0
     elapsed = time.monotonic() - _countdown_start_mono
-    remaining = INPUT_ACTIVITY_TIMEOUT - elapsed
+    remaining = config.INPUT_ACTIVITY_TIMEOUT - elapsed
     return max(0, int(remaining))
 
 
@@ -233,7 +239,7 @@ def notify_session_start():
     global _last_input_mono, _last_input_source, _countdown_start_mono
     global _inactive_start_mono, _total_inactive_seconds
 
-    if INPUT_ACTIVITY_TIMEOUT <= 0:
+    if config.INPUT_ACTIVITY_TIMEOUT <= 0:
         return
 
     _screen_locked = False
@@ -252,7 +258,7 @@ def notify_session_end():
     """Вызывается при завершении сессии (LOCK/LOGOFF). Тихий сброс."""
     global _is_active, _session_running, _screen_locked, _total_inactive_seconds
 
-    if INPUT_ACTIVITY_TIMEOUT <= 0:
+    if config.INPUT_ACTIVITY_TIMEOUT <= 0:
         return
 
     # Финализируем текущий незавершённый период неактивности

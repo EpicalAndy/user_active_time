@@ -10,7 +10,8 @@ import os
 import threading
 from ctypes import wintypes
 
-from config import LOG_DIR, RECOMMENDED_ACTIVITY_THRESHOLD, STATE_FILE, USERNAME
+import config
+from config import LOG_DIR, STATE_FILE, USERNAME
 from constants import ENCODING
 from constants import (
     NOTIFY_FOR_THIS_SESSION,
@@ -166,7 +167,7 @@ def get_current_stats() -> dict:
             login_time = datetime.datetime.combine(datetime.date.today(), parse_time(first_login).time())
             full_day_seconds = max(0, int((now - login_time).total_seconds()))
 
-    recommended_active_seconds = int(work_hours * 3600 * RECOMMENDED_ACTIVITY_THRESHOLD / 100)
+    recommended_active_seconds = int(work_hours * 3600 * config.RECOMMENDED_ACTIVITY_THRESHOLD / 100)
 
     max_work_seconds = int(work_hours * 3600)
 
