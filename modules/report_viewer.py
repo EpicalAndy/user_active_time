@@ -176,16 +176,18 @@ def _time_to_hours(dt: datetime.datetime) -> float:
 class ReportViewer:
     """Окно визуализации отчёта"""
 
-    def __init__(self, parent: tk.Misc):
-        filepath = filedialog.askopenfilename(
-            parent=parent,
-            title="Выберите файл отчёта",
-            initialdir=LOG_DIR,
-            filetypes=[("JSON-отчёты", "*.json"), ("Все файлы", "*.*")],
-        )
-
-        if not filepath:
-            return
+    def __init__(self, parent: tk.Misc, filepath: str | None = None):
+        # filepath задан — открываем конкретный отчёт (например, из тепловой карты);
+        # иначе показываем диалог выбора файла.
+        if filepath is None:
+            filepath = filedialog.askopenfilename(
+                parent=parent,
+                title="Выберите файл отчёта",
+                initialdir=LOG_DIR,
+                filetypes=[("JSON-отчёты", "*.json"), ("Все файлы", "*.*")],
+            )
+            if not filepath:
+                return
 
         data = _parse_report(filepath)
         if data is None:

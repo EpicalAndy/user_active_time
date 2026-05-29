@@ -31,7 +31,8 @@ from constants import (
     HEATMAP_TOOLTIP_PERCENT,
     HEATMAP_WINDOW_TITLE,
 )
-from modules.period_report import _read_day_metrics, percent
+from modules.period_report import _read_day_metrics, get_report_path, percent
+from modules.report_viewer import ReportViewer
 from modules.ui_utils import center_on_screen
 from utility import format_date_display, format_duration_short
 
@@ -172,15 +173,24 @@ class HeatmapViewer:
             relief = tk.FLAT
             bd = 0
 
+        # Ячейки с данными кликабельны — открывают дневной отчёт.
+        has_data = metrics is not None
         cell = tk.Label(
             self._grid_frame, text=str(date.day),
             bg=bg, fg=fg,
             font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"),
             width=_CELL_WIDTH, height=_CELL_HEIGHT,
             relief=relief, bd=bd, highlightthickness=0,
+            cursor="hand2" if has_data else "",
         )
         cell.grid(row=row, column=col, padx=2, pady=2)
         self._attach_tooltip(cell, tooltip)
+        if has_data:
+            cell.bind("<Button-1>", lambda _e, d=date: self._open_day_report(d))
+
+    def _open_day_report(self, date: datetime.date):
+        """Открывает дневной отчёт по дате клика на ячейке."""
+        ReportViewer(self.win, filepath=get_report_path(date))
 
     def _attach_tooltip(self, widget: tk.Label, text: str):
         tip: list[tk.Toplevel | None] = [None]
