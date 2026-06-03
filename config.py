@@ -51,6 +51,9 @@ MIN_WORK_TIME_THRESHOLD = 80
 # Звуковое уведомление при достижении рекомендуемого порога активности
 SOUND_NOTIFICATION = False
 
+# Тиканье часов в предупредительной фазе обратного отсчёта неактивности
+COUNTDOWN_TICK_SOUND = False
+
 # Виджет: какие метрики отображать
 WIDGET_SHOW_ACTIVE_TIME = True
 WIDGET_SHOW_SESSION_COUNT = False

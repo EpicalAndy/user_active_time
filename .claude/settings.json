@@ -32,7 +32,8 @@
       "Bash(awk 'NR>=198 && NR<=208 {next} NR>=265 && NR<=290 {next} {print}' modules/widget/widget.py)",
       "Bash(python -m py_compile config.py modules/events_monitor.py modules/session_monitor.py)",
       "Bash(python -m py_compile config.py constants.py modules/widget/body.py modules/settings_dialog.py)",
-      "Bash(python -m py_compile modules/report_viewer.py modules/heatmap_viewer.py)"
+      "Bash(python -m py_compile modules/report_viewer.py modules/heatmap_viewer.py)",
+      "Bash(python -m py_compile config.py modules/widget/notification.py modules/widget/widget.py modules/settings_dialog.py)"
     ],
     "additionalDirectories": [
       "C:\\Users\\aaubi\\active_time.backup_pre_json",

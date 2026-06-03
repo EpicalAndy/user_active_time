@@ -131,6 +131,12 @@ class SettingsDialog:
             anchor=tk.W, padx=12, pady=2,
         )
 
+        self._tick_sound_var = tk.BooleanVar(value=config.COUNTDOWN_TICK_SOUND)
+        ttk.Checkbutton(
+            notify_frame, text="Тиканье часов при предупреждении",
+            variable=self._tick_sound_var,
+        ).pack(anchor=tk.W, padx=12, pady=2)
+
         # --- Трекеры ---
         trackers_frame = ttk.LabelFrame(tab_general, text="Трекеры")
         trackers_frame.pack(fill=tk.X, **pad)
@@ -293,6 +299,7 @@ class SettingsDialog:
             "input_activity_timeout": self._timeout_var.get(),
             "countdown_warning_seconds": self._warning_var.get(),
             "sound_notification": self._sound_var.get(),
+            "countdown_tick_sound": self._tick_sound_var.get(),
             "track_mouse_move": self._track_mouse_move_var.get(),
             "recommended_activity_threshold": self._recommended_activity_var.get(),
             "min_activity_threshold": self._min_activity_var.get(),
@@ -318,6 +325,11 @@ class SettingsDialog:
         content = re.sub(
             r"^SOUND_NOTIFICATION\s*=\s*.+$",
             f"SOUND_NOTIFICATION = {values['sound_notification']}",
+            content, flags=re.MULTILINE,
+        )
+        content = re.sub(
+            r"^COUNTDOWN_TICK_SOUND\s*=\s*.+$",
+            f"COUNTDOWN_TICK_SOUND = {values['countdown_tick_sound']}",
             content, flags=re.MULTILINE,
         )
         content = re.sub(
@@ -367,6 +379,7 @@ class SettingsDialog:
     def _apply_runtime(self, values: dict):
         """Обновляет атрибуты модуля config в памяти"""
         config.SOUND_NOTIFICATION = values["sound_notification"]
+        config.COUNTDOWN_TICK_SOUND = values["countdown_tick_sound"]
         config.TRACK_MOUSE_MOVE = values["track_mouse_move"]
         config.INPUT_ACTIVITY_TIMEOUT = values["input_activity_timeout"]
         config.COUNTDOWN_WARNING_SECONDS = values["countdown_warning_seconds"]

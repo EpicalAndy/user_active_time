@@ -46,11 +46,43 @@ def _generate_notification_wav() -> str:
     return wav_path
 
 
+def _generate_tick_wav() -> str:
+    """Короткий «тик» (~40 мс) — высокий клик с быстрым затуханием."""
+    sample_rate = 22050
+    duration = 0.04
+    n_samples = int(sample_rate * duration)
+
+    freq = 2000  # Гц
+    samples = []
+    for i in range(n_samples):
+        t = i / sample_rate
+        # Быстрый экспоненциальный спад — звук «клика»
+        envelope = math.exp(-t * 80)
+        value = math.sin(2 * math.pi * freq * t) * envelope * 0.3
+        samples.append(int(max(-1.0, min(1.0, value)) * 32767))
+
+    wav_path = os.path.join(LOG_DIR, "tick.wav")
+    with wave.open(wav_path, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(struct.pack(f"<{n_samples}h", *samples))
+    return wav_path
+
+
 _NOTIFICATION_WAV_PATH = _generate_notification_wav()
+_TICK_WAV_PATH = _generate_tick_wav()
 
 
 def play_notification():
     """Асинхронно проигрывает звук уведомления."""
     winsound.PlaySound(
         _NOTIFICATION_WAV_PATH, winsound.SND_FILENAME | winsound.SND_ASYNC,
+    )
+
+
+def play_tick():
+    """Асинхронно проигрывает короткий тик часов."""
+    winsound.PlaySound(
+        _TICK_WAV_PATH, winsound.SND_FILENAME | winsound.SND_ASYNC,
     )

@@ -27,7 +27,7 @@ from modules.session_monitor import checkpoint_session
 from modules.report_viewer import ReportViewer
 from modules.settings_dialog import SettingsDialog
 from .body import WidgetBody
-from .notification import play_notification
+from .notification import play_notification, play_tick
 from .title_bar import TitleBar
 from .toolbar import WidgetToolbar
 from utility import format_date_key
@@ -148,7 +148,18 @@ class ActivityWidget:
         if not self._body.is_working_day():
             self._title_bar.clear_countdown()
             return
-        self._title_bar.update_countdown(get_countdown_remaining())
+        remaining = get_countdown_remaining()
+        self._title_bar.update_countdown(remaining)
+
+        # Тиканье часов в предупредительной фазе (мигает жёлтый/красный).
+        warning = config.COUNTDOWN_WARNING_SECONDS
+        if (
+            config.COUNTDOWN_TICK_SOUND
+            and remaining is not None
+            and warning > 0
+            and 0 < remaining <= warning
+        ):
+            play_tick()
 
     def _tick(self):
         """Единый тикер виджета (шаг 500мс)"""
