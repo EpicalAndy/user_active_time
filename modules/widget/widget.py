@@ -95,7 +95,14 @@ class ActivityWidget:
         self.window.overrideredirect(True)
         self.window.attributes("-topmost", True)
         self.window.resizable(False, False)
-        self.window.configure(bg=WINDOW_BG)
+        # highlight* — это рамка, которой мы мигаем при предупреждении.
+        # По умолчанию красим в WINDOW_BG, чтобы она была невидимой.
+        self.window.configure(
+            bg=WINDOW_BG,
+            highlightthickness=2,
+            highlightbackground=WINDOW_BG,
+            highlightcolor=WINDOW_BG,
+        )
 
     # --- Позиционирование ---
 
@@ -161,10 +168,19 @@ class ActivityWidget:
         ):
             play_tick()
 
+    def _apply_border_alert(self):
+        """Красит рамку окна в красный во время предупреждения/нуля countdown'а.
+
+        Цвет берётся из TitleBar — синхронно с миганием текста заголовка.
+        """
+        color = self._title_bar.countdown_alert_color() or WINDOW_BG
+        self.window.configure(highlightbackground=color, highlightcolor=color)
+
     def _tick(self):
         """Единый тикер виджета (шаг 500мс)"""
         # 500мс — анимация мигания countdown'а (если активна)
         self._title_bar.tick_blink()
+        self._apply_border_alert()
 
         # 1с — countdown
         if self._tick_count % 2 == 0:

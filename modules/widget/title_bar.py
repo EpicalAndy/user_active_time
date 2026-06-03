@@ -22,6 +22,11 @@ TITLE_BG = COLOR_DARK_BG
 TITLE_FG = COLOR_LIGHT_FG
 MINIMIZE_HOVER = COLOR_HOVER
 
+# Состояния countdown'а для внешней индикации (например, рамка виджета).
+_COUNTDOWN_NORMAL = "normal"
+_COUNTDOWN_WARNING = "warning"
+_COUNTDOWN_ZERO = "zero"
+
 
 def _format_hm(seconds: int) -> str:
     """Форматирует секунды в «Xч Yм» (без секунд)."""
@@ -54,6 +59,7 @@ class TitleBar:
 
         self._countdown_blinking = False
         self._countdown_blink_bold = False
+        self._countdown_state = _COUNTDOWN_NORMAL
         self._drag_x = 0
         self._drag_y = 0
 
@@ -180,6 +186,7 @@ class TitleBar:
         if remaining is None:
             self._countdown_label.configure(text="")
             self._countdown_blink_bold = False
+            self._countdown_state = _COUNTDOWN_NORMAL
             return
 
         minutes, secs = divmod(remaining, 60)
@@ -187,6 +194,7 @@ class TitleBar:
 
         if remaining == 0:
             # Неактивен — жирный красный, мигание выключено.
+            self._countdown_state = _COUNTDOWN_ZERO
             self._countdown_blinking = False
             self._countdown_blink_bold = False
             self._countdown_label.configure(
@@ -202,11 +210,13 @@ class TitleBar:
         warning_threshold = config.COUNTDOWN_WARNING_SECONDS
         if warning_threshold > 0 and remaining <= warning_threshold:
             # Приближение к неактивности — мигание управляется тикером.
+            self._countdown_state = _COUNTDOWN_WARNING
             self._countdown_label.configure(text=text, fg=TITLE_FG)
             self._countdown_blinking = True
             return
 
         # Обычное состояние.
+        self._countdown_state = _COUNTDOWN_NORMAL
         self._countdown_blinking = False
         self._countdown_blink_bold = False
         self._countdown_label.configure(
@@ -224,6 +234,20 @@ class TitleBar:
             return
         self._countdown_label.configure(text="")
         self._countdown_blinking = False
+        self._countdown_state = _COUNTDOWN_NORMAL
+
+    def countdown_alert_color(self) -> str | None:
+        """Цвет для внешней индикации опасности (например, рамка окна).
+
+        - Фаза нуля → сплошной красный (как у текста заголовка).
+        - Фаза предупреждения, кадр «жирный красный» → красный.
+        - Иначе → None (индикатор не нужен).
+        """
+        if self._countdown_state == _COUNTDOWN_ZERO:
+            return COLOR_RED
+        if self._countdown_state == _COUNTDOWN_WARNING and self._countdown_blink_bold:
+            return COLOR_RED
+        return None
 
     def tick_blink(self):
         """Один шаг анимации мигания (вызывать каждые ~500мс)."""
