@@ -54,6 +54,10 @@ SOUND_NOTIFICATION = False
 # Тиканье часов в предупредительной фазе обратного отсчёта неактивности
 COUNTDOWN_TICK_SOUND = False
 
+# Скрывать обратный отсчёт неактивности после достижения рекомендуемой нормы
+# (норма заработана — больше не нужно уведомлять о приближении к простою)
+STOP_COUNTDOWN_AT_RECOMMENDED = False
+
 # Виджет: какие метрики отображать
 WIDGET_SHOW_ACTIVE_TIME = True
 WIDGET_SHOW_SESSION_COUNT = False

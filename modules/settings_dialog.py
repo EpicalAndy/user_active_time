@@ -137,6 +137,12 @@ class SettingsDialog:
             variable=self._tick_sound_var,
         ).pack(anchor=tk.W, padx=12, pady=2)
 
+        self._stop_countdown_var = tk.BooleanVar(value=config.STOP_COUNTDOWN_AT_RECOMMENDED)
+        ttk.Checkbutton(
+            notify_frame, text="Отключать обратный отсчёт при достижении нормы",
+            variable=self._stop_countdown_var,
+        ).pack(anchor=tk.W, padx=12, pady=2)
+
         # --- Трекеры ---
         trackers_frame = ttk.LabelFrame(tab_general, text="Трекеры")
         trackers_frame.pack(fill=tk.X, **pad)
@@ -300,6 +306,7 @@ class SettingsDialog:
             "countdown_warning_seconds": self._warning_var.get(),
             "sound_notification": self._sound_var.get(),
             "countdown_tick_sound": self._tick_sound_var.get(),
+            "stop_countdown_at_recommended": self._stop_countdown_var.get(),
             "track_mouse_move": self._track_mouse_move_var.get(),
             "recommended_activity_threshold": self._recommended_activity_var.get(),
             "min_activity_threshold": self._min_activity_var.get(),
@@ -330,6 +337,11 @@ class SettingsDialog:
         content = re.sub(
             r"^COUNTDOWN_TICK_SOUND\s*=\s*.+$",
             f"COUNTDOWN_TICK_SOUND = {values['countdown_tick_sound']}",
+            content, flags=re.MULTILINE,
+        )
+        content = re.sub(
+            r"^STOP_COUNTDOWN_AT_RECOMMENDED\s*=\s*.+$",
+            f"STOP_COUNTDOWN_AT_RECOMMENDED = {values['stop_countdown_at_recommended']}",
             content, flags=re.MULTILINE,
         )
         content = re.sub(
@@ -380,6 +392,7 @@ class SettingsDialog:
         """Обновляет атрибуты модуля config в памяти"""
         config.SOUND_NOTIFICATION = values["sound_notification"]
         config.COUNTDOWN_TICK_SOUND = values["countdown_tick_sound"]
+        config.STOP_COUNTDOWN_AT_RECOMMENDED = values["stop_countdown_at_recommended"]
         config.TRACK_MOUSE_MOVE = values["track_mouse_move"]
         config.INPUT_ACTIVITY_TIMEOUT = values["input_activity_timeout"]
         config.COUNTDOWN_WARNING_SECONDS = values["countdown_warning_seconds"]

@@ -61,6 +61,7 @@ class ActivityWidget:
         self.stats_provider = stats_provider
         self._minimized = False
         self._goal_notified = False
+        self._last_activity_percent: float | None = None  # кеш для countdown-гейта
         self._tick_count = 0
         self._checkpoint_count = 1  # начинаем с 1, чтобы не срабатывать на первом тике
         self.root = tk.Tk()
@@ -137,9 +138,13 @@ class ActivityWidget:
 
         if not stats.get("is_working_day", True):
             self._title_bar.clear_metric_labels()
+            self._last_activity_percent = None
             return
 
         self._title_bar.update_metric_labels(stats)
+        # Кешируем для _update_countdown: он бегает в 60 раз чаще, чем мы
+        # обновляем stats, и тянуть stats_provider() каждую секунду накладно.
+        self._last_activity_percent = stats["activity_percent"]
 
         # Уведомление о достижении рекомендуемого порога активности
         if config.SOUND_NOTIFICATION and stats["activity_percent"] >= config.RECOMMENDED_ACTIVITY_THRESHOLD:
@@ -155,6 +160,26 @@ class ActivityWidget:
         if not self._body.is_working_day():
             self._title_bar.clear_countdown()
             return
+
+        goal_reached = (
+            self._last_activity_percent is not None
+            and self._last_activity_percent >= config.RECOMMENDED_ACTIVITY_THRESHOLD
+        )
+
+        if goal_reached:
+            # «Награда»: заголовок и рамка всегда зелёные.
+            # Чекбокс контролирует только сам countdown: показывать «__:__»
+            # или продолжать честно тикать.
+            self._title_bar.enter_goal_reached(
+                show_placeholder=config.STOP_COUNTDOWN_AT_RECOMMENDED,
+            )
+            if config.STOP_COUNTDOWN_AT_RECOMMENDED:
+                # Заполнитель уже выставлен в enter_goal_reached, и тиканья
+                # звуком тоже не нужно — норма выработана, отдыхаем.
+                return
+        else:
+            self._title_bar.exit_goal_reached()
+
         remaining = get_countdown_remaining()
         self._title_bar.update_countdown(remaining)
 

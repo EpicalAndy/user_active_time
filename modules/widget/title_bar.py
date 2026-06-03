@@ -12,6 +12,7 @@ import config
 from config import MAIN_FONT_SIZE
 from constants import (
     COLOR_DARK_BG,
+    COLOR_GREEN,
     COLOR_HOVER,
     COLOR_LIGHT_FG,
     COLOR_RED,
@@ -60,6 +61,10 @@ class TitleBar:
         self._countdown_blinking = False
         self._countdown_blink_bold = False
         self._countdown_state = _COUNTDOWN_NORMAL
+        # Режим «норма выработана»: title и border всегда зелёные.
+        # _goal_placeholder=True дополнительно заменяет countdown на «__:__».
+        self._goal_reached = False
+        self._goal_placeholder = False
         self._drag_x = 0
         self._drag_y = 0
 
@@ -180,8 +185,17 @@ class TitleBar:
         remaining: None — сессии нет / не отслеживается, скрываем текст.
         0 — пользователь неактивен, жирный красный без мигания.
         >0 — таймер обратного отсчёта; вблизи нуля включается мигание.
+
+        Если виджет в режиме «норма выработана» (`_goal_reached`):
+          * `_goal_placeholder=True` — обновление полностью пропускается
+            (на месте countdown остаётся зелёный «__:__»);
+          * иначе обновляются только цифры countdown, а цвет/шрифт
+            заголовка не трогаются — заголовок остаётся зелёным.
         """
         if self._countdown_label is None:
+            return
+        if self._goal_placeholder:
+            # Заполнитель уже отрисован в enter_goal_reached, не трогаем.
             return
         if remaining is None:
             self._countdown_label.configure(text="")
@@ -201,10 +215,7 @@ class TitleBar:
                 text=text, fg=COLOR_RED,
                 font=(FONT_FAMILY, MAIN_FONT_SIZE - 1, "bold"),
             )
-            self._title_label.configure(
-                fg=COLOR_RED,
-                font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"),
-            )
+            self._apply_title_state(COLOR_RED, weight="bold")
             return
 
         warning_threshold = config.COUNTDOWN_WARNING_SECONDS
@@ -212,6 +223,7 @@ class TitleBar:
             # Приближение к неактивности — мигание управляется тикером.
             self._countdown_state = _COUNTDOWN_WARNING
             self._countdown_label.configure(text=text, fg=TITLE_FG)
+            self._apply_title_state(TITLE_FG, weight="normal")
             self._countdown_blinking = True
             return
 
@@ -223,10 +235,21 @@ class TitleBar:
             text=text, fg=TITLE_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
         )
-        self._title_label.configure(
-            fg=TITLE_FG,
-            font=(FONT_FAMILY, MAIN_FONT_SIZE),
-        )
+        self._apply_title_state(TITLE_FG, weight="normal")
+
+    def _apply_title_state(self, color: str, weight: str):
+        """Красит заголовок «Активность» с учётом overriding'а goal_reached.
+
+        Когда `_goal_reached` — заголовок принудительно зелёный нормальный.
+        """
+        if self._goal_reached:
+            self._title_label.configure(
+                fg=COLOR_GREEN, font=(FONT_FAMILY, MAIN_FONT_SIZE),
+            )
+        else:
+            self._title_label.configure(
+                fg=color, font=(FONT_FAMILY, MAIN_FONT_SIZE, weight),
+            )
 
     def clear_countdown(self):
         """Скрывает countdown (например, на нерабочем дне)."""
@@ -235,14 +258,55 @@ class TitleBar:
         self._countdown_label.configure(text="")
         self._countdown_blinking = False
         self._countdown_state = _COUNTDOWN_NORMAL
+        # Сброс goal-состояния — на не-рабочем дне нет смысла его держать.
+        self.exit_goal_reached()
+
+    def enter_goal_reached(self, show_placeholder: bool):
+        """Включает режим «норма выработана».
+
+        Заголовок «Активность» и countdown-alert (рамка) становятся
+        зелёными — это работает всегда, пока режим активен.
+
+        show_placeholder=True — countdown-лейбл заменяется зелёным
+        «__:__», и update_countdown игнорируется до выхода из режима.
+        show_placeholder=False — countdown продолжает обновляться
+        и мигать по обычным правилам; зелёным остаётся только заголовок.
+        """
+        if self._countdown_label is None:
+            return
+        self._goal_reached = True
+        # Заголовок сразу красим зелёным; следующий update_countdown учтёт флаг.
+        self._title_label.configure(
+            fg=COLOR_GREEN, font=(FONT_FAMILY, MAIN_FONT_SIZE),
+        )
+        if show_placeholder:
+            self._goal_placeholder = True
+            self._countdown_state = _COUNTDOWN_NORMAL
+            self._countdown_blinking = False
+            self._countdown_blink_bold = False
+            self._countdown_label.configure(
+                text="__:__", fg=COLOR_GREEN,
+                font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
+            )
+        else:
+            self._goal_placeholder = False
+
+    def exit_goal_reached(self):
+        """Выключает режим «норма выработана» — возвращаемся к обычной логике."""
+        self._goal_reached = False
+        self._goal_placeholder = False
 
     def countdown_alert_color(self) -> str | None:
-        """Цвет для внешней индикации опасности (например, рамка окна).
+        """Цвет для внешней индикации (например, рамка окна).
 
+        - Режим «норма выработана» → сплошной зелёный (имеет приоритет
+          над red-предупреждениями).
         - Фаза нуля → сплошной красный (как у текста заголовка).
         - Фаза предупреждения, кадр «жирный красный» → красный.
         - Иначе → None (индикатор не нужен).
         """
+        if self._goal_reached:
+            return COLOR_GREEN
         if self._countdown_state == _COUNTDOWN_ZERO:
             return COLOR_RED
         if self._countdown_state == _COUNTDOWN_WARNING and self._countdown_blink_bold:
@@ -259,9 +323,11 @@ class TitleBar:
         self._countdown_label.configure(
             font=(FONT_FAMILY, MAIN_FONT_SIZE - 1, weight), fg=fg,
         )
-        self._title_label.configure(
-            font=(FONT_FAMILY, MAIN_FONT_SIZE, weight), fg=fg,
-        )
+        # Заголовок мигает только если не в режиме «норма выработана».
+        if not self._goal_reached:
+            self._title_label.configure(
+                font=(FONT_FAMILY, MAIN_FONT_SIZE, weight), fg=fg,
+            )
 
     def rebuild_metric_labels(self):
         """Пересоздаёт опциональные лейблы заголовка по текущему config.
