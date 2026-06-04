@@ -133,7 +133,7 @@ class SettingsDialog:
 
         self._tick_sound_var = tk.BooleanVar(value=config.COUNTDOWN_TICK_SOUND)
         ttk.Checkbutton(
-            notify_frame, text="Тиканье часов при предупреждении",
+            notify_frame, text="Сигнал по истечению таймера активности",
             variable=self._tick_sound_var,
         ).pack(anchor=tk.W, padx=12, pady=2)
 
