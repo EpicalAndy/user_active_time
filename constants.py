@@ -32,10 +32,20 @@ DEFAULT_MANUAL_ACTIVITY_DESCRIPTION = "Добавлено пользовател
 # === Меню «Отчёты» ===
 
 REPORTS_MENU_LABEL = "Отчёты"
+REPORT_MENU_TODAY = "Отчёт за сегодня"
+REPORT_MENU_LAST = "Последний дневной отчёт"
 REPORT_MENU_FOLDER = "Папка с отчётами"
 REPORT_MENU_DAILY = "Дневной отчёт"
 REPORT_MENU_HEATMAP = "Тепловая карта"
 REPORT_MENU_PERIOD = "Отчёт за период"
+
+# Ошибки для быстрых пунктов «сегодня» / «последний»
+REPORT_NO_DATA_TITLE = "Нет отчёта"
+REPORT_NO_TODAY_TEXT = (
+    "Отчёт за сегодня ещё не создан. Активность за день должна быть записана,"
+    " чтобы появился JSON-файл."
+)
+REPORT_NO_PAST_TEXT = "В папке отчётов не найдено ни одного прошлого дневного отчёта."
 
 # === Окно тепловой карты ===
 

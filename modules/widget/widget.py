@@ -7,6 +7,7 @@ import json
 import os
 import tkinter as tk
 from collections.abc import Callable
+from tkinter import messagebox
 
 from config import (
     LOG_DIR,
@@ -18,10 +19,17 @@ from config import (
     WIDGET_SHOW_SESSION_COUNT,
 )
 import config
-from constants import COLOR_DARK_BG, COLOR_MUTED
+from constants import (
+    COLOR_DARK_BG,
+    COLOR_MUTED,
+    REPORT_NO_DATA_TITLE,
+    REPORT_NO_PAST_TEXT,
+    REPORT_NO_TODAY_TEXT,
+)
 from modules.events_monitor import get_countdown_remaining
 from modules.heatmap_viewer import HeatmapViewer
 from modules.manual_activity_dialog import ManualActivityDialog
+from modules.period_report import find_latest_past_report_date, get_report_path
 from modules.period_report_dialog import PeriodReportDialog
 from modules.session_monitor import checkpoint_session
 from modules.report_viewer import ReportViewer
@@ -83,6 +91,8 @@ class ActivityWidget:
             on_open_settings=self._open_settings,
             on_period_report=self._open_period_report,
             on_heatmap=self._open_heatmap,
+            on_today_report=self._open_today_report,
+            on_last_report=self._open_last_report,
         )
         self._toolbar.pack(fill=tk.X)
         self._toolbar_separator = tk.Frame(self.window, bg=SEPARATOR_COLOR, height=1)
@@ -244,6 +254,26 @@ class ActivityWidget:
     def _view_report(self):
         """Открывает визуализацию отчёта"""
         ReportViewer(self.window)
+
+    def _open_today_report(self):
+        """Быстрое открытие отчёта за сегодня."""
+        path = get_report_path(datetime.date.today())
+        if not os.path.exists(path):
+            messagebox.showinfo(
+                REPORT_NO_DATA_TITLE, REPORT_NO_TODAY_TEXT, parent=self.window,
+            )
+            return
+        ReportViewer(self.window, filepath=path)
+
+    def _open_last_report(self):
+        """Открывает ближайший по дате прошлый дневной отчёт."""
+        date = find_latest_past_report_date(datetime.date.today())
+        if date is None:
+            messagebox.showinfo(
+                REPORT_NO_DATA_TITLE, REPORT_NO_PAST_TEXT, parent=self.window,
+            )
+            return
+        ReportViewer(self.window, filepath=get_report_path(date))
 
     def _open_period_report(self):
         """Открывает диалог построения отчёта за период"""

@@ -18,7 +18,9 @@ from constants import (
     REPORT_MENU_DAILY,
     REPORT_MENU_FOLDER,
     REPORT_MENU_HEATMAP,
+    REPORT_MENU_LAST,
     REPORT_MENU_PERIOD,
+    REPORT_MENU_TODAY,
     REPORTS_MENU_LABEL,
     TOOLTIP_ADD_ACTIVE_TIME,
     TOOLTIP_OPEN_SETTINGS,
@@ -41,6 +43,8 @@ class WidgetToolbar:
         on_open_settings: Callable,
         on_period_report: Callable | None = None,
         on_heatmap: Callable | None = None,
+        on_today_report: Callable | None = None,
+        on_last_report: Callable | None = None,
     ):
         self.frame = tk.Frame(parent, bg=TOOLBAR_BG, pady=2)
 
@@ -54,6 +58,8 @@ class WidgetToolbar:
         self._add_dropdown(
             REPORTS_MENU_LABEL,
             [
+                (REPORT_MENU_TODAY, on_today_report),
+                (REPORT_MENU_LAST, on_last_report),
                 (REPORT_MENU_FOLDER, on_open_reports),
                 (REPORT_MENU_DAILY, on_view_report),
                 (REPORT_MENU_HEATMAP, on_heatmap),

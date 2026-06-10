@@ -9,15 +9,44 @@
 import datetime
 import json
 import os
+import re
 from collections.abc import Iterable
 
 from config import LOG_DIR, USERNAME
 from constants import ENCODING, REPORT_JSON_EXT
 from utility import format_date_display, get_work_hours
 
+_REPORT_FILE_RE = re.compile(
+    rf"^{re.escape(USERNAME)}_(\d{{2}}\.\d{{2}}\.\d{{4}}){re.escape(REPORT_JSON_EXT)}$"
+)
+
 
 def get_report_path(date: datetime.date) -> str:
     return os.path.join(LOG_DIR, f"{USERNAME}_{format_date_display(date)}{REPORT_JSON_EXT}")
+
+
+def find_latest_past_report_date(before: datetime.date) -> datetime.date | None:
+    """Возвращает дату самого позднего существующего отчёта строго ДО `before`.
+
+    Сканирует LOG_DIR по имени файла, парсит даты, выбирает максимум.
+    Если ничего не найдено — None.
+    """
+    if not os.path.isdir(LOG_DIR):
+        return None
+    latest: datetime.date | None = None
+    for name in os.listdir(LOG_DIR):
+        m = _REPORT_FILE_RE.match(name)
+        if not m:
+            continue
+        try:
+            d = datetime.datetime.strptime(m.group(1), "%d.%m.%Y").date()
+        except ValueError:
+            continue
+        if d >= before:
+            continue
+        if latest is None or d > latest:
+            latest = d
+    return latest
 
 
 def daterange(start: datetime.date, end: datetime.date) -> Iterable[datetime.date]:
