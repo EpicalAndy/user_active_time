@@ -93,14 +93,9 @@ def _read_day_metrics(date: datetime.date) -> dict | None:
 def build_period_report(start: datetime.date, end: datetime.date) -> dict:
     """Собирает отчёт за период.
 
-    Возвращает:
-        {"missing_boundary": [date, ...]}  — если отсутствует одна или обе крайние даты
-        {"days": [...], "totals": {...}}   — успешно собранные данные
+    Дни без отчётов пропускаются. Если в диапазоне нет ни одного отчёта,
+    вернётся пустой список days и нулевые totals.
     """
-    missing_boundary = [d for d in (start, end) if _read_day_metrics(d) is None]
-    if missing_boundary:
-        return {"missing_boundary": missing_boundary}
-
     days = []
     for d in daterange(start, end):
         m = _read_day_metrics(d)
@@ -113,7 +108,7 @@ def build_period_report(start: datetime.date, end: datetime.date) -> dict:
         "max_work_seconds": sum(d["max_work_seconds"] for d in days),
     }
 
-    return {"days": days, "totals": totals, "missing_boundary": []}
+    return {"days": days, "totals": totals}
 
 
 def percent(part: int, whole: int) -> float | None:

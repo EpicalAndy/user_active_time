@@ -147,11 +147,10 @@ class PeriodReportDialog:
             return
 
         report = build_period_report(from_date, to_date)
-        if report["missing_boundary"]:
-            dates = ", ".join(format_date_display(d) for d in report["missing_boundary"])
+        if not report["days"]:
             messagebox.showerror(
                 PERIOD_DIALOG_ERROR_NO_DATA_TITLE,
-                PERIOD_DIALOG_ERROR_NO_DATA_TEMPLATE.format(dates=dates),
+                PERIOD_DIALOG_ERROR_NO_DATA_TEMPLATE,
                 parent=self.dialog,
             )
             return
