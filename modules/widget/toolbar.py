@@ -60,8 +60,9 @@ class WidgetToolbar:
             [
                 (REPORT_MENU_TODAY, on_today_report),
                 (REPORT_MENU_LAST, on_last_report),
-                (REPORT_MENU_FOLDER, on_open_reports),
                 (REPORT_MENU_DAILY, on_view_report),
+                None,
+                (REPORT_MENU_FOLDER, on_open_reports),
                 (REPORT_MENU_HEATMAP, on_heatmap),
                 (REPORT_MENU_PERIOD, on_period_report),
             ],
@@ -91,7 +92,7 @@ class WidgetToolbar:
     def _add_dropdown(
         self,
         label: str,
-        items: list[tuple[str, Callable | None]],
+        items: list[tuple[str, Callable | None] | None],
         side: Literal["left", "right", "top", "bottom"] = "left",
     ):
         btn = tk.Label(
@@ -103,7 +104,12 @@ class WidgetToolbar:
         btn.pack(side=side, fill=tk.Y)
 
         menu = tk.Menu(btn, tearoff=0)
-        for item_label, command in items:
+        for item in items:
+            if item is None:
+                menu.add_separator()
+                continue
+
+            item_label, command = item
             if command is None:
                 menu.add_command(label=item_label, state=tk.DISABLED)
             else:
