@@ -20,12 +20,11 @@ from config import (
 )
 import config
 from constants import (
-    COLOR_DARK_BG,
-    COLOR_MUTED,
     REPORT_NO_DATA_TITLE,
     REPORT_NO_PAST_TEXT,
     REPORT_NO_TODAY_TEXT,
 )
+from modules import theme
 from modules.events_monitor import get_countdown_remaining
 from modules.heatmap_viewer import HeatmapViewer
 from modules.manual_activity_dialog import ManualActivityDialog
@@ -40,8 +39,8 @@ from .title_bar import TitleBar
 from .toolbar import WidgetToolbar
 from utility import format_date_key
 
-WINDOW_BG = COLOR_DARK_BG  # фон окна (под телом и тулбаром)
-SEPARATOR_COLOR = COLOR_MUTED  # тонкая линия между тулбаром и телом
+# Фон окна (под телом и тулбаром) и тонкая линия-разделитель читаются
+# динамически из theme.* — см. _build_chrome / _apply_theme.
 
 # Ширина виджета — даёт место длинным меткам вроде «До рекомендуемой нормы:»
 # плюс склеенным значениям вида «5ч 51м (86.6%)».
@@ -77,6 +76,15 @@ class ActivityWidget:
 
         self.window = tk.Toplevel(self.root)
         self._setup_window()
+        self._build_chrome()
+        self._position_window()
+        self._tick()
+
+    def _build_chrome(self):
+        """Создаёт «хромированную» часть виджета: заголовок, тулбар,
+        разделитель и тело. Вынесено отдельно, чтобы пересобирать всё это
+        при смене темы (уже созданные tk-виджеты сами не перекрашиваются).
+        """
         self._title_bar = TitleBar(
             self.window,
             on_close=self.close,
@@ -95,12 +103,10 @@ class ActivityWidget:
             on_last_report=self._open_last_report,
         )
         self._toolbar.pack(fill=tk.X)
-        self._toolbar_separator = tk.Frame(self.window, bg=SEPARATOR_COLOR, height=1)
+        self._toolbar_separator = tk.Frame(self.window, bg=theme.COLOR_MUTED, height=1)
         self._toolbar_separator.pack(fill=tk.X)
         self._body = WidgetBody(self.window)
         self._body.pack(fill=tk.BOTH, expand=True)
-        self._position_window()
-        self._tick()
 
     def _setup_window(self):
         self.window.overrideredirect(True)
@@ -109,10 +115,10 @@ class ActivityWidget:
         # highlight* — это рамка, которой мы мигаем при предупреждении.
         # По умолчанию красим в WINDOW_BG, чтобы она была невидимой.
         self.window.configure(
-            bg=WINDOW_BG,
+            bg=theme.COLOR_DARK_BG,
             highlightthickness=2,
-            highlightbackground=WINDOW_BG,
-            highlightcolor=WINDOW_BG,
+            highlightbackground=theme.COLOR_DARK_BG,
+            highlightcolor=theme.COLOR_DARK_BG,
         )
 
     # --- Позиционирование ---
@@ -208,7 +214,7 @@ class ActivityWidget:
 
         Цвет берётся из TitleBar — синхронно с миганием текста заголовка.
         """
-        color = self._title_bar.countdown_alert_color() or WINDOW_BG
+        color = self._title_bar.countdown_alert_color() or theme.COLOR_DARK_BG
         self.window.configure(highlightbackground=color, highlightcolor=color)
 
     def _tick(self):
@@ -293,10 +299,41 @@ class ActivityWidget:
 
     def _open_settings(self):
         """Открывает диалог настроек"""
+        theme_before = theme.current_theme()
         dialog = SettingsDialog(self.window)
         dialog.wait()
-        if dialog.saved:
+        if not dialog.saved:
+            return
+        if theme.current_theme() != theme_before:
+            # Смена темы затрагивает всю «хромированную» часть — пересобираем
+            # её целиком (тело тоже, поэтому отдельный _rebuild_body не нужен).
+            self._apply_theme()
+        else:
             self._rebuild_body()
+
+    def _apply_theme(self):
+        """Перекрашивает виджет под текущую тему.
+
+        Окно перекрашиваем напрямую, а заголовок/тулбар/разделитель/тело
+        пересобираем: уже созданные tk-виджеты сами цвет не меняют, новые же
+        читают палитру динамически из theme.*.
+        """
+        self.window.configure(
+            bg=theme.COLOR_DARK_BG,
+            highlightbackground=theme.COLOR_DARK_BG,
+            highlightcolor=theme.COLOR_DARK_BG,
+        )
+        self._title_bar.destroy()
+        self._toolbar.destroy()
+        self._toolbar_separator.destroy()
+        self._body.destroy()
+        self._build_chrome()
+        if self._minimized:
+            self._toolbar.pack_forget()
+            self._toolbar_separator.pack_forget()
+            self._body.pack_forget()
+        self._update_metrics()
+        self._resize_window()
 
     def _rebuild_body(self):
         """Пересоздаёт тело виджета после изменения настроек"""

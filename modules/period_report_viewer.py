@@ -8,14 +8,6 @@ from tkinter import ttk
 
 from config import MAIN_FONT_SIZE, MIN_ACTIVITY_THRESHOLD, RECOMMENDED_ACTIVITY_THRESHOLD
 from constants import (
-    COLOR_DARK_BG,
-    COLOR_GRAY,
-    COLOR_GREEN,
-    COLOR_LIGHT_FG,
-    COLOR_MUTED,
-    COLOR_RED,
-    COLOR_WHITE,
-    COLOR_YELLOW,
     FONT_FAMILY,
     PERIOD_REPORT_BREAKDOWN_LABEL,
     PERIOD_REPORT_CLOSE,
@@ -35,6 +27,7 @@ from constants import (
     PERIOD_REPORT_TOTALS_LABEL,
     PERIOD_REPORT_WINDOW_TITLE,
 )
+from modules import theme
 from modules.period_report import percent
 from modules.ui_utils import center_on_screen
 from utility import format_date_display, format_duration_short
@@ -95,7 +88,7 @@ class PeriodReportViewer:
         self.win = tk.Toplevel(parent)
         self.win.title(PERIOD_REPORT_WINDOW_TITLE)
         self.win.transient(parent.winfo_toplevel())
-        self.win.configure(bg=COLOR_DARK_BG)
+        self.win.configure(bg=theme.COLOR_DARK_BG)
         self.win.resizable(False, False)
 
         self._render(start, end, report)
@@ -106,7 +99,7 @@ class PeriodReportViewer:
         days = report["days"]
 
         # --- Период ---
-        header_frame = tk.Frame(self.win, bg=COLOR_DARK_BG, padx=16, pady=8)
+        header_frame = tk.Frame(self.win, bg=theme.COLOR_DARK_BG, padx=16, pady=8)
         header_frame.pack(fill=tk.X, pady=(12, 4))
         period_text = f"{format_date_display(start)} — {format_date_display(end)}"
         self._stat_row(header_frame, PERIOD_REPORT_PERIOD_LABEL, period_text)
@@ -114,12 +107,12 @@ class PeriodReportViewer:
         # --- Итоги за период ---
         section_label = tk.Label(
             self.win, text=PERIOD_REPORT_TOTALS_LABEL,
-            bg=COLOR_DARK_BG, fg=COLOR_LIGHT_FG,
+            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"), anchor=tk.W,
         )
         section_label.pack(fill=tk.X, padx=16, pady=(8, 4))
 
-        totals_frame = tk.Frame(self.win, bg=COLOR_DARK_BG, padx=16, pady=4)
+        totals_frame = tk.Frame(self.win, bg=theme.COLOR_DARK_BG, padx=16, pady=4)
         totals_frame.pack(fill=tk.X)
 
         max_work = totals["max_work_seconds"]
@@ -152,12 +145,12 @@ class PeriodReportViewer:
         )
 
         # --- Разделитель ---
-        tk.Frame(self.win, bg=COLOR_MUTED, height=1).pack(fill=tk.X, padx=16, pady=(8, 0))
+        tk.Frame(self.win, bg=theme.COLOR_MUTED, height=1).pack(fill=tk.X, padx=16, pady=(8, 0))
 
         # --- По дням ---
         breakdown_label = tk.Label(
             self.win, text=PERIOD_REPORT_BREAKDOWN_LABEL,
-            bg=COLOR_DARK_BG, fg=COLOR_LIGHT_FG,
+            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"), anchor=tk.W,
         )
         breakdown_label.pack(fill=tk.X, padx=16, pady=(8, 4))
@@ -171,19 +164,19 @@ class PeriodReportViewer:
         ).pack(pady=(8, 12))
 
     def _stat_row(self, parent: tk.Frame, label: str, value: str):
-        row = tk.Frame(parent, bg=COLOR_DARK_BG)
+        row = tk.Frame(parent, bg=theme.COLOR_DARK_BG)
         row.pack(fill=tk.X, pady=1)
         tk.Label(
-            row, text=f"{label}:", bg=COLOR_DARK_BG, fg=COLOR_MUTED,
+            row, text=f"{label}:", bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE), anchor=tk.W,
         ).pack(side=tk.LEFT)
         tk.Label(
-            row, text=value, bg=COLOR_DARK_BG, fg=COLOR_LIGHT_FG,
+            row, text=value, bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"), anchor=tk.E,
         ).pack(side=tk.RIGHT)
 
     def _build_breakdown_table(self, days: list[dict]):
-        container = tk.Frame(self.win, bg=COLOR_DARK_BG, padx=16, pady=4)
+        container = tk.Frame(self.win, bg=theme.COLOR_DARK_BG, padx=16, pady=4)
         container.pack(fill=tk.BOTH, expand=True)
 
         _patch_treeview_tag_colors()
@@ -195,10 +188,10 @@ class PeriodReportViewer:
         )
 
         # Цветовая подсветка строк по дневному % активности
-        tree.tag_configure(_TAG_HIGH, background=COLOR_GREEN, foreground=COLOR_WHITE)
-        tree.tag_configure(_TAG_MID, background=COLOR_YELLOW, foreground=COLOR_WHITE)
-        tree.tag_configure(_TAG_LOW, background=COLOR_RED, foreground=COLOR_WHITE)
-        tree.tag_configure(_TAG_DAY_OFF, background=COLOR_GRAY, foreground=COLOR_WHITE)
+        tree.tag_configure(_TAG_HIGH, background=theme.COLOR_GREEN, foreground=theme.COLOR_WHITE)
+        tree.tag_configure(_TAG_MID, background=theme.COLOR_YELLOW, foreground=theme.COLOR_WHITE)
+        tree.tag_configure(_TAG_LOW, background=theme.COLOR_RED, foreground=theme.COLOR_WHITE)
+        tree.tag_configure(_TAG_DAY_OFF, background=theme.COLOR_GRAY, foreground=theme.COLOR_WHITE)
 
         headings = {
             "date": PERIOD_REPORT_COL_DATE,

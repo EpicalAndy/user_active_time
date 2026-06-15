@@ -24,6 +24,7 @@ from constants import (
     METRIC_SESSION_COUNT_FULL,
     METRIC_WORK_DAY_END_FULL,
 )
+from modules import theme
 from modules.ui_utils import center_on_parent
 
 # Дни недели: ключ в WORK_HOURS_BY_DAY → отображаемое название
@@ -121,6 +122,20 @@ class SettingsDialog:
                 col, from_=0, to=24, increment=0.25, width=5,
                 textvariable=var, justify=tk.CENTER, format="%.2f",
             ).pack()
+
+        # --- Оформление ---
+        appearance_frame = ttk.LabelFrame(tab_general, text="Оформление")
+        appearance_frame.pack(fill=tk.X, **pad)
+
+        theme_row = tk.Frame(appearance_frame)
+        theme_row.pack(fill=tk.X, padx=8, pady=6)
+        tk.Label(theme_row, text="Тема:", font=(FONT_FAMILY, 9)).pack(side=tk.LEFT)
+        self._theme_var = tk.StringVar(value=theme.current_theme())
+        for name in theme.available_themes():
+            ttk.Radiobutton(
+                theme_row, text=theme.THEME_LABELS.get(name, name),
+                variable=self._theme_var, value=name,
+            ).pack(side=tk.LEFT, padx=(12, 0))
 
         # --- Уведомления ---
         notify_frame = ttk.LabelFrame(tab_general, text="Уведомления")
@@ -302,6 +317,7 @@ class SettingsDialog:
         return {
             "work_hours": {key: self._day_vars[key].get() for key, _ in _DAYS},
             "metrics": {**body_metrics, **title_metrics},
+            "theme": self._theme_var.get(),
             "input_activity_timeout": self._timeout_var.get(),
             "countdown_warning_seconds": self._warning_var.get(),
             "sound_notification": self._sound_var.get(),
@@ -347,6 +363,13 @@ class SettingsDialog:
         content = re.sub(
             r"^TRACK_MOUSE_MOVE\s*=\s*.+$",
             f"TRACK_MOUSE_MOVE = {values['track_mouse_move']}",
+            content, flags=re.MULTILINE,
+        )
+
+        # Тема оформления (строковое значение — в кавычках)
+        content = re.sub(
+            r"^THEME\s*=\s*.+$",
+            f'THEME = "{values["theme"]}"',
             content, flags=re.MULTILINE,
         )
 
@@ -404,6 +427,11 @@ class SettingsDialog:
             setattr(config, attr, val)
         for key, val in values["work_hours"].items():
             config.WORK_HOURS_BY_DAY[key] = val
+        # Тема: обновляем config и перепривязываем палитру theme.COLOR_*.
+        # Окна, открытые после этого, отрисуются в новой теме; постоянный
+        # виджет перекрасит себя сам (ActivityWidget._apply_theme).
+        config.THEME = values["theme"]
+        theme.set_theme(values["theme"])
 
     def wait(self):
         """Блокирует до закрытия диалога"""

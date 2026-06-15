@@ -87,3 +87,7 @@ DATE_DISPLAY_FORMAT = "%d.%m.%Y"
 
 # Текст
 MAIN_FONT_SIZE = 10
+
+# Тема оформления интерфейса: "dark" (тёмная) или "light" (светлая).
+# Палитры заданы в theme.py.
+THEME = "dark"

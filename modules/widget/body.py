@@ -8,13 +8,6 @@ import tkinter as tk
 import config
 from config import MAIN_FONT_SIZE
 from constants import (
-    COLOR_DARK_BG,
-    COLOR_GRAY,
-    COLOR_GREEN,
-    COLOR_LIGHT_FG,
-    COLOR_RED,
-    COLOR_WHITE,
-    COLOR_YELLOW,
     FONT_FAMILY,
     METRIC_ACTIVE_TIME,
     METRIC_ACTIVITY_PERCENT,
@@ -27,10 +20,8 @@ from constants import (
     METRIC_SESSION_COUNT,
     METRIC_WORK_DAY_END_FULL,
 )
+from modules import theme
 from utility import format_duration_short
-
-BODY_BG = COLOR_DARK_BG
-METRIC_FG = COLOR_WHITE
 
 # Шкалы цветовой подсветки: какая метрика по какой шкале считается.
 _SCALE_ACTIVITY = "activity"
@@ -51,10 +42,10 @@ _METRIC_COLOR_SCALES: dict[str, str] = {
 def _color_for_percent(pct: float, recommended: float, minimum: float) -> str:
     """Зелёный/жёлтый/красный по двум порогам."""
     if pct >= recommended:
-        return COLOR_GREEN
+        return theme.COLOR_GREEN
     if pct >= minimum:
-        return COLOR_YELLOW
-    return COLOR_RED
+        return theme.COLOR_YELLOW
+    return theme.COLOR_RED
 
 
 def _work_time_percent(stats: dict) -> float | None:
@@ -101,13 +92,13 @@ class WidgetBody:
     """
 
     def __init__(self, parent: tk.Misc):
-        self.frame = tk.Frame(parent, bg=BODY_BG, padx=0, pady=2)
+        self.frame = tk.Frame(parent, bg=theme.COLOR_DARK_BG, padx=0, pady=2)
         self._is_working_day = True
 
         # Сообщение для нерабочего дня (скрыто по умолчанию).
         self._day_off_label = tk.Label(
             self.frame, text="Сегодня не рабочий день",
-            bg=COLOR_GRAY, fg=METRIC_FG,
+            bg=theme.COLOR_GRAY, fg=theme.COLOR_WHITE,
             font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"),
         )
 
@@ -153,18 +144,18 @@ class WidgetBody:
             self._metric_labels["work_day_end"] = self._add_metric(f"{METRIC_WORK_DAY_END_FULL}:")
 
     def _add_metric(self, label_text: str) -> dict:
-        frame = tk.Frame(self.frame, bg=BODY_BG)
+        frame = tk.Frame(self.frame, bg=theme.COLOR_DARK_BG)
         frame.pack(fill=tk.X, pady=2)
         label = tk.Label(
             frame, text=label_text,
-            bg=BODY_BG, fg=COLOR_LIGHT_FG,
+            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE), anchor=tk.W,
             padx=4,
         )
         label.pack(side=tk.LEFT, fill=tk.Y)
         value = tk.Label(
             frame, text="—",
-            bg=BODY_BG, fg=METRIC_FG,
+            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"), anchor=tk.E,
             padx=4,
         )
@@ -255,7 +246,7 @@ class WidgetBody:
     def _apply_colors(self, stats: dict):
         """Цвет идёт только на текст значения; фон и лейбл нейтральны."""
         for metric_id, widgets in self._metric_labels.items():
-            color = self._metric_color(metric_id, stats) or METRIC_FG
+            color = self._metric_color(metric_id, stats) or theme.COLOR_LIGHT_FG
             widgets["value"].configure(fg=color)
 
     def _metric_color(self, metric_id: str, stats: dict) -> str | None:
@@ -283,14 +274,14 @@ class WidgetBody:
         for widgets in self._metric_labels.values():
             widgets["frame"].pack_forget()
         # В нерабочем дне метрики скрыты, поэтому единственный сигнал — серый фон тела.
-        self.frame.configure(bg=COLOR_GRAY)
-        self._day_off_label.configure(bg=COLOR_GRAY)
+        self.frame.configure(bg=theme.COLOR_GRAY)
+        self._day_off_label.configure(bg=theme.COLOR_GRAY)
         self._day_off_label.pack(fill=tk.X, pady=8)
 
     def _show_working_day(self):
         self._is_working_day = True
         self._day_off_label.pack_forget()
         # Восстанавливаем нейтральный фон тела (после возможного дня-выходного).
-        self.frame.configure(bg=BODY_BG)
+        self.frame.configure(bg=theme.COLOR_DARK_BG)
         for widgets in self._metric_labels.values():
             widgets["frame"].pack(fill=tk.X, pady=2)

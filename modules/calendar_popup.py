@@ -10,11 +10,9 @@ from collections.abc import Callable
 from config import MAIN_FONT_SIZE
 from constants import (
     CALENDAR_POPUP_TITLE,
-    COLOR_DARK_BG,
-    COLOR_LIGHT_FG,
-    COLOR_MUTED,
     FONT_FAMILY,
 )
+from modules import theme
 from modules.ui_utils import center_on_parent
 
 _MONTH_NAMES = [
@@ -42,7 +40,7 @@ class CalendarPopup:
         self.win.title(CALENDAR_POPUP_TITLE)
         self.win.transient(parent.winfo_toplevel())
         self.win.resizable(False, False)
-        self.win.configure(bg=COLOR_DARK_BG)
+        self.win.configure(bg=theme.COLOR_DARK_BG)
         self.win.grab_set()
         # Восстанавливаем grab родителя при закрытии — иначе диалог-родитель
         # перестаёт быть модальным после выбора даты или закрытия календаря.
@@ -50,13 +48,13 @@ class CalendarPopup:
         self.win.bind("<Escape>", lambda _e: self.win.destroy())
 
         self._build_header()
-        self._grid_frame = tk.Frame(self.win, bg=COLOR_DARK_BG)
+        self._grid_frame = tk.Frame(self.win, bg=theme.COLOR_DARK_BG)
         self._grid_frame.pack(padx=8, pady=(0, 8))
         self._render_grid()
         center_on_parent(self.win, parent)
 
     def _build_header(self):
-        header = tk.Frame(self.win, bg=COLOR_DARK_BG)
+        header = tk.Frame(self.win, bg=theme.COLOR_DARK_BG)
         header.pack(fill=tk.X, padx=8, pady=8)
 
         tk.Button(
@@ -65,7 +63,7 @@ class CalendarPopup:
         ).pack(side=tk.LEFT)
 
         self._title_label = tk.Label(
-            header, text="", bg=COLOR_DARK_BG, fg=COLOR_LIGHT_FG,
+            header, text="", bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"),
         )
         self._title_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
@@ -84,7 +82,7 @@ class CalendarPopup:
         for col, name in enumerate(_WEEKDAY_NAMES):
             tk.Label(
                 self._grid_frame, text=name,
-                bg=COLOR_DARK_BG, fg=COLOR_MUTED,
+                bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED,
                 font=(FONT_FAMILY, MAIN_FONT_SIZE - 1, "bold"),
                 width=4,
             ).grid(row=0, column=col, padx=1, pady=1)

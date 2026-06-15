@@ -8,7 +8,6 @@ from tkinter import messagebox, ttk
 
 from config import MAIN_FONT_SIZE
 from constants import (
-    COLOR_RED,
     FONT_FAMILY,
     PERIOD_DIALOG_BUILD_BUTTON,
     PERIOD_DIALOG_CALENDAR_BUTTON,
@@ -22,6 +21,7 @@ from constants import (
     PERIOD_DIALOG_TITLE,
     PERIOD_DIALOG_TO_LABEL,
 )
+from modules import theme
 from modules.calendar_popup import CalendarPopup
 from modules.period_report import build_period_report
 from modules.period_report_viewer import PeriodReportViewer
@@ -63,7 +63,7 @@ class PeriodReportDialog:
         )
 
         self._error_label = tk.Label(
-            self.dialog, text="", fg=COLOR_RED,
+            self.dialog, text="", fg=theme.COLOR_RED,
             font=(FONT_FAMILY, 9), anchor=tk.W,
         )
         self._error_label.pack(fill=tk.X, padx=12, pady=(0, 2))

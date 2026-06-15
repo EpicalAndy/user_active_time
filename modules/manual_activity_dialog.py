@@ -7,11 +7,10 @@ from tkinter import ttk
 
 from config import MAIN_FONT_SIZE
 from constants import (
-    COLOR_MUTED,
-    COLOR_RED,
     DEFAULT_MANUAL_ACTIVITY_DESCRIPTION,
     FONT_FAMILY,
 )
+from modules import theme
 from modules.session_monitor import (
     add_manual_active_time,
     get_manual_active_entries,
@@ -74,7 +73,7 @@ class ManualActivityDialog:
 
         # --- Сообщение об ошибке валидации ---
         self._error_label = tk.Label(
-            add_frame, text="", fg=COLOR_RED,
+            add_frame, text="", fg=theme.COLOR_RED,
             font=(FONT_FAMILY, 9), anchor=tk.W,
         )
         self._error_label.pack(fill=tk.X, padx=8, pady=(2, 0))
@@ -128,7 +127,7 @@ class ManualActivityDialog:
         if not entries:
             tk.Label(
                 self._entries_frame, text="Нет добавленных диапазонов",
-                fg=COLOR_MUTED, font=(FONT_FAMILY, MAIN_FONT_SIZE),
+                fg=theme.COLOR_MUTED, font=(FONT_FAMILY, MAIN_FONT_SIZE),
                 anchor=tk.W,
             ).pack(fill=tk.X, padx=4, pady=4)
         else:

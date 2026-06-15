@@ -10,18 +10,8 @@ from collections.abc import Callable
 
 import config
 from config import MAIN_FONT_SIZE
-from constants import (
-    COLOR_DARK_BG,
-    COLOR_GREEN,
-    COLOR_HOVER,
-    COLOR_LIGHT_FG,
-    COLOR_RED,
-    FONT_FAMILY,
-)
-
-TITLE_BG = COLOR_DARK_BG
-TITLE_FG = COLOR_LIGHT_FG
-MINIMIZE_HOVER = COLOR_HOVER
+from constants import FONT_FAMILY
+from modules import theme
 
 # Состояния countdown'а для внешней индикации (например, рамка виджета).
 _COUNTDOWN_NORMAL = "normal"
@@ -76,13 +66,13 @@ class TitleBar:
         self._build()
 
     def _build(self):
-        self.frame = tk.Frame(self._window, bg=TITLE_BG, height=30)
+        self.frame = tk.Frame(self._window, bg=theme.COLOR_DARK_BG, height=30)
         self.frame.pack(fill=tk.X)
         self.frame.pack_propagate(False)
 
         self._title_label = tk.Label(
             self.frame, text="Активность",
-            bg=TITLE_BG, fg=TITLE_FG,
+            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE), padx=MAIN_FONT_SIZE,
         )
         self._title_label.pack(side=tk.LEFT, fill=tk.Y)
@@ -98,7 +88,7 @@ class TitleBar:
         if config.INPUT_ACTIVITY_TIMEOUT > 0:
             self._countdown_label = tk.Label(
                 self.frame, text="",
-                bg=TITLE_BG, fg=TITLE_FG,
+                bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
                 font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
             )
             self._countdown_label.pack(side=tk.LEFT, fill=tk.Y)
@@ -109,12 +99,12 @@ class TitleBar:
     def _make_action_button(self, text: str, command: Callable[[], None]) -> tk.Label:
         btn = tk.Label(
             self.frame, text=text,
-            bg=TITLE_BG, fg=TITLE_FG,
+            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE), cursor="hand2",
         )
         btn.bind("<Button-1>", lambda _e: command())
-        btn.bind("<Enter>", lambda _e: btn.configure(fg=MINIMIZE_HOVER))
-        btn.bind("<Leave>", lambda _e: btn.configure(fg=TITLE_FG))
+        btn.bind("<Enter>", lambda _e: btn.configure(fg=theme.COLOR_HOVER))
+        btn.bind("<Leave>", lambda _e: btn.configure(fg=theme.COLOR_LIGHT_FG))
         return btn
 
     def _build_metric_labels(self):
@@ -128,7 +118,7 @@ class TitleBar:
     def _make_metric_label(self) -> tk.Label:
         label = tk.Label(
             self.frame, text="",
-            bg=TITLE_BG, fg=TITLE_FG,
+            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
         )
         label.pack(side=tk.LEFT, fill=tk.Y)
@@ -212,18 +202,18 @@ class TitleBar:
             self._countdown_blinking = False
             self._countdown_blink_bold = False
             self._countdown_label.configure(
-                text=text, fg=COLOR_RED,
+                text=text, fg=theme.COLOR_RED,
                 font=(FONT_FAMILY, MAIN_FONT_SIZE - 1, "bold"),
             )
-            self._apply_title_state(COLOR_RED, weight="bold")
+            self._apply_title_state(theme.COLOR_RED, weight="bold")
             return
 
         warning_threshold = config.COUNTDOWN_WARNING_SECONDS
         if warning_threshold > 0 and remaining <= warning_threshold:
             # Приближение к неактивности — мигание управляется тикером.
             self._countdown_state = _COUNTDOWN_WARNING
-            self._countdown_label.configure(text=text, fg=TITLE_FG)
-            self._apply_title_state(TITLE_FG, weight="normal")
+            self._countdown_label.configure(text=text, fg=theme.COLOR_LIGHT_FG)
+            self._apply_title_state(theme.COLOR_LIGHT_FG, weight="normal")
             self._countdown_blinking = True
             return
 
@@ -232,10 +222,10 @@ class TitleBar:
         self._countdown_blinking = False
         self._countdown_blink_bold = False
         self._countdown_label.configure(
-            text=text, fg=TITLE_FG,
+            text=text, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
         )
-        self._apply_title_state(TITLE_FG, weight="normal")
+        self._apply_title_state(theme.COLOR_LIGHT_FG, weight="normal")
 
     def _apply_title_state(self, color: str, weight: str):
         """Красит заголовок «Активность» с учётом overriding'а goal_reached.
@@ -244,7 +234,7 @@ class TitleBar:
         """
         if self._goal_reached:
             self._title_label.configure(
-                fg=COLOR_GREEN, font=(FONT_FAMILY, MAIN_FONT_SIZE),
+                fg=theme.COLOR_GREEN, font=(FONT_FAMILY, MAIN_FONT_SIZE),
             )
         else:
             self._title_label.configure(
@@ -277,7 +267,7 @@ class TitleBar:
         self._goal_reached = True
         # Заголовок сразу красим зелёным; следующий update_countdown учтёт флаг.
         self._title_label.configure(
-            fg=COLOR_GREEN, font=(FONT_FAMILY, MAIN_FONT_SIZE),
+            fg=theme.COLOR_GREEN, font=(FONT_FAMILY, MAIN_FONT_SIZE),
         )
         if show_placeholder:
             self._goal_placeholder = True
@@ -285,7 +275,7 @@ class TitleBar:
             self._countdown_blinking = False
             self._countdown_blink_bold = False
             self._countdown_label.configure(
-                text="__:__", fg=COLOR_GREEN,
+                text="__:__", fg=theme.COLOR_GREEN,
                 font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
             )
         else:
@@ -306,11 +296,11 @@ class TitleBar:
         - Иначе → None (индикатор не нужен).
         """
         if self._goal_reached:
-            return COLOR_GREEN
+            return theme.COLOR_GREEN
         if self._countdown_state == _COUNTDOWN_ZERO:
-            return COLOR_RED
+            return theme.COLOR_RED
         if self._countdown_state == _COUNTDOWN_WARNING and self._countdown_blink_bold:
-            return COLOR_RED
+            return theme.COLOR_RED
         return None
 
     def tick_blink(self):
@@ -319,7 +309,7 @@ class TitleBar:
             return
         self._countdown_blink_bold = not self._countdown_blink_bold
         weight = "bold" if self._countdown_blink_bold else "normal"
-        fg = COLOR_RED if self._countdown_blink_bold else TITLE_FG
+        fg = theme.COLOR_RED if self._countdown_blink_bold else theme.COLOR_LIGHT_FG
         self._countdown_label.configure(
             font=(FONT_FAMILY, MAIN_FONT_SIZE - 1, weight), fg=fg,
         )
@@ -357,3 +347,9 @@ class TitleBar:
         x = self._window.winfo_x() + event.x - self._drag_x
         y = self._window.winfo_y() + event.y - self._drag_y
         self._window.geometry(f"+{x}+{y}")
+
+    # --- Жизненный цикл ---
+
+    def destroy(self):
+        """Уничтожает фрейм заголовка (для пересборки при смене темы)."""
+        self.frame.destroy()

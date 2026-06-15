@@ -8,12 +8,6 @@ from typing import Literal
 
 from config import MAIN_FONT_SIZE
 from constants import (
-    COLOR_DARKER_BG,
-    COLOR_HOVER,
-    COLOR_LIGHT_FG,
-    COLOR_MUTED,
-    COLOR_TOOLTIP_BG,
-    COLOR_TOOLTIP_FG,
     FONT_FAMILY,
     REPORT_MENU_DAILY,
     REPORT_MENU_FOLDER,
@@ -25,10 +19,7 @@ from constants import (
     TOOLTIP_ADD_ACTIVE_TIME,
     TOOLTIP_OPEN_SETTINGS,
 )
-
-TOOLBAR_BG = COLOR_DARKER_BG
-TOOLBAR_FG = COLOR_LIGHT_FG
-TOOLBAR_HOVER_BG = COLOR_HOVER
+from modules import theme
 
 
 class WidgetToolbar:
@@ -46,7 +37,7 @@ class WidgetToolbar:
         on_today_report: Callable | None = None,
         on_last_report: Callable | None = None,
     ):
-        self.frame = tk.Frame(parent, bg=TOOLBAR_BG, pady=2)
+        self.frame = tk.Frame(parent, bg=theme.COLOR_DARKER_BG, pady=2)
 
         # Слева: добавление активного времени
         self._add_button("⏱", TOOLTIP_ADD_ACTIVE_TIME, on_add_active_time, side=tk.LEFT)
@@ -78,7 +69,7 @@ class WidgetToolbar:
     ):
         btn = tk.Label(
             self.frame, text=icon,
-            bg=TOOLBAR_BG, fg=TOOLBAR_FG,
+            bg=theme.COLOR_DARKER_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE), cursor="hand2",
             width=3, anchor=tk.CENTER,
         )
@@ -97,7 +88,7 @@ class WidgetToolbar:
     ):
         btn = tk.Label(
             self.frame, text=label,
-            bg=TOOLBAR_BG, fg=TOOLBAR_FG,
+            bg=theme.COLOR_DARKER_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE), cursor="hand2",
             padx=8, anchor=tk.CENTER,
         )
@@ -125,13 +116,13 @@ class WidgetToolbar:
         return btn
 
     def _add_separator(self, side: Literal["left", "right", "top", "bottom"] = "left"):
-        sep = tk.Frame(self.frame, bg=COLOR_MUTED, width=1)
+        sep = tk.Frame(self.frame, bg=theme.COLOR_MUTED, width=1)
         sep.pack(side=side, fill=tk.Y, padx=6, pady=4)
         return sep
 
     def _attach_hover(self, widget: tk.Label):
-        widget.bind("<Enter>", lambda _e: widget.configure(background=TOOLBAR_HOVER_BG), add="+")
-        widget.bind("<Leave>", lambda _e: widget.configure(background=TOOLBAR_BG), add="+")
+        widget.bind("<Enter>", lambda _e: widget.configure(background=theme.COLOR_HOVER), add="+")
+        widget.bind("<Leave>", lambda _e: widget.configure(background=theme.COLOR_DARKER_BG), add="+")
 
     def _attach_tooltip(self, widget: tk.Label, text: str):
         tip_window: list[tk.Toplevel | None] = [None]
@@ -145,7 +136,7 @@ class WidgetToolbar:
             tw.attributes("-topmost", True)
             tk.Label(
                 tw, text=text,
-                bg=COLOR_TOOLTIP_BG, fg=COLOR_TOOLTIP_FG,
+                bg=theme.COLOR_TOOLTIP_BG, fg=theme.COLOR_TOOLTIP_FG,
                 font=(FONT_FAMILY, 9), padx=6, pady=2,
                 relief=tk.SOLID, borderwidth=1,
             ).pack()
@@ -164,3 +155,6 @@ class WidgetToolbar:
 
     def pack_forget(self):
         self.frame.pack_forget()
+
+    def destroy(self):
+        self.frame.destroy()

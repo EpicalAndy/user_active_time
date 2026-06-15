@@ -10,16 +10,6 @@ import tkinter as tk
 
 from config import MAIN_FONT_SIZE, MIN_ACTIVITY_THRESHOLD, RECOMMENDED_ACTIVITY_THRESHOLD
 from constants import (
-    COLOR_DARK_BG,
-    COLOR_GRAY,
-    COLOR_GREEN,
-    COLOR_LIGHT_FG,
-    COLOR_MUTED,
-    COLOR_RED,
-    COLOR_TOOLTIP_BG,
-    COLOR_TOOLTIP_FG,
-    COLOR_WHITE,
-    COLOR_YELLOW,
     FONT_FAMILY,
     HEATMAP_CLOSE,
     HEATMAP_LEGEND_HIGH,
@@ -31,6 +21,7 @@ from constants import (
     HEATMAP_TOOLTIP_PERCENT,
     HEATMAP_WINDOW_TITLE,
 )
+from modules import theme
 from modules.period_report import _read_day_metrics, get_report_path, percent
 from modules.report_viewer import ReportViewer
 from modules.ui_utils import center_on_screen
@@ -49,12 +40,12 @@ _CELL_HEIGHT = 2
 def _cell_color(active_pct: float | None) -> str:
     """Цвет ячейки по дневному % активности."""
     if active_pct is None:
-        return COLOR_GRAY
+        return theme.COLOR_GRAY
     if active_pct >= RECOMMENDED_ACTIVITY_THRESHOLD:
-        return COLOR_GREEN
+        return theme.COLOR_GREEN
     if active_pct >= MIN_ACTIVITY_THRESHOLD:
-        return COLOR_YELLOW
-    return COLOR_RED
+        return theme.COLOR_YELLOW
+    return theme.COLOR_RED
 
 
 class HeatmapViewer:
@@ -69,7 +60,7 @@ class HeatmapViewer:
         self.win = tk.Toplevel(parent)
         self.win.title(HEATMAP_WINDOW_TITLE)
         self.win.transient(parent.winfo_toplevel())
-        self.win.configure(bg=COLOR_DARK_BG)
+        self.win.configure(bg=theme.COLOR_DARK_BG)
         self.win.resizable(False, False)
         self.win.bind("<Escape>", lambda _e: self.win.destroy())
 
@@ -78,7 +69,7 @@ class HeatmapViewer:
 
     def _build_ui(self):
         # --- Шапка с навигацией ---
-        header = tk.Frame(self.win, bg=COLOR_DARK_BG)
+        header = tk.Frame(self.win, bg=theme.COLOR_DARK_BG)
         header.pack(fill=tk.X, padx=16, pady=(12, 4))
 
         tk.Button(
@@ -87,7 +78,7 @@ class HeatmapViewer:
         ).pack(side=tk.LEFT)
 
         self._title_label = tk.Label(
-            header, text="", bg=COLOR_DARK_BG, fg=COLOR_LIGHT_FG,
+            header, text="", bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE + 1, "bold"),
         )
         self._title_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
@@ -98,7 +89,7 @@ class HeatmapViewer:
         ).pack(side=tk.RIGHT)
 
         # --- Сетка ---
-        self._grid_frame = tk.Frame(self.win, bg=COLOR_DARK_BG, padx=16, pady=8)
+        self._grid_frame = tk.Frame(self.win, bg=theme.COLOR_DARK_BG, padx=16, pady=8)
         self._grid_frame.pack()
 
         # --- Легенда ---
@@ -122,7 +113,7 @@ class HeatmapViewer:
         for col, name in enumerate(_WEEKDAY_NAMES):
             tk.Label(
                 self._grid_frame, text=name,
-                bg=COLOR_DARK_BG, fg=COLOR_MUTED,
+                bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED,
                 font=(FONT_FAMILY, MAIN_FONT_SIZE - 1, "bold"),
                 width=_CELL_WIDTH,
             ).grid(row=0, column=col, padx=2, pady=(0, 4))
@@ -141,7 +132,7 @@ class HeatmapViewer:
             # Дни соседних месяцев — приглушённо, без тултипа
             cell = tk.Label(
                 self._grid_frame, text=str(date.day),
-                bg=COLOR_DARK_BG, fg=COLOR_MUTED,
+                bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED,
                 font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
                 width=_CELL_WIDTH, height=_CELL_HEIGHT,
             )
@@ -150,13 +141,13 @@ class HeatmapViewer:
 
         metrics = _read_day_metrics(date)
         if metrics is None:
-            bg = COLOR_GRAY
-            fg = COLOR_LIGHT_FG
+            bg = theme.COLOR_GRAY
+            fg = theme.COLOR_LIGHT_FG
             tooltip = f"{format_date_display(date)}\n{HEATMAP_LEGEND_NO_DATA}"
         else:
             pct = percent(metrics["active_seconds"], metrics["max_work_seconds"])
             bg = _cell_color(pct)
-            fg = COLOR_WHITE
+            fg = theme.COLOR_WHITE
             pct_str = f"{pct:.1f}%" if pct is not None else "—"
             tooltip = (
                 f"{format_date_display(date)}\n"
@@ -204,7 +195,7 @@ class HeatmapViewer:
             tw.attributes("-topmost", True)
             tk.Label(
                 tw, text=text,
-                bg=COLOR_TOOLTIP_BG, fg=COLOR_TOOLTIP_FG,
+                bg=theme.COLOR_TOOLTIP_BG, fg=theme.COLOR_TOOLTIP_FG,
                 font=(FONT_FAMILY, 9), padx=6, pady=3,
                 justify=tk.LEFT,
                 relief=tk.SOLID, borderwidth=1,
@@ -220,28 +211,28 @@ class HeatmapViewer:
         widget.bind("<Leave>", on_leave)
 
     def _build_legend(self):
-        legend = tk.Frame(self.win, bg=COLOR_DARK_BG)
+        legend = tk.Frame(self.win, bg=theme.COLOR_DARK_BG)
         legend.pack(pady=(4, 4))
 
         items = [
-            (COLOR_GREEN, HEATMAP_LEGEND_HIGH.format(threshold=RECOMMENDED_ACTIVITY_THRESHOLD)),
-            (COLOR_YELLOW, HEATMAP_LEGEND_MID.format(
+            (theme.COLOR_GREEN, HEATMAP_LEGEND_HIGH.format(threshold=RECOMMENDED_ACTIVITY_THRESHOLD)),
+            (theme.COLOR_YELLOW, HEATMAP_LEGEND_MID.format(
                 min=MIN_ACTIVITY_THRESHOLD, max=RECOMMENDED_ACTIVITY_THRESHOLD,
             )),
-            (COLOR_RED, HEATMAP_LEGEND_LOW.format(threshold=MIN_ACTIVITY_THRESHOLD)),
-            (COLOR_GRAY, HEATMAP_LEGEND_NO_DATA),
+            (theme.COLOR_RED, HEATMAP_LEGEND_LOW.format(threshold=MIN_ACTIVITY_THRESHOLD)),
+            (theme.COLOR_GRAY, HEATMAP_LEGEND_NO_DATA),
         ]
         for color, label in items:
             self._legend_item(legend, color, label)
 
     def _legend_item(self, parent: tk.Frame, color: str, text: str):
-        frame = tk.Frame(parent, bg=COLOR_DARK_BG)
+        frame = tk.Frame(parent, bg=theme.COLOR_DARK_BG)
         frame.pack(side=tk.LEFT, padx=8)
-        box = tk.Canvas(frame, width=14, height=14, bg=COLOR_DARK_BG, highlightthickness=0)
+        box = tk.Canvas(frame, width=14, height=14, bg=theme.COLOR_DARK_BG, highlightthickness=0)
         box.pack(side=tk.LEFT, padx=(0, 4))
         box.create_rectangle(1, 1, 13, 13, fill=color, outline="")
         tk.Label(
-            frame, text=text, bg=COLOR_DARK_BG, fg=COLOR_LIGHT_FG,
+            frame, text=text, bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
         ).pack(side=tk.LEFT)
 
