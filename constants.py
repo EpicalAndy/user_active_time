@@ -48,6 +48,31 @@ HEATMAP_TOOLTIP_ACTIVE = "Активное"
 HEATMAP_TOOLTIP_NORM = "Норма"
 HEATMAP_TOOLTIP_PERCENT = "Активность"
 
+# === Календарь рабочего времени (планировщик-исключения) ===
+
+SCHEDULE_CALENDAR_TITLE = "Календарь рабочего времени"
+SCHEDULE_CLOSE = "Закрыть"
+SCHEDULE_LEGEND_OVERRIDE = "Свой лимит"
+SCHEDULE_LEGEND_DAYOFF = "Выходной"
+SCHEDULE_LEGEND_DEFAULT = "По расписанию"
+SCHEDULE_LEGEND_NOTE = "• заметка"
+SCHEDULE_TOOLTIP_LIMIT = "Лимит"
+SCHEDULE_TOOLTIP_DAYOFF = "Выходной"
+SCHEDULE_TOOLTIP_DEFAULT = "По расписанию (день недели)"
+SCHEDULE_TOOLTIP_HOURS_UNIT = "ч"
+
+# Диалог настройки одного дня
+DAY_DIALOG_TITLE = "Настройка дня"
+DAY_DIALOG_HOURS_LABEL = "Лимит часов:"
+DAY_DIALOG_DAYOFF = "Выходной (не отслеживать)"
+DAY_DIALOG_USE_SCHEDULE = "По расписанию"
+DAY_DIALOG_NOTE_LABEL = "Заметка:"
+DAY_DIALOG_SAVE = "Сохранить"
+DAY_DIALOG_CANCEL = "Отмена"
+
+# Кнопка вызова календаря из диалога настроек
+SETTINGS_CALENDAR_BUTTON = "Календарь рабочего времени…"
+
 # === Диалог «Отчёт за период» ===
 
 PERIOD_DIALOG_TITLE = "Отчёт за период"

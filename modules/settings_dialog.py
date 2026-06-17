@@ -23,6 +23,7 @@ from constants import (
     METRIC_REMAINING_TIME_PERCENT_FULL,
     METRIC_SESSION_COUNT_FULL,
     METRIC_WORK_DAY_END_FULL,
+    SETTINGS_CALENDAR_BUTTON,
 )
 from modules import theme
 from modules.ui_utils import center_on_parent
@@ -122,6 +123,12 @@ class SettingsDialog:
                 col, from_=0, to=24, increment=0.25, width=5,
                 textvariable=var, justify=tk.CENTER, format="%.2f",
             ).pack()
+
+        # Привязка лимитов к конкретным датам (исключения из расписания выше).
+        ttk.Button(
+            hours_frame, text=SETTINGS_CALENDAR_BUTTON,
+            command=self._open_schedule_calendar,
+        ).pack(anchor=tk.W, padx=8, pady=(0, 8))
 
         # --- Оформление ---
         appearance_frame = ttk.LabelFrame(tab_general, text="Оформление")
@@ -299,6 +306,11 @@ class SettingsDialog:
         ttk.Button(btn_frame, text="OK", command=self._save).pack(side=tk.RIGHT, padx=4)
 
     # --- Сохранение ---
+
+    def _open_schedule_calendar(self):
+        # Ленивый импорт: окно нужно только по клику, не при открытии настроек.
+        from modules.schedule_calendar import ScheduleCalendar
+        ScheduleCalendar(self.dialog)
 
     def _save(self):
         values = self._collect_values()

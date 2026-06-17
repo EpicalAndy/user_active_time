@@ -4,6 +4,7 @@
 
 import datetime
 
+from modules import work_calendar
 from config import (
     DATE_DISPLAY_FORMAT,
     DATE_KEY_FORMAT,
@@ -63,7 +64,14 @@ _DAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"
 
 
 def get_work_hours(date: datetime.date) -> float:
-    """Возвращает рабочие часы для указанного дня (0 = не отслеживать)"""
+    """Возвращает рабочие часы для указанного дня (0 = не отслеживать).
+
+    Приоритет: переопределение из календаря-исключений (привязка к дате) →
+    расписание по дню недели → DEFAULT_WORK_HOURS.
+    """
+    override = work_calendar.get_override_hours(date)
+    if override is not None:
+        return override
     day_name = _DAY_NAMES[date.weekday()]
     hours = WORK_HOURS_BY_DAY.get(day_name)
     if hours is None:

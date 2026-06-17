@@ -35,6 +35,8 @@ COUNTDOWN_WARNING_SECONDS = 60
 # Пути
 LOG_DIR = os.path.join(os.path.expanduser("~"), "active_time")
 STATE_FILE = os.path.join(LOG_DIR, "state.json")
+# Календарь-исключения: переопределения дневного лимита и заметки по конкретным датам
+CALENDAR_FILE = os.path.join(LOG_DIR, "work_calendar.json")
 
 # Текущий пользователь
 USERNAME = os.getenv("USERNAME", "unknown")
