@@ -60,6 +60,11 @@ def parse_time(time_str: str) -> datetime.datetime:
     return datetime.datetime.strptime(time_str, TIME_FORMAT)
 
 
+def parse_timestamp(ts_str: str) -> datetime.datetime:
+    """Парсит строку YYYY-MM-DD HH:MM:SS в datetime"""
+    return datetime.datetime.strptime(ts_str, TIMESTAMP_FORMAT)
+
+
 _DAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 

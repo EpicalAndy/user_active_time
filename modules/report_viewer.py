@@ -10,6 +10,7 @@ import re
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
+import config
 from config import LOG_DIR, MAIN_FONT_SIZE
 from constants import (
     ENCODING,
@@ -18,7 +19,7 @@ from constants import (
     METRIC_FULL_DAY_TIME,
     METRIC_SESSION_COUNT_FULL,
 )
-from modules import theme
+from modules import activity_intervals, theme
 from modules.ui_utils import center_on_screen
 from utility import calculate_activity_percent, format_duration
 
@@ -86,6 +87,21 @@ def _parse_report(filepath: str) -> dict | None:
             continue
         events.append((ts, m.group(2)))
 
+    # Интервалы графика: v2 — из точных sessions/idle с текущим таймаутом;
+    # v1 (старые отчёты) — из событий лога, как раньше. Ручное время для v2
+    # рисуется отдельным слоем поверх; в v1 оно уже закодировано в intervals.
+    try:
+        version = int(data.get("version") or 1)
+    except (TypeError, ValueError):
+        version = 1
+
+    if version >= 2 and date_obj is not None:
+        intervals = _v2_intervals(data, date_obj)
+        manual_intervals = _manual_hour_intervals(events)
+    else:
+        intervals = _build_intervals(events)
+        manual_intervals = []
+
     first_login = data.get("first_login")
     last_logout = data.get("last_logout")
     if first_login or last_logout:
@@ -102,6 +118,8 @@ def _parse_report(filepath: str) -> dict | None:
         "max_work_time": _format_dash(max_work_seconds),
         "session_count": str(data.get("session_count") or 0),
         "events": events,
+        "intervals": intervals,
+        "manual_intervals": manual_intervals,
     }
 
 
@@ -165,6 +183,59 @@ def _build_intervals(events: list[tuple[datetime.datetime, str]]) -> list[tuple[
 def _time_to_hours(dt: datetime.datetime) -> float:
     """Переводит время в дробные часы (0.0 — 24.0)"""
     return dt.hour + dt.minute / 60 + dt.second / 3600
+
+
+_TIMESTAMP_FMT = "%Y-%m-%d %H:%M:%S"
+
+
+def _parse_iso_intervals(items: list, key_start: str, key_end: str) -> list:
+    """Парсит [{key_start, key_end}] (timestamp) в список (datetime, datetime)."""
+    out = []
+    for it in items or []:
+        try:
+            out.append((
+                datetime.datetime.strptime(it[key_start], _TIMESTAMP_FMT),
+                datetime.datetime.strptime(it[key_end], _TIMESTAMP_FMT),
+            ))
+        except (KeyError, ValueError, TypeError):
+            continue
+    return out
+
+
+def _manual_hour_intervals(events: list) -> list:
+    """Интервалы ручного времени (в часах) из пар MANUAL_ADD_START/END."""
+    out = []
+    start = None
+    for ts, etype in sorted(events, key=lambda e: e[0]):
+        if etype in _MANUAL_START_EVENTS:
+            start = ts
+        elif etype in _MANUAL_END_EVENTS and start is not None:
+            out.append((_time_to_hours(start), _time_to_hours(ts)))
+            start = None
+    return out
+
+
+def _v2_intervals(data: dict, date_obj: datetime.date) -> list:
+    """Точные интервалы активности/простоя из сырых sessions/idle (схема v2).
+
+    Таймаут берётся текущий (`config.INPUT_ACTIVITY_TIMEOUT`) — график
+    отражает актуальную настройку, как и пересчитанное активное время.
+    """
+    sessions = _parse_iso_intervals(data.get("sessions"), "start", "end")
+    idle = _parse_iso_intervals(data.get("idle"), "from", "to")
+    segments = activity_intervals.day_segments(
+        sessions, idle, config.INPUT_ACTIVITY_TIMEOUT, date_obj,
+    )
+    day_start = datetime.datetime.combine(date_obj, datetime.time.min)
+    result = []
+    for seg_start, seg_end, state in segments:
+        start_h = (seg_start - day_start).total_seconds() / 3600
+        end_h = (seg_end - day_start).total_seconds() / 3600
+        result.append((
+            start_h, end_h,
+            _STATE_ACTIVE if state == "active" else _STATE_INACTIVE,
+        ))
+    return result
 
 
 class ReportViewer:
@@ -259,7 +330,8 @@ class ReportViewer:
     def _draw_chart(self, data: dict):
         """Рисует столбчатый график активности на Canvas"""
         events = data.get("events", [])
-        intervals = _build_intervals(events)
+        intervals = data.get("intervals", [])
+        manual_intervals = data.get("manual_intervals", [])
 
         chart_width = 560
         chart_height = 40
@@ -277,10 +349,11 @@ class ReportViewer:
         )
         canvas.pack(padx=16, pady=4)
 
-        # Определяем диапазон часов
-        if intervals:
-            min_hour = max(0, int(intervals[0][0]))
-            max_hour = min(24, int(intervals[-1][1]) + 1)
+        # Определяем диапазон часов (с учётом ручных интервалов поверх)
+        bounds = list(intervals) + [(s, e, _STATE_MANUAL) for s, e in manual_intervals]
+        if bounds:
+            min_hour = max(0, int(min(b[0] for b in bounds)))
+            max_hour = min(24, int(max(b[1] for b in bounds)) + 1)
         elif events:
             first_h = int(_time_to_hours(events[0][0]))
             last_h = int(_time_to_hours(events[-1][0])) + 1
@@ -317,6 +390,15 @@ class ReportViewer:
             canvas.create_rectangle(
                 x1, pad_top, x2, pad_top + chart_height,
                 fill=color, outline="",
+            )
+
+        # Ручное время (v2) — отдельным слоем поверх активности/простоя.
+        for start_h, end_h in manual_intervals:
+            x1 = hour_to_x(max(start_h, min_hour))
+            x2 = hour_to_x(min(end_h, max_hour))
+            canvas.create_rectangle(
+                x1, pad_top, x2, pad_top + chart_height,
+                fill=theme.COLOR_BLUE, outline="",
             )
 
         # Сетка и подписи часов

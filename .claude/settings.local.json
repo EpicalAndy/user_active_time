@@ -21,7 +21,9 @@
       "Bash(git -C /home/andy/Projects/user_active_time log --oneline -8)",
       "Bash(git -C /home/andy/Projects/user_active_time diff c00c936..HEAD --stat)",
       "PowerShell(python -c \"from modules import theme; print\\('init:', theme.current_theme\\(\\), theme.COLOR_DARK_BG, theme.COLOR_LIGHT_FG\\); theme.set_theme\\('light'\\); print\\('light:', theme.current_theme\\(\\), theme.COLOR_DARK_BG, theme.COLOR_LIGHT_FG\\); theme.set_theme\\('dark'\\); print\\('dark:', theme.COLOR_DARK_BG\\); print\\('themes:', theme.available_themes\\(\\), theme.THEME_LABELS\\)\")",
-      "PowerShell(python -c \"from modules.widget import ActivityWidget; from modules.settings_dialog import SettingsDialog; from modules import report_viewer, period_report_viewer, heatmap_viewer, calendar_popup, manual_activity_dialog, period_report_dialog; print\\('imports ok'\\)\")"
+      "PowerShell(python -c \"from modules.widget import ActivityWidget; from modules.settings_dialog import SettingsDialog; from modules import report_viewer, period_report_viewer, heatmap_viewer, calendar_popup, manual_activity_dialog, period_report_dialog; print\\('imports ok'\\)\")",
+      "Bash(python -m py_compile constants.py utility.py modules/activity_intervals.py modules/events_monitor.py modules/session_monitor.py modules/report.py modules/report_viewer.py)",
+      "Bash(python tests/test_activity_intervals.py)"
     ]
   }
 }

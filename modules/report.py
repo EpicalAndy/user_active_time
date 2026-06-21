@@ -37,6 +37,8 @@ def build_report_data(
     last_logout: str | None,
     session_count: int,
     log_entries: list[str],
+    sessions: list | None = None,
+    idle: list | None = None,
 ) -> dict:
     """Формирует словарь дневного отчёта согласно схеме."""
     return {
@@ -49,6 +51,9 @@ def build_report_data(
         "max_work_seconds": max_work_seconds,
         "total_work_seconds": _compute_total_work_seconds(first_login, last_logout),
         "session_count": session_count,
+        # Сырые интервалы (v2): источник истины для пересчёта active_seconds.
+        "sessions": list(sessions or []),
+        "idle": list(idle or []),
         "log": list(log_entries),
     }
 
@@ -62,6 +67,8 @@ def write_report(
     last_logout: str | None,
     session_count: int,
     log_entries: list[str],
+    sessions: list | None = None,
+    idle: list | None = None,
 ):
     """Записывает дневной JSON-отчёт. Норма берётся из get_work_hours."""
     # Импорт внутри, чтобы избежать циклов и не тянуть config на верхний уровень.
@@ -77,6 +84,8 @@ def write_report(
         last_logout=last_logout,
         session_count=session_count,
         log_entries=log_entries,
+        sessions=sessions,
+        idle=idle,
     )
 
     filepath = os.path.join(log_dir, get_report_filename(username, date))

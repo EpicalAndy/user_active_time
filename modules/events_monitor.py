@@ -1,9 +1,17 @@
 """
 Монитор активности ввода (мышь/клавиатура) через низкоуровневые хуки Windows.
-Отслеживает неактивность пользователя по таймауту.
+
+Регистрирует СЫРЫЕ гэпы простоя ввода [from, to] (без вычета таймаута) —
+источник истины для пересчёта активного времени. Таймаут к гэпам применяется
+позже, на стороне отчёта/статистики (см. modules/activity_intervals.py), поэтому
+изменение таймаута пересчитывает уже прошедшую часть дня.
+
+Живой статус (обратный отсчёт до простоя для виджета) считается здесь же по
+текущему таймауту — это про «сейчас», не про запекание истории.
 """
 
 import ctypes
+import datetime
 import threading
 import time
 from ctypes import wintypes
@@ -11,6 +19,7 @@ from ctypes import wintypes
 import config
 from constants import (
     HOOKPROC,
+    MIN_IDLE_GAP_SECONDS,
     WH_KEYBOARD_LL,
     WH_MOUSE_LL,
     WM_MOUSEMOVE,
@@ -24,17 +33,18 @@ _last_input_mono: float = 0.0
 _last_input_source: str = ""
 
 # --- Состояние, управляемое timer-потоком и session-уведомлениями ---
-_is_active: bool = False
 _session_running: bool = False
 _screen_locked: bool = False
-_countdown_start_mono: float = 0.0
 
-# --- Учёт неактивного времени за текущую сессию ---
-_inactive_start_mono: float = 0.0
-_total_inactive_seconds: float = 0.0
+# --- Якорь конвертации monotonic → wall-clock (фиксируется на старте сессии) ---
+_mono0: float = 0.0
+_wall0: datetime.datetime = datetime.datetime.now()
 
-# --- Callback для логирования ---
-_log_callback = None
+# --- Захват гэпов простоя ---
+# _observed_input_mono — момент последнего «учтённого» ввода (начало текущего гэпа).
+_observed_input_mono: float = 0.0
+_closed_gaps: list[tuple[datetime.datetime, datetime.datetime]] = []
+_gaps_lock = threading.Lock()
 
 # --- Потоки и хуки ---
 _hook_thread: threading.Thread | None = None
@@ -45,6 +55,11 @@ _stop_event = threading.Event()
 # --- Ссылки на callback-объекты хуков (prevent GC) ---
 _kb_hook_proc = None
 _mouse_hook_proc = None
+
+
+def _mono_to_wall(mono: float) -> datetime.datetime:
+    """Переводит monotonic-метку в wall-clock через якорь сессии (точность ~1с)."""
+    return _wall0 + datetime.timedelta(seconds=(mono - _mono0))
 
 
 def _keyboard_hook_callback(nCode, wParam, lParam):
@@ -112,58 +127,35 @@ def _hook_thread_func():
 
 
 def _timer_thread_func():
-    """Поток таймера: проверяет таймаут неактивности каждую секунду.
+    """Поток таймера: раз в секунду закрывает завершённые гэпы простоя.
 
-    Таймаут читается из config внутри цикла — изменения через диалог
-    настроек применяются на следующей итерации, без перезапуска.
+    Гэп фиксируется по факту возобновления ввода и не зависит от таймаута —
+    таймаут применяется позже при вычислении активного времени.
     """
-    global _is_active, _countdown_start_mono
-    global _inactive_start_mono, _total_inactive_seconds
+    global _observed_input_mono
 
     while not _stop_event.wait(timeout=1.0):
         if not _session_running or _screen_locked:
             continue
 
-        timeout = config.INPUT_ACTIVITY_TIMEOUT
-        # Если параметр выставлен в 0 на лету — пауза до восстановления.
-        if timeout <= 0:
-            continue
-
-        now_mono = time.monotonic()
-        last_input = _last_input_mono
-
-        # Был новый ввод с момента последнего сброса таймаута
-        if last_input > _countdown_start_mono:
-            _countdown_start_mono = last_input
-            if not _is_active:
-                # Переход: неактивен → активен
-                _total_inactive_seconds += last_input - _inactive_start_mono
-                _is_active = True
-                source = _last_input_source or "неизвестно"
-                if _log_callback:
-                    _log_callback(f"INPUT_ACTIVE (активен, источник: {source})")
-                print(f"[EVENTS] Активен (источник: {source})")
-
-        # Таймаут истёк — пользователь неактивен
-        if _is_active and (now_mono - _countdown_start_mono) >= timeout:
-            # Переход: активен → неактивен
-            _inactive_start_mono = _countdown_start_mono + timeout
-            _is_active = False
-            source = _last_input_source or "нет"
-            if _log_callback:
-                _log_callback(f"INPUT_INACTIVE (неактивен, последний: {source})")
-            print(f"[EVENTS] Неактивен (таймаут {timeout}с, последний ввод: {source})")
+        cur = _last_input_mono
+        if cur > _observed_input_mono:
+            gap = cur - _observed_input_mono
+            if gap >= MIN_IDLE_GAP_SECONDS:
+                with _gaps_lock:
+                    _closed_gaps.append(
+                        (_mono_to_wall(_observed_input_mono), _mono_to_wall(cur))
+                    )
+            _observed_input_mono = cur
 
 
-def start(log_callback):
+def start():
     """Запускает мониторинг ввода"""
-    global _log_callback, _hook_thread, _timer_thread
+    global _hook_thread, _timer_thread
 
     if config.INPUT_ACTIVITY_TIMEOUT <= 0:
         print("[EVENTS] Мониторинг ввода отключен (INPUT_ACTIVITY_TIMEOUT = 0)")
         return
-
-    _log_callback = log_callback
 
     _stop_event.clear()
 
@@ -203,70 +195,72 @@ def stop():
     print("[EVENTS] Мониторинг ввода остановлен")
 
 
-def get_session_inactive_seconds() -> int:
-    """Возвращает суммарное неактивное время (секунды) за текущую сессию"""
-    if config.INPUT_ACTIVITY_TIMEOUT <= 0:
-        return 0
-    total = _total_inactive_seconds
-    # Если сейчас неактивен — прибавляем текущий незавершённый период
-    if not _is_active and _inactive_start_mono > 0 and _session_running:
-        total += time.monotonic() - _inactive_start_mono
-    return int(total)
+def drain_idle_gaps() -> list[tuple[datetime.datetime, datetime.datetime]]:
+    """Возвращает и очищает закрытые гэпы простоя [from, to] (wall-clock)."""
+    with _gaps_lock:
+        gaps = _closed_gaps[:]
+        _closed_gaps.clear()
+    return gaps
+
+
+def get_open_idle() -> tuple[datetime.datetime, datetime.datetime] | None:
+    """Текущий незакрытый гэп простоя [from, now] или None, если мониторинг неактивен."""
+    if not _session_running or _screen_locked:
+        return None
+    now_mono = time.monotonic()
+    return (_mono_to_wall(_observed_input_mono), _mono_to_wall(now_mono))
 
 
 def get_countdown_remaining() -> int | None:
-    """Возвращает секунды до перехода в неактивное состояние, или None если отключено/неактивен"""
+    """Секунды до перехода в неактивность; 0 если уже неактивен; None если отключено."""
     if config.INPUT_ACTIVITY_TIMEOUT <= 0 or not _session_running or _screen_locked:
         return None
-    if not _is_active:
-        return 0
-    elapsed = time.monotonic() - _countdown_start_mono
-    remaining = config.INPUT_ACTIVITY_TIMEOUT - elapsed
+    last = max(_last_input_mono, _observed_input_mono)
+    remaining = config.INPUT_ACTIVITY_TIMEOUT - (time.monotonic() - last)
     return max(0, int(remaining))
 
 
-def reset_inactive_seconds():
-    """Сбрасывает накопленное неактивное время (после checkpoint)"""
-    global _inactive_start_mono, _total_inactive_seconds
-    _total_inactive_seconds = 0.0
-    if not _is_active and _inactive_start_mono > 0:
-        _inactive_start_mono = time.monotonic()
-
-
 def notify_session_start():
-    """Вызывается при начале сессии (UNLOCK/LOGON). Сбрасывает состояние."""
-    global _is_active, _session_running, _screen_locked
-    global _last_input_mono, _last_input_source, _countdown_start_mono
-    global _inactive_start_mono, _total_inactive_seconds
+    """Вызывается при начале сессии (UNLOCK/LOGON). Сбрасывает состояние и якорь."""
+    global _session_running, _screen_locked
+    global _last_input_mono, _last_input_source
+    global _mono0, _wall0, _observed_input_mono
 
     if config.INPUT_ACTIVITY_TIMEOUT <= 0:
         return
+
+    _mono0 = time.monotonic()
+    _wall0 = datetime.datetime.now()
+    _observed_input_mono = _mono0
 
     _screen_locked = False
     _session_running = True
-    _is_active = True
-    _countdown_start_mono = time.monotonic()
     _last_input_mono = 0.0
     _last_input_source = ""
-    _inactive_start_mono = 0.0
-    _total_inactive_seconds = 0.0
 
-    print("[EVENTS] Сессия началась → отсчёт активности сброшен")
+    with _gaps_lock:
+        _closed_gaps.clear()
+
+    print("[EVENTS] Сессия началась → захват гэпов простоя сброшен")
 
 
 def notify_session_end():
-    """Вызывается при завершении сессии (LOCK/LOGOFF). Тихий сброс."""
-    global _is_active, _session_running, _screen_locked, _total_inactive_seconds
+    """Вызывается при завершении сессии (LOCK/LOGOFF). Финализирует открытый гэп."""
+    global _session_running, _screen_locked, _observed_input_mono
 
     if config.INPUT_ACTIVITY_TIMEOUT <= 0:
         return
 
-    # Финализируем текущий незавершённый период неактивности
-    if not _is_active and _inactive_start_mono > 0:
-        _total_inactive_seconds += time.monotonic() - _inactive_start_mono
+    if _session_running:
+        now_mono = time.monotonic()
+        if now_mono - _observed_input_mono >= MIN_IDLE_GAP_SECONDS:
+            with _gaps_lock:
+                _closed_gaps.append(
+                    (_mono_to_wall(_observed_input_mono), _mono_to_wall(now_mono))
+                )
+        _observed_input_mono = now_mono
 
     _screen_locked = True
     _session_running = False
-    _is_active = False
 
     print("[EVENTS] Сессия завершена → мониторинг ввода приостановлен")

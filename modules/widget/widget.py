@@ -263,6 +263,9 @@ class ActivityWidget:
 
     def _open_today_report(self):
         """Быстрое открытие отчёта за сегодня."""
+        # Принудительный чекпойнт — чтобы файл отчёта отражал идущую сессию
+        # вплоть до текущего момента, а не до последнего автосохранения.
+        checkpoint_session()
         path = get_report_path(datetime.date.today())
         if not os.path.exists(path):
             messagebox.showinfo(

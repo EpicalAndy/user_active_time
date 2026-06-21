@@ -27,7 +27,7 @@ from constants import (
     user32,
     wtsapi32,
 )
-from modules import events_monitor
+from modules import activity_intervals, events_monitor
 from modules.report import write_report
 from utility import (
     calculate_activity_percent,
@@ -38,6 +38,7 @@ from utility import (
     get_work_hours,
     parse_date_key,
     parse_time,
+    parse_timestamp,
 )
 
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -50,7 +51,7 @@ _state_lock = threading.Lock()  # Защита state.json и session_start_time 
 
 # Префиксы событий, завершающих рабочий день.
 # LOCK сюда не включён: блокировка — короткий перерыв, и без того обновляет
-# last_logout через end_session/record_day_activity.
+# last_logout через end_session.
 _TERMINAL_EVENT_PREFIXES = ("LOGOFF", "MONITOR_STOP")
 
 
@@ -100,21 +101,137 @@ def cleanup_old_days():
     print(f"[STATE] Удалены устаревшие данные за: {', '.join(sorted(old_keys))}")
 
 
+def _ensure_v2(day_state: dict):
+    """Доводит запись дня до схемы v2 (sessions/idle/legacy_base_seconds).
+
+    Для старой записи (v1) сохраняет уже накопленное active_seconds как
+    legacy-смещение, вычитая ручное время, которое будет пересчитано из лога
+    заново, — чтобы не задвоить его.
+    """
+    if "sessions" in day_state and "idle" in day_state:
+        return
+    existing_active = day_state.get("active_seconds", 0)
+    day_state.setdefault("sessions", [])
+    day_state.setdefault("idle", [])
+    day_state["legacy_base_seconds"] = max(0, existing_active - _manual_seconds(day_state))
+
+
 def get_day_state(state: dict, date_key: str) -> dict:
-    """Возвращает состояние дня, создавая если не существует"""
+    """Возвращает состояние дня, создавая если не существует (схема v2)."""
     if date_key not in state:
         state[date_key] = {
             "active_seconds": 0,
             "session_count": 0,
             "first_login": None,
             "last_logout": None,
+            "sessions": [],
+            "idle": [],
+            "legacy_base_seconds": 0,
             "log_entries": [],
         }
+    else:
+        _ensure_v2(state[date_key])
     return state[date_key]
 
 
-def update_report(date_key: str, day_state: dict):
-    """Обновляет файл отчёта для указанного дня"""
+def _parse_session_intervals(items: list) -> list:
+    """Парсит [{"start","end"}] в список (datetime, datetime)."""
+    out = []
+    for it in items:
+        try:
+            out.append((parse_timestamp(it["start"]), parse_timestamp(it["end"])))
+        except (KeyError, ValueError, TypeError):
+            continue
+    return out
+
+
+def _parse_idle_intervals(items: list) -> list:
+    """Парсит [{"from","to"}] в список (datetime, datetime)."""
+    out = []
+    for it in items:
+        try:
+            out.append((parse_timestamp(it["from"]), parse_timestamp(it["to"])))
+        except (KeyError, ValueError, TypeError):
+            continue
+    return out
+
+
+def _interval_item(interval, key_start: str, key_end: str) -> dict:
+    """Сериализует (datetime, datetime) в {key_start, key_end} (TIMESTAMP-формат)."""
+    start, end = interval
+    return {key_start: format_timestamp(start), key_end: format_timestamp(end)}
+
+
+def _manual_seconds(day_state: dict) -> int:
+    """Суммарная длительность ручных интервалов из лога (MANUAL_ADD_START/END)."""
+    total = 0
+    for pair in _parse_manual_entries(day_state.get("log_entries", [])):
+        try:
+            start = parse_time(pair["start"])
+            end = parse_time(pair["end"])
+        except ValueError:
+            continue
+        total += max(0, int((end - start).total_seconds()))
+    return total
+
+
+def _recompute_active(day_state: dict, date, extra_sessions=(), extra_idle=()) -> int:
+    """Активное время дня = проекция от sessions/idle + ручное время + legacy-смещение.
+
+    extra_* — открытые (ещё не сохранённые) интервалы текущего момента:
+    открытая сессия [старт, сейчас] и открытый гэп простоя.
+    """
+    sessions = _parse_session_intervals(day_state.get("sessions", [])) + list(extra_sessions)
+    idle = _parse_idle_intervals(day_state.get("idle", [])) + list(extra_idle)
+    base = activity_intervals.compute_active_seconds(
+        sessions, idle, config.INPUT_ACTIVITY_TIMEOUT, date,
+    )
+    return base + _manual_seconds(day_state) + day_state.get("legacy_base_seconds", 0)
+
+
+def _iter_dates(start_dt, end_dt):
+    """Итерирует даты от start_dt.date() до end_dt.date() включительно."""
+    day = start_dt.date()
+    last = end_dt.date()
+    while day <= last:
+        yield day
+        day += datetime.timedelta(days=1)
+
+
+def _add_interval_to_days(state: dict, start_dt, end_dt, list_key: str, item: dict):
+    """Добавляет интервал в список list_key каждого дня, который он покрывает.
+
+    Интервал кладётся целиком (без обрезки) в каждый затронутый день — пересечение
+    с границами суток делает уже формула пересчёта, в т.ч. корректно для форы таймаута.
+    """
+    for day in _iter_dates(start_dt, end_dt):
+        get_day_state(state, format_date_key(day))[list_key].append(item)
+
+
+def _append_idle_log(state: dict, gap_from, gap_to):
+    """Добавляет человекочитаемую строку лога на закрытый гэп простоя."""
+    line = (
+        f"{format_timestamp(gap_from)} | {USERNAME} | "
+        f"IDLE (простой до {format_time(gap_to)})"
+    )
+    day_state = get_day_state(state, format_date_key(gap_from))
+    day_state["log_entries"].append(line)
+    day_state["log_entries"].sort()
+
+
+def update_report(date_key: str, day_state: dict, live_sessions=None, live_idle=None):
+    """Обновляет файл отчёта для указанного дня.
+
+    live_sessions/live_idle — открытые (ещё не закрытые) интервалы текущей
+    сессии: записываются в файл, чтобы график/активность отражали идущую сессию,
+    но НЕ сохраняются в state.json (иначе при следующем пересчёте задвоятся).
+    """
+    sessions = list(day_state.get("sessions", []))
+    idle = list(day_state.get("idle", []))
+    if live_sessions:
+        sessions += live_sessions
+    if live_idle:
+        idle += live_idle
     write_report(
         log_dir=LOG_DIR,
         username=USERNAME,
@@ -124,6 +241,8 @@ def update_report(date_key: str, day_state: dict):
         last_logout=day_state["last_logout"],
         session_count=day_state["session_count"],
         log_entries=day_state["log_entries"],
+        sessions=sessions,
+        idle=idle,
     )
 
 
@@ -131,22 +250,26 @@ def get_current_stats() -> dict:
     """Возвращает текущую статистику за сегодня (включая незавершённую сессию)"""
     with _state_lock:
         state = load_state()
-        today = format_date_key(datetime.date.today())
-        day_state = state.get(today, {"active_seconds": 0, "session_count": 0})
+        today_date = datetime.date.today()
+        today = format_date_key(today_date)
+        day_state = state.get(today, {})
 
-        active_seconds = day_state.get("active_seconds", 0)
         session_count = day_state.get("session_count", 0)
 
-        # Добавляем время текущей незавершённой сессии (только сегодняшнюю часть)
+        # Активное время — проекция от сырых интервалов с ТЕКУЩИМ таймаутом.
+        # Незавершённую сессию и открытый гэп простоя подмешиваем как открытые
+        # интервалы; формула сама обрежет их сегодняшней частью суток.
         if session_start_time is not None:
+            _ensure_v2(day_state)  # подтянуть legacy_base для старой записи (без сохранения)
             now = datetime.datetime.now()
-            today_start = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
-            effective_start = max(session_start_time, today_start)
-            elapsed = int((now - effective_start).total_seconds())
-            # Вычитаем время неактивности ввода
-            inactive = events_monitor.get_session_inactive_seconds()
-            elapsed = max(0, elapsed - inactive)
-            active_seconds += elapsed
+            open_idle = events_monitor.get_open_idle()
+            active_seconds = _recompute_active(
+                day_state, today_date,
+                extra_sessions=[(session_start_time, now)],
+                extra_idle=[open_idle] if open_idle else [],
+            )
+        else:
+            active_seconds = day_state.get("active_seconds", 0)
 
         work_hours = get_work_hours(datetime.date.today())
 
@@ -246,7 +369,8 @@ def add_manual_active_time(date_key: str, start_time: str, end_time: str, descri
         day_state["log_entries"].append(start_line)
         day_state["log_entries"].append(end_line)
         day_state["log_entries"].sort()
-        day_state["active_seconds"] += duration
+        # active_seconds — проекция; ручное время учитывается через пересчёт.
+        day_state["active_seconds"] = _recompute_active(day_state, date)
         save_state(state)
         update_report(date_key, day_state)
 
@@ -317,6 +441,7 @@ def remove_manual_active_time(date_key: str, start_time: str, end_time: str, des
         if day_state is None:
             return False
 
+        _ensure_v2(day_state)
         log_entries = day_state.get("log_entries", [])
         try:
             log_entries.remove(start_line)
@@ -324,7 +449,7 @@ def remove_manual_active_time(date_key: str, start_time: str, end_time: str, des
         except ValueError:
             return False
 
-        day_state["active_seconds"] = max(0, day_state["active_seconds"] - duration)
+        day_state["active_seconds"] = _recompute_active(day_state, date)
         save_state(state)
         update_report(date_key, day_state)
 
@@ -353,78 +478,56 @@ def start_session():
     print(f"[SESSION] Сессия началась: {time_str}")
 
 
-def split_session_by_days(start_time, end_time):
-    """Разбивает сессию по дням. Возвращает список (date_key, seconds, last_logout)"""
-    segments = []
-    current = start_time
-
-    while current.date() < end_time.date():
-        midnight = datetime.datetime.combine(
-            current.date() + datetime.timedelta(days=1), datetime.time.min
-        )
-        duration = int((midnight - current).total_seconds())
-        segments.append((format_date_key(current), duration, "23:59:59"))
-        current = midnight
-
-    duration = int((end_time - current).total_seconds())
-    segments.append((format_date_key(end_time), duration, format_time(end_time)))
-
-    return segments
-
-
-def record_day_activity(day_state: dict, duration: int, last_logout: str):
-    """Записывает активность сессии в состояние одного дня"""
-    day_state["active_seconds"] += duration
-    day_state["session_count"] += 1
-    if day_state["first_login"] is None:
-        day_state["first_login"] = "00:00:00"
-    _bump_last_logout(day_state, last_logout)
-
-
-def _subtract_inactive(segments: list, inactive_seconds: int):
-    """Вычитает неактивное время из сегментов (с конца)"""
-    remaining = inactive_seconds
-    for i in range(len(segments) - 1, -1, -1):
-        if remaining <= 0:
-            break
-        date_key, duration, last_logout = segments[i]
-        subtract = min(duration, remaining)
-        segments[i] = (date_key, duration - subtract, last_logout)
-        remaining -= subtract
+def _drain_idle_into_state(state: dict):
+    """Сливает закрытые гэпы простоя из монитора в состояние (intervals + лог)."""
+    for gap_from, gap_to in events_monitor.drain_idle_gaps():
+        item = _interval_item((gap_from, gap_to), "from", "to")
+        _add_interval_to_days(state, gap_from, gap_to, "idle", item)
+        _append_idle_log(state, gap_from, gap_to)
 
 
 def checkpoint_session():
-    """Промежуточное сохранение текущей сессии (защита от потери данных при сбое)"""
-    global session_start_time
+    """Промежуточное сохранение текущей сессии (защита от потери данных при сбое).
 
+    active_seconds — проекция, поэтому пересчитывается «с нуля» из сохранённых
+    интервалов плюс открытая сессия [старт, сейчас]. Старт сессии НЕ сдвигаем:
+    пересчёт идемпотентен и не задваивает время.
+    """
     with _state_lock:
         if session_start_time is None:
             return
 
         now = datetime.datetime.now()
-        inactive_seconds = events_monitor.get_session_inactive_seconds()
-
         state = load_state()
-        segments = split_session_by_days(session_start_time, now)
-        _subtract_inactive(segments, inactive_seconds)
+        _drain_idle_into_state(state)
 
-        for date_key, duration, _ in segments:
-            day_state = get_day_state(state, date_key)
-            day_state["active_seconds"] += duration
-            # session_count НЕ увеличиваем — сессия продолжается
+        open_session = (session_start_time, now)
+        open_idle = events_monitor.get_open_idle()
+        extra_idle = [open_idle] if open_idle else []
+
+        affected = list(_iter_dates(session_start_time, now))
+        for day in affected:
+            day_state = get_day_state(state, format_date_key(day))
+            day_state["active_seconds"] = _recompute_active(
+                day_state, day,
+                extra_sessions=[open_session],
+                extra_idle=extra_idle,
+            )
 
         save_state(state)
 
-        for date_key, _, _ in segments:
-            update_report(date_key, state[date_key])
-
-        # Сдвигаем старт сессии и сбрасываем счётчик неактивности
-        session_start_time = now
-        events_monitor.reset_inactive_seconds()
+        # В файл отчёта пишем открытую сессию/гэп как live-интервалы, чтобы
+        # график и активное время отражали идущую сессию (в state.json их нет).
+        live_sessions = [_interval_item(open_session, "start", "end")]
+        live_idle = [_interval_item(open_idle, "from", "to")] if open_idle else None
+        for day in affected:
+            date_key = format_date_key(day)
+            update_report(date_key, state[date_key],
+                          live_sessions=live_sessions, live_idle=live_idle)
 
 
 def end_session():
-    """Завершает сессию и записывает время"""
+    """Завершает сессию: фиксирует интервал сессии и пересчитывает активное время."""
     global session_start_time
 
     with _state_lock:
@@ -433,21 +536,32 @@ def end_session():
             return
 
         end_time = datetime.datetime.now()
-        inactive_seconds = events_monitor.get_session_inactive_seconds()
+        open_start = session_start_time
 
         state = load_state()
-        segments = split_session_by_days(session_start_time, end_time)
-        _subtract_inactive(segments, inactive_seconds)
+        _drain_idle_into_state(state)
 
-        for date_key, duration, last_logout in segments:
-            day_state = get_day_state(state, date_key)
-            record_day_activity(day_state, duration, last_logout)
-            print(f"[STATS] {date_key}: +{format_duration(duration)} "
-                  f"(всего: {format_duration(day_state['active_seconds'])})")
+        # Сохраняем закрытый интервал сессии целиком в каждый затронутый день.
+        session_item = _interval_item((open_start, end_time), "start", "end")
+        _add_interval_to_days(state, open_start, end_time, "sessions", session_item)
+
+        affected = list(_iter_dates(open_start, end_time))
+        for day in affected:
+            day_state = get_day_state(state, format_date_key(day))
+            day_state["session_count"] += 1
+            if day_state["first_login"] is None:
+                day_state["first_login"] = (
+                    format_time(open_start) if day == open_start.date() else "00:00:00"
+                )
+            last_logout = format_time(end_time) if day == end_time.date() else "23:59:59"
+            _bump_last_logout(day_state, last_logout)
+            day_state["active_seconds"] = _recompute_active(day_state, day)
+            print(f"[STATS] {format_date_key(day)}: "
+                  f"{format_duration(day_state['active_seconds'])} активно")
 
         save_state(state)
-
-        for date_key, _, _ in segments:
+        for day in affected:
+            date_key = format_date_key(day)
             update_report(date_key, state[date_key])
 
         session_start_time = None
@@ -564,7 +678,7 @@ def main():
     cleanup_old_days()
     log_event("MONITOR_START (запуск мониторинга)")
     start_session()
-    events_monitor.start(log_callback=log_event)
+    events_monitor.start()
     events_monitor.notify_session_start()
 
     hwnd = None
