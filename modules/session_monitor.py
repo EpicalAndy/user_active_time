@@ -508,6 +508,15 @@ def checkpoint_session():
         affected = list(_iter_dates(session_start_time, now))
         for day in affected:
             day_state = get_day_state(state, format_date_key(day))
+            # Конец рабочего дня двигаем к «сейчас», чтобы метрика и рабочее
+            # время отражали идущую сессию (не дожидаясь её закрытия).
+            if day_state["first_login"] is None:
+                day_state["first_login"] = (
+                    format_time(session_start_time)
+                    if day == session_start_time.date() else "00:00:00"
+                )
+            last_logout = format_time(now) if day == now.date() else "23:59:59"
+            _bump_last_logout(day_state, last_logout)
             day_state["active_seconds"] = _recompute_active(
                 day_state, day,
                 extra_sessions=[open_session],
