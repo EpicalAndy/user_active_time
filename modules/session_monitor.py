@@ -175,13 +175,21 @@ def _manual_seconds(day_state: dict) -> int:
     return total
 
 
-def _recompute_active(day_state: dict, date, extra_sessions=(), extra_idle=()) -> int:
+def _recompute_active(day_state: dict, date, live_open_session=None, extra_idle=()) -> int:
     """Активное время дня = проекция от sessions/idle + ручное время + legacy-смещение.
 
-    extra_* — открытые (ещё не сохранённые) интервалы текущего момента:
-    открытая сессия [старт, сейчас] и открытый гэп простоя.
+    Открытая (незакрытая) сессия учитывается так:
+    - live_open_session=(старт, сейчас) — «живой» вариант до текущей секунды
+      (для виджета); если задан, сохранённый open_session игнорируется;
+    - иначе берётся сохранённый в state.json `open_session` (его конец = время
+      последнего checkpoint) — он переживает сбой питания.
+    extra_idle — открытый гэп простоя для «живого» расчёта.
     """
-    sessions = _parse_session_intervals(day_state.get("sessions", [])) + list(extra_sessions)
+    sessions = _parse_session_intervals(day_state.get("sessions", []))
+    if live_open_session is not None:
+        sessions.append(live_open_session)
+    elif day_state.get("open_session"):
+        sessions += _parse_session_intervals([day_state["open_session"]])
     idle = _parse_idle_intervals(day_state.get("idle", [])) + list(extra_idle)
     base = activity_intervals.compute_active_seconds(
         sessions, idle, config.INPUT_ACTIVITY_TIMEOUT, date,
@@ -219,17 +227,18 @@ def _append_idle_log(state: dict, gap_from, gap_to):
     day_state["log_entries"].sort()
 
 
-def update_report(date_key: str, day_state: dict, live_sessions=None, live_idle=None):
+def update_report(date_key: str, day_state: dict, live_idle=None):
     """Обновляет файл отчёта для указанного дня.
 
-    live_sessions/live_idle — открытые (ещё не закрытые) интервалы текущей
-    сессии: записываются в файл, чтобы график/активность отражали идущую сессию,
-    но НЕ сохраняются в state.json (иначе при следующем пересчёте задвоятся).
+    Открытая сессия (`open_session`, сохранена в state.json для устойчивости к
+    сбоям) подмешивается в записываемые `sessions`, чтобы график/активность
+    отражали идущую сессию. live_idle — открытый гэп простоя: пишется в файл,
+    но НЕ хранится в state.json (транзиентный, при пересчёте не нужен).
     """
     sessions = list(day_state.get("sessions", []))
+    if day_state.get("open_session"):
+        sessions.append(day_state["open_session"])
     idle = list(day_state.get("idle", []))
-    if live_sessions:
-        sessions += live_sessions
     if live_idle:
         idle += live_idle
     write_report(
@@ -265,7 +274,7 @@ def get_current_stats() -> dict:
             open_idle = events_monitor.get_open_idle()
             active_seconds = _recompute_active(
                 day_state, today_date,
-                extra_sessions=[(session_start_time, now)],
+                live_open_session=(session_start_time, now),
                 extra_idle=[open_idle] if open_idle else [],
             )
         else:
@@ -472,8 +481,15 @@ def start_session():
 
         if day_state["first_login"] is None:
             day_state["first_login"] = time_str
-            save_state(state)
-            update_report(date_key, day_state)
+
+        # Регистрируем открытую сессию сразу — на случай сбоя питания она уже
+        # в state.json (конец будет двигаться на каждом checkpoint).
+        day_state["open_session"] = _interval_item(
+            (session_start_time, session_start_time), "start", "end",
+        )
+        day_state["active_seconds"] = _recompute_active(day_state, session_start_time.date())
+        save_state(state)
+        update_report(date_key, day_state)
 
     print(f"[SESSION] Сессия началась: {time_str}")
 
@@ -490,8 +506,9 @@ def checkpoint_session():
     """Промежуточное сохранение текущей сессии (защита от потери данных при сбое).
 
     active_seconds — проекция, поэтому пересчитывается «с нуля» из сохранённых
-    интервалов плюс открытая сессия [старт, сейчас]. Старт сессии НЕ сдвигаем:
-    пересчёт идемпотентен и не задваивает время.
+    интервалов плюс открытая сессия [старт, сейчас]. Открытую сессию ПЕРСИСТИМ в
+    state.json (`open_session`), двигая её конец к «сейчас», — так при сбое
+    питания теряется максимум один интервал checkpoint, а не вся сессия.
     """
     with _state_lock:
         if session_start_time is None:
@@ -501,9 +518,12 @@ def checkpoint_session():
         state = load_state()
         _drain_idle_into_state(state)
 
-        open_session = (session_start_time, now)
+        # Открытую сессию храним целиком [старт, сейчас] в каждом затронутом дне
+        # (пересечение с сутками делает формула пересчёта).
+        open_session_item = _interval_item((session_start_time, now), "start", "end")
         open_idle = events_monitor.get_open_idle()
         extra_idle = [open_idle] if open_idle else []
+        live_idle = [_interval_item(open_idle, "from", "to")] if open_idle else None
 
         affected = list(_iter_dates(session_start_time, now))
         for day in affected:
@@ -517,22 +537,13 @@ def checkpoint_session():
                 )
             last_logout = format_time(now) if day == now.date() else "23:59:59"
             _bump_last_logout(day_state, last_logout)
-            day_state["active_seconds"] = _recompute_active(
-                day_state, day,
-                extra_sessions=[open_session],
-                extra_idle=extra_idle,
-            )
+            day_state["open_session"] = open_session_item
+            day_state["active_seconds"] = _recompute_active(day_state, day, extra_idle=extra_idle)
 
         save_state(state)
-
-        # В файл отчёта пишем открытую сессию/гэп как live-интервалы, чтобы
-        # график и активное время отражали идущую сессию (в state.json их нет).
-        live_sessions = [_interval_item(open_session, "start", "end")]
-        live_idle = [_interval_item(open_idle, "from", "to")] if open_idle else None
         for day in affected:
             date_key = format_date_key(day)
-            update_report(date_key, state[date_key],
-                          live_sessions=live_sessions, live_idle=live_idle)
+            update_report(date_key, state[date_key], live_idle=live_idle)
 
 
 def end_session():
@@ -557,6 +568,8 @@ def end_session():
         affected = list(_iter_dates(open_start, end_time))
         for day in affected:
             day_state = get_day_state(state, format_date_key(day))
+            # Сессия закрыта штатно — снимаем пометку открытой (теперь она в sessions).
+            day_state.pop("open_session", None)
             day_state["session_count"] += 1
             if day_state["first_login"] is None:
                 day_state["first_login"] = (
@@ -575,6 +588,39 @@ def end_session():
 
         session_start_time = None
         cleanup_old_days()
+
+
+def recover_orphan_open_sessions():
+    """Финализирует сессии, не закрытые из-за сбоя (например, отключение питания).
+
+    После жёсткого сброса `end_session` не отрабатывает, и открытая сессия
+    остаётся помеченной `open_session` в state.json (с концом = время последнего
+    checkpoint). При старте превращаем такие пометки в обычные закрытые сессии,
+    чтобы наработанное время не потерялось. Вызывать ДО start_session.
+    """
+    with _state_lock:
+        state = load_state()
+        recovered = []
+        for date_key, day_state in state.items():
+            orphan = day_state.get("open_session")
+            if not orphan:
+                continue
+            _ensure_v2(day_state)
+            day_state.setdefault("sessions", []).append(orphan)
+            day_state["session_count"] = day_state.get("session_count", 0) + 1
+            line = (f"{orphan.get('end', '')} | {USERNAME} | "
+                    f"SESSION_RECOVERED (восстановлено после сбоя)")
+            day_state.setdefault("log_entries", []).append(line)
+            day_state["log_entries"].sort()
+            del day_state["open_session"]
+            day_state["active_seconds"] = _recompute_active(day_state, parse_date_key(date_key))
+            recovered.append(date_key)
+
+        if recovered:
+            save_state(state)
+            for date_key in recovered:
+                update_report(date_key, state[date_key])
+            print(f"[RECOVER] Восстановлены незакрытые сессии: {', '.join(sorted(recovered))}")
 
 
 def wnd_proc(hwnd, msg, wparam, lparam):
@@ -685,6 +731,7 @@ def main():
     print("Нажмите Ctrl+C для выхода\n")
 
     cleanup_old_days()
+    recover_orphan_open_sessions()  # дотянуть сессии, оборванные сбоем питания
     log_event("MONITOR_START (запуск мониторинга)")
     start_session()
     events_monitor.start()
