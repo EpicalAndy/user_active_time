@@ -4,8 +4,10 @@
 WAV генерируется один раз при импорте и кладётся в LOG_DIR.
 """
 
+import itertools
 import math
 import os
+import random
 import struct
 import wave
 import winsound
@@ -46,22 +48,30 @@ def _generate_notification_wav() -> str:
     return wav_path
 
 
-def _generate_tick_wav() -> str:
-    """Короткий «тик» (~40 мс) — высокий клик с быстрым затуханием."""
+def _generate_clock_tick_wav(filename: str, resonance: float, seed: int) -> str:
+    """Генерирует механический щелчок часов (~50 мс).
+
+    Звук настоящих ходиков — это короткий широкополосный «щелчок» (импульс
+    отфильтрованного шума), а не чистая высокая синусоида: именно из-за
+    синусоиды старый сигнал звучал электронно и «потусторонне». Здесь шумовой
+    щелчок задаёт характерную атаку, а затухающий резонанс — «деревянное» тело.
+    """
     sample_rate = 22050
-    duration = 0.04
+    duration = 0.05
     n_samples = int(sample_rate * duration)
 
-    freq = 2000  # Гц
+    rnd = random.Random(seed)
     samples = []
     for i in range(n_samples):
         t = i / sample_rate
-        # Быстрый экспоненциальный спад — звук «клика»
-        envelope = math.exp(-t * 80)
-        value = math.sin(2 * math.pi * freq * t) * envelope * 0.3
+        # Широкополосный «снап»: шум с очень быстрым затуханием — резкая атака.
+        snap = rnd.uniform(-1.0, 1.0) * math.exp(-t * 220)
+        # Затухающий резонанс даёт «тело» щелчка (тик выше, ток ниже).
+        body = math.sin(2 * math.pi * resonance * t) * math.exp(-t * 90)
+        value = (snap * 0.7 + body * 0.5) * 0.45
         samples.append(int(max(-1.0, min(1.0, value)) * 32767))
 
-    wav_path = os.path.join(LOG_DIR, "tick.wav")
+    wav_path = os.path.join(LOG_DIR, filename)
     with wave.open(wav_path, "wb") as wf:
         wf.setnchannels(1)
         wf.setsampwidth(2)
@@ -71,7 +81,11 @@ def _generate_tick_wav() -> str:
 
 
 _NOTIFICATION_WAV_PATH = _generate_notification_wav()
-_TICK_WAV_PATH = _generate_tick_wav()
+# Две слегка разные высоты — классическое чередование «тик… так…».
+_TICK_WAV_PATH = _generate_clock_tick_wav("tick.wav", resonance=1700, seed=1)
+_TOCK_WAV_PATH = _generate_clock_tick_wav("tock.wav", resonance=1100, seed=2)
+# Чередуем тик/так при каждом вызове play_tick().
+_tick_tock_cycle = itertools.cycle((_TICK_WAV_PATH, _TOCK_WAV_PATH))
 
 
 def play_notification():
@@ -82,7 +96,7 @@ def play_notification():
 
 
 def play_tick():
-    """Асинхронно проигрывает короткий тик часов."""
+    """Асинхронно проигрывает щелчок часов, чередуя «тик» и «так»."""
     winsound.PlaySound(
-        _TICK_WAV_PATH, winsound.SND_FILENAME | winsound.SND_ASYNC,
+        next(_tick_tock_cycle), winsound.SND_FILENAME | winsound.SND_ASYNC,
     )
