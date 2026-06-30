@@ -71,8 +71,10 @@ def compute_active_seconds(sessions, idle, timeout: float, day: datetime.date) -
 def day_segments(sessions, idle, timeout: float, day: datetime.date) -> list[tuple]:
     """Размеченные отрезки суток для графика: (start, end, "active"|"inactive").
 
-    Внутри каждой сессии вырезаются неактивные части (гэпы длиннее таймаута),
-    всё обрезается границами суток. Отрезки идут по времени без перекрытий.
+    Внутри каждой сессии вырезаются неактивные части (гэпы длиннее таймаута).
+    Промежутки между сессиями (экран заблокирован / сессия выключена) — это
+    тоже простой, поэтому они помечаются "inactive", а не остаются пустыми.
+    Всё обрезается границами суток. Отрезки идут по времени без перекрытий.
     """
     d0, d1 = day_bounds(day)
 
@@ -87,11 +89,15 @@ def day_segments(sessions, idle, timeout: float, day: datetime.date) -> list[tup
     inactive_ivs.sort()
 
     segments: list[tuple] = []
+    prev_session_end = None  # конец предыдущей сессии (в пределах суток)
     for s_start, s_end in sorted(sessions):
         cursor = max(s_start, d0)
         end = min(s_end, d1)
         if cursor >= end:
             continue
+        # Простой между сессиями: пробел до начала текущей сессии — нерабочее время.
+        if prev_session_end is not None and cursor > prev_session_end:
+            segments.append((prev_session_end, cursor, "inactive"))
         for iv_s, iv_e in inactive_ivs:
             if iv_e <= cursor or iv_s >= end:
                 continue
@@ -104,6 +110,8 @@ def day_segments(sessions, idle, timeout: float, day: datetime.date) -> list[tup
             cursor = max(cursor, clip_e)
         if cursor < end:
             segments.append((cursor, end, "active"))
+        # Перекрывающиеся сессии не должны порождать «отрицательный» пробел.
+        prev_session_end = end if prev_session_end is None else max(prev_session_end, end)
 
     segments.sort(key=lambda seg: seg[0])
     return segments

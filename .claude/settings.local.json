@@ -26,7 +26,8 @@
       "Bash(python tests/test_activity_intervals.py)",
       "Bash(python -m py_compile modules/session_monitor.py)",
       "Bash(python -)",
-      "Bash(python -c \"import modules.widget.notification as n; print\\('tick:', n._TICK_WAV_PATH\\); print\\('tock:', n._TOCK_WAV_PATH\\); import os; print\\('tick bytes', os.path.getsize\\(n._TICK_WAV_PATH\\)\\); print\\('tock bytes', os.path.getsize\\(n._TOCK_WAV_PATH\\)\\); print\\('cycle:', next\\(n._tick_tock_cycle\\).split\\(chr\\(92\\)\\)[-1], next\\(n._tick_tock_cycle\\).split\\(chr\\(92\\)\\)[-1], next\\(n._tick_tock_cycle\\).split\\(chr\\(92\\)\\)[-1]\\)\")"
+      "Bash(python -c \"import modules.widget.notification as n; print\\('tick:', n._TICK_WAV_PATH\\); print\\('tock:', n._TOCK_WAV_PATH\\); import os; print\\('tick bytes', os.path.getsize\\(n._TICK_WAV_PATH\\)\\); print\\('tock bytes', os.path.getsize\\(n._TOCK_WAV_PATH\\)\\); print\\('cycle:', next\\(n._tick_tock_cycle\\).split\\(chr\\(92\\)\\)[-1], next\\(n._tick_tock_cycle\\).split\\(chr\\(92\\)\\)[-1], next\\(n._tick_tock_cycle\\).split\\(chr\\(92\\)\\)[-1]\\)\")",
+      "Bash(python3 tests/test_activity_intervals.py)"
     ]
   }
 }

@@ -94,6 +94,26 @@ def test_day_segments_short_idle_not_cut():
     assert segs == [(dt(9), dt(12), "active")]
 
 
+def test_day_segments_gap_between_sessions_is_inactive():
+    # Экран блокируется между сессиями (LOCK→UNLOCK): пробел = простой, не пустота.
+    sessions = [(dt(9), dt(10)), (dt(11), dt(12))]
+    segs = ai.day_segments(sessions, [], 300, DAY)
+    assert segs == [
+        (dt(9), dt(10), "active"),
+        (dt(10), dt(11), "inactive"),
+        (dt(11), dt(12), "active"),
+    ]
+
+
+def test_day_segments_overlapping_sessions_no_negative_gap():
+    sessions = [(dt(9), dt(11)), (dt(10), dt(12))]  # перекрытие
+    segs = ai.day_segments(sessions, [], 300, DAY)
+    assert segs == [
+        (dt(9), dt(11), "active"),
+        (dt(10), dt(12), "active"),
+    ]
+
+
 def _run():
     funcs = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in funcs:
