@@ -9,6 +9,9 @@ from typing import Literal
 from config import MAIN_FONT_SIZE
 from constants import (
     FONT_FAMILY,
+    HELP_MENU_GITHUB,
+    HELP_MENU_LABEL,
+    HELP_MENU_README,
     REPORT_MENU_DAILY,
     REPORT_MENU_FOLDER,
     REPORT_MENU_HEATMAP,
@@ -17,6 +20,7 @@ from constants import (
     REPORT_MENU_TODAY,
     REPORTS_MENU_LABEL,
     TOOLTIP_ADD_ACTIVE_TIME,
+    TOOLTIP_HELP,
     TOOLTIP_OPEN_SETTINGS,
 )
 from modules import theme
@@ -32,6 +36,8 @@ class WidgetToolbar:
         on_open_reports: Callable,
         on_view_report: Callable,
         on_open_settings: Callable,
+        on_open_readme: Callable,
+        on_open_github: Callable,
         on_period_report: Callable | None = None,
         on_heatmap: Callable | None = None,
         on_today_report: Callable | None = None,
@@ -42,8 +48,18 @@ class WidgetToolbar:
         # Слева: добавление активного времени
         self._add_button("⏱", TOOLTIP_ADD_ACTIVE_TIME, on_add_active_time, side=tk.LEFT)
 
-        # Справа: настройки и выпадающий список «Отчёты»
-        # Пакуем справа-налево, чтобы сохранить визуальный порядок.
+        # Справа: «Помощь», настройки и выпадающий список «Отчёты».
+        # Пакуем справа-налево, чтобы сохранить визуальный порядок:
+        # «Помощь» пакуется первой, поэтому оказывается правее настроек.
+        self._add_icon_dropdown(
+            HELP_MENU_LABEL,
+            TOOLTIP_HELP,
+            [
+                (HELP_MENU_README, on_open_readme),
+                (HELP_MENU_GITHUB, on_open_github),
+            ],
+            side=tk.RIGHT,
+        )
         self._add_button("⚙", TOOLTIP_OPEN_SETTINGS, on_open_settings, side=tk.RIGHT)
         self._add_separator(side=tk.RIGHT)
         self._add_dropdown(
@@ -93,7 +109,36 @@ class WidgetToolbar:
             padx=8, anchor=tk.CENTER,
         )
         btn.pack(side=side, fill=tk.Y)
+        self._bind_menu(btn, items)
+        self._attach_hover(btn)
+        return btn
 
+    def _add_icon_dropdown(
+        self,
+        icon: str,
+        tooltip_text: str,
+        items: list[tuple[str, Callable | None] | None],
+        side: Literal["left", "right", "top", "bottom"] = "left",
+    ):
+        """Кнопка-иконка (как _add_button) с выпадающим меню и подсказкой."""
+        btn = tk.Label(
+            self.frame, text=icon,
+            bg=theme.COLOR_DARKER_BG, fg=theme.COLOR_LIGHT_FG,
+            font=(FONT_FAMILY, MAIN_FONT_SIZE), cursor="hand2",
+            width=3, anchor=tk.CENTER,
+        )
+        btn.pack(side=side, fill=tk.Y)
+        self._bind_menu(btn, items)
+        self._attach_hover(btn)
+        self._attach_tooltip(btn, tooltip_text)
+        return btn
+
+    def _bind_menu(
+        self,
+        btn: tk.Label,
+        items: list[tuple[str, Callable | None] | None],
+    ):
+        """Строит tk.Menu из items и раскрывает его под кнопкой по клику."""
         menu = tk.Menu(btn, tearoff=0)
         for item in items:
             if item is None:
@@ -112,8 +157,6 @@ class WidgetToolbar:
             menu.tk_popup(x, y)
 
         btn.bind("<Button-1>", on_click)
-        self._attach_hover(btn)
-        return btn
 
     def _add_separator(self, side: Literal["left", "right", "top", "bottom"] = "left"):
         sep = tk.Frame(self.frame, bg=theme.COLOR_MUTED, width=1)

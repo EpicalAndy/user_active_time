@@ -6,6 +6,7 @@ import datetime
 import json
 import os
 import tkinter as tk
+import webbrowser
 from collections.abc import Callable
 from tkinter import messagebox
 
@@ -20,6 +21,7 @@ from config import (
 )
 import config
 from constants import (
+    GITHUB_URL,
     REPORT_NO_DATA_TITLE,
     REPORT_NO_PAST_TEXT,
     REPORT_NO_TODAY_TEXT,
@@ -37,7 +39,7 @@ from .body import WidgetBody
 from .notification import play_notification, play_tick
 from .title_bar import TitleBar
 from .toolbar import WidgetToolbar
-from utility import format_date_key
+from utility import format_date_key, resource_path
 
 # Фон окна (под телом и тулбаром) и тонкая линия-разделитель читаются
 # динамически из theme.* — см. _build_chrome / _apply_theme.
@@ -97,6 +99,8 @@ class ActivityWidget:
             on_open_reports=lambda: os.startfile(LOG_DIR),
             on_view_report=self._view_report,
             on_open_settings=self._open_settings,
+            on_open_readme=self._open_readme,
+            on_open_github=lambda: webbrowser.open(GITHUB_URL),
             on_period_report=self._open_period_report,
             on_heatmap=self._open_heatmap,
             on_today_report=self._open_today_report,
@@ -291,6 +295,16 @@ class ActivityWidget:
     def _open_heatmap(self):
         """Открывает окно тепловой карты активности"""
         HeatmapViewer(self.window)
+
+    def _open_readme(self):
+        """Открывает локальный README проекта в приложении по умолчанию."""
+        path = resource_path("README.md")
+        if os.path.exists(path):
+            os.startfile(path)
+        else:
+            messagebox.showwarning(
+                "Помощь", f"Файл README не найден:\n{path}",
+            )
 
     def _add_active_time(self):
         """Открывает диалог управления ручным активным временем"""

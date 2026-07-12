@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('README.md', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

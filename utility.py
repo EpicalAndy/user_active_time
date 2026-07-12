@@ -3,6 +3,8 @@
 """
 
 import datetime
+import os
+import sys
 
 from modules import work_calendar
 from config import (
@@ -13,6 +15,19 @@ from config import (
     TIMESTAMP_FORMAT,
     WORK_HOURS_BY_DAY,
 )
+
+
+def resource_path(relative: str) -> str:
+    """Абсолютный путь к ресурсу, поставляемому с приложением.
+
+    В собранной сборке (PyInstaller) данные лежат рядом с исполняемым файлом —
+    путь берётся от sys._MEIPASS. В обычном запуске — от корня проекта
+    (на два уровня выше этого файла: utility.py → корень).
+    """
+    base = getattr(sys, "_MEIPASS", None)
+    if base is None:
+        base = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, relative)
 
 
 def format_duration(seconds: int) -> str:

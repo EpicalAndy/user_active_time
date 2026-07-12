@@ -15,7 +15,16 @@ FONT_FAMILY = "Segoe UI"
 
 TOOLTIP_ADD_ACTIVE_TIME = "Добавить активное время"
 TOOLTIP_OPEN_SETTINGS = "Настройки"
+TOOLTIP_HELP = "Помощь"
 DEFAULT_MANUAL_ACTIVITY_DESCRIPTION = "Добавлено пользовательское время"
+
+# === Меню «Помощь» ===
+
+HELP_MENU_LABEL = "❓"
+HELP_MENU_README = "Помощь"
+HELP_MENU_GITHUB = "github"
+# «Помощь» открывает локальный README.md (поставляется со сборкой — см. main.spec).
+GITHUB_URL = "https://github.com/EpicalAndy/user_active_time"
 
 # === Меню «Отчёты» ===
 
