@@ -2,21 +2,25 @@
 Диалог ручного управления активным временем
 """
 
+import datetime
 import tkinter as tk
 from tkinter import ttk
 
-from config import MAIN_FONT_SIZE
+from config import DATE_DISPLAY_FORMAT, MAIN_FONT_SIZE
 from constants import (
     DEFAULT_MANUAL_ACTIVITY_DESCRIPTION,
     FONT_FAMILY,
+    PERIOD_DIALOG_CALENDAR_BUTTON,
 )
 from modules import theme
+from modules.calendar_popup import CalendarPopup
 from modules.session_monitor import (
     add_manual_active_time,
     get_manual_active_entries,
     remove_manual_active_time,
 )
 from modules.ui_utils import center_on_parent
+from utility import format_date_display, format_date_key, parse_date_key
 
 
 class ManualActivityDialog:
@@ -26,6 +30,9 @@ class ManualActivityDialog:
         self.date_key = date_key
         self.changed = False
         self._entry_vars: list[tuple[tk.BooleanVar, dict]] = []
+        self._date_var = tk.StringVar(
+            value=format_date_display(parse_date_key(date_key))
+        )
 
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Добавить активное время")
@@ -41,9 +48,27 @@ class ManualActivityDialog:
         self.dialog.focus_set()
 
     def _create_widgets(self):
+        # === Блок «Дата» ===
+        date_frame = ttk.LabelFrame(self.dialog, text="Дата")
+        date_frame.pack(fill=tk.X, padx=10, pady=(8, 4))
+
+        date_row = tk.Frame(date_frame)
+        date_row.pack(fill=tk.X, padx=8, pady=8)
+        tk.Label(date_row, text="Дата:", width=6, anchor=tk.W,
+                 font=(FONT_FAMILY, MAIN_FONT_SIZE)).pack(side=tk.LEFT)
+        tk.Entry(
+            date_row, textvariable=self._date_var, width=14,
+            font=(FONT_FAMILY, MAIN_FONT_SIZE), justify=tk.CENTER,
+        ).pack(side=tk.LEFT)
+        ttk.Button(
+            date_row, text=PERIOD_DIALOG_CALENDAR_BUTTON, width=3,
+            command=self._open_calendar,
+        ).pack(side=tk.LEFT, padx=(4, 0))
+        self._date_var.trace_add("write", lambda *_: self._on_date_change())
+
         # === Блок «Добавить диапазон» ===
         add_frame = ttk.LabelFrame(self.dialog, text="Добавить диапазон")
-        add_frame.pack(fill=tk.X, padx=10, pady=(8, 4))
+        add_frame.pack(fill=tk.X, padx=10, pady=(4, 4))
 
         # --- Время "С" ---
         from_frame = tk.Frame(add_frame)
@@ -116,6 +141,30 @@ class ManualActivityDialog:
         ).pack(side=tk.LEFT)
         tk.Label(parent, text="минуты",
                  font=(FONT_FAMILY, MAIN_FONT_SIZE)).pack(side=tk.LEFT, padx=(4, 0))
+
+    def _open_calendar(self):
+        try:
+            initial = parse_date_key(self.date_key)
+        except ValueError:
+            initial = datetime.date.today()
+        CalendarPopup(
+            self.dialog,
+            on_select=lambda d: self._date_var.set(format_date_display(d)),
+            initial_date=initial,
+        )
+
+    def _on_date_change(self):
+        """Реагирует на изменение даты: подтягивает диапазоны за выбранный день."""
+        s = self._date_var.get().strip()
+        try:
+            date = datetime.datetime.strptime(s, DATE_DISPLAY_FORMAT).date()
+        except ValueError:
+            return
+        new_key = format_date_key(date)
+        if new_key == self.date_key:
+            return
+        self.date_key = new_key
+        self._refresh_entries()
 
     def _refresh_entries(self):
         """Перерисовывает список добавленных диапазонов из state.json"""
