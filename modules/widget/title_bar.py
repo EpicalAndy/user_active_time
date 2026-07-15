@@ -320,12 +320,14 @@ class TitleBar:
         """Цвет для внешней индикации (например, рамка окна).
 
         - Режим «норма выработана» → сплошной зелёный (имеет приоритет
-          над red-предупреждениями).
+          над red-предупреждениями). Отключается настройкой
+          WIDGET_PROGRESS_HIGHLIGHT — тогда индикация идёт по обычным
+          правилам countdown'а, а зелёным остаётся только заголовок.
         - Фаза нуля → сплошной красный (как у текста заголовка).
         - Фаза предупреждения, кадр «жирный красный» → красный.
         - Иначе → None (индикатор не нужен).
         """
-        if self._goal_reached:
+        if self._goal_reached and config.WIDGET_PROGRESS_HIGHLIGHT:
             return theme.COLOR_GREEN
         if self._countdown_state == _COUNTDOWN_ZERO:
             return theme.COLOR_RED

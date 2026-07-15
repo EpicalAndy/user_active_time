@@ -60,6 +60,9 @@ COUNTDOWN_TICK_SOUND = False
 # (норма заработана — больше не нужно уведомлять о приближении к простою)
 STOP_COUNTDOWN_AT_RECOMMENDED = False
 
+# Подсвечивать рамку виджета зелёным при достижении рекомендуемой нормы
+WIDGET_PROGRESS_HIGHLIGHT = True
+
 # Виджет: какие метрики отображать
 WIDGET_SHOW_ACTIVE_TIME = True
 WIDGET_SHOW_SESSION_COUNT = False
