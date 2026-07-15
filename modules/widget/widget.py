@@ -37,7 +37,7 @@ from modules.report_viewer import ReportViewer
 from modules.settings_dialog import SettingsDialog
 from .body import WidgetBody
 from .notification import play_notification, play_tick
-from .title_bar import TitleBar
+from .title_bar import PROGRESS_GOAL, PROGRESS_MIN, PROGRESS_NONE, TitleBar
 from .toolbar import WidgetToolbar
 from utility import format_date_key, resource_path
 
@@ -49,6 +49,15 @@ from utility import format_date_key, resource_path
 WIDGET_WIDTH = 280
 
 _WIDGET_POS_FILE = os.path.join(LOG_DIR, "widget_position.json")
+
+
+def _progress_level(activity_percent: float) -> str:
+    """Уровень прогресса по тем же порогам, что и подсветка метрик в теле."""
+    if activity_percent >= config.RECOMMENDED_ACTIVITY_THRESHOLD:
+        return PROGRESS_GOAL
+    if activity_percent >= config.MIN_ACTIVITY_THRESHOLD:
+        return PROGRESS_MIN
+    return PROGRESS_NONE
 
 
 def is_widget_enabled() -> bool:
@@ -116,8 +125,8 @@ class ActivityWidget:
         self.window.overrideredirect(True)
         self.window.attributes("-topmost", True)
         self.window.resizable(False, False)
-        # highlight* — это рамка, которой мы мигаем при предупреждении.
-        # По умолчанию красим в WINDOW_BG, чтобы она была невидимой.
+        # highlight* — это рамка-индикатор (прогресс по активности, алерты
+        # countdown'а). По умолчанию красим в WINDOW_BG, чтобы она была невидимой.
         self.window.configure(
             bg=theme.COLOR_DARK_BG,
             highlightthickness=2,
@@ -158,10 +167,12 @@ class ActivityWidget:
 
         if not stats.get("is_working_day", True):
             self._title_bar.clear_metric_labels()
+            self._title_bar.set_progress_level(PROGRESS_NONE)
             self._last_activity_percent = None
             return
 
         self._title_bar.update_metric_labels(stats)
+        self._title_bar.set_progress_level(_progress_level(stats["activity_percent"]))
         # Кешируем для _update_countdown: он бегает в 60 раз чаще, чем мы
         # обновляем stats, и тянуть stats_provider() каждую секунду накладно.
         self._last_activity_percent = stats["activity_percent"]
@@ -213,19 +224,19 @@ class ActivityWidget:
         ):
             play_tick()
 
-    def _apply_border_alert(self):
-        """Красит рамку окна в красный во время предупреждения/нуля countdown'а.
+    def _apply_border_indicator(self):
+        """Красит рамку окна: прогресс по активности + алерты countdown'а.
 
         Цвет берётся из TitleBar — синхронно с миганием текста заголовка.
         """
-        color = self._title_bar.countdown_alert_color() or theme.COLOR_DARK_BG
+        color = self._title_bar.border_indicator_color() or theme.COLOR_DARK_BG
         self.window.configure(highlightbackground=color, highlightcolor=color)
 
     def _tick(self):
         """Единый тикер виджета (шаг 500мс)"""
         # 500мс — анимация мигания countdown'а (если активна)
         self._title_bar.tick_blink()
-        self._apply_border_alert()
+        self._apply_border_indicator()
 
         # 1с — countdown
         if self._tick_count % 2 == 0:

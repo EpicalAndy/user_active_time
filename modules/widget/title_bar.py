@@ -19,6 +19,13 @@ _COUNTDOWN_NORMAL = "normal"
 _COUNTDOWN_WARNING = "warning"
 _COUNTDOWN_ZERO = "zero"
 
+# Уровни прогресса по активности — задают цвет рамки виджета.
+# Шкала та же, что у метрик в теле виджета (см. body._color_for_percent):
+# норма → зелёный, минимум → жёлтый, ниже минимума → без индикации.
+PROGRESS_NONE = "none"
+PROGRESS_MIN = "min"
+PROGRESS_GOAL = "goal"
+
 
 def _format_hm(seconds: int) -> str:
     """Форматирует секунды в «Xч Yм» (без секунд)."""
@@ -65,6 +72,10 @@ class TitleBar:
         # _goal_placeholder=True дополнительно заменяет countdown на «__:__».
         self._goal_reached = False
         self._goal_placeholder = False
+        # Уровень прогресса для рамки. Живёт отдельно от _goal_reached:
+        # тот завязан на countdown (и без него не выставляется), а рамка
+        # должна подсвечиваться независимо от таймера неактивности.
+        self._progress_level = PROGRESS_NONE
         self._drag_x = 0
         self._drag_y = 0
 
@@ -316,23 +327,36 @@ class TitleBar:
         self._goal_reached = False
         self._goal_placeholder = False
 
-    def countdown_alert_color(self) -> str | None:
-        """Цвет для внешней индикации (например, рамка окна).
+    def set_progress_level(self, level: str):
+        """Задаёт уровень прогресса по активности (PROGRESS_*) для рамки."""
+        self._progress_level = level
 
-        - Режим «норма выработана» → сплошной зелёный (имеет приоритет
-          над red-предупреждениями). Отключается настройкой
-          WIDGET_PROGRESS_HIGHLIGHT — тогда индикация идёт по обычным
-          правилам countdown'а, а зелёным остаётся только заголовок.
+    def border_indicator_color(self) -> str | None:
+        """Цвет рамки окна виджета.
+
+        Приоритеты:
+        - Норма выработана → сплошной зелёный (перекрывает red-предупреждения:
+          норма уже заработана, простой больше не важен).
         - Фаза нуля → сплошной красный (как у текста заголовка).
         - Фаза предупреждения, кадр «жирный красный» → красный.
+        - Минимум взят (но норма ещё нет) → жёлтый. Стоит НИЖЕ красного:
+          работа ещё не закончена, и предупреждение о простое важнее, чем
+          индикация прогресса.
         - Иначе → None (индикатор не нужен).
+
+        Обе подсветки прогресса (зелёная и жёлтая) выключаются настройкой
+        WIDGET_PROGRESS_HIGHLIGHT — тогда рамка живёт только по правилам
+        countdown'а, а зелёным при норме остаётся только заголовок.
         """
-        if self._goal_reached and config.WIDGET_PROGRESS_HIGHLIGHT:
+        highlight = config.WIDGET_PROGRESS_HIGHLIGHT
+        if highlight and self._progress_level == PROGRESS_GOAL:
             return theme.COLOR_GREEN
         if self._countdown_state == _COUNTDOWN_ZERO:
             return theme.COLOR_RED
         if self._countdown_state == _COUNTDOWN_WARNING and self._countdown_blink_bold:
             return theme.COLOR_RED
+        if highlight and self._progress_level == PROGRESS_MIN:
+            return theme.COLOR_YELLOW
         return None
 
     def tick_blink(self):
