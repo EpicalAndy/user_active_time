@@ -37,7 +37,6 @@ from modules.report_viewer import ReportViewer
 from modules.settings_dialog import SettingsDialog
 from .body import WidgetBody
 from .manager import WidgetManager
-from .mini import type_menu_items
 from .notification import play_notification, play_tick
 from .title_bar import PROGRESS_GOAL, PROGRESS_MIN, PROGRESS_NONE, TitleBar
 from .toolbar import WidgetToolbar
@@ -123,8 +122,7 @@ class ActivityWidget:
             on_heatmap=self._open_heatmap,
             on_today_report=self._open_today_report,
             on_last_report=self._open_last_report,
-            on_add_widget=self._manager.add,
-            widget_types=type_menu_items(),
+            on_open_widgets=self._open_widgets_dialog,
         )
         self._toolbar.pack(fill=tk.X)
         self._toolbar_separator = tk.Frame(self.window, bg=theme.COLOR_MUTED, height=1)
@@ -365,6 +363,11 @@ class ActivityWidget:
             messagebox.showwarning(
                 "Помощь", f"Файл README не найден:\n{path}",
             )
+
+    def _open_widgets_dialog(self):
+        """Открывает диалог управления мини-виджетами рабочего стола"""
+        from .widgets_dialog import WidgetsDialog
+        WidgetsDialog(self.window, self._manager).wait()
 
     def _add_active_time(self):
         """Открывает диалог управления ручным активным временем"""

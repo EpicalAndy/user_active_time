@@ -45,6 +45,15 @@ WIDGET_TYPE_ACTIVITY_PIE = "Активность (кольцо)"
 # Контекстное меню отдельного виджета (ПКМ)
 WIDGET_REMOVE = "Убрать виджет"
 
+# Диалог управления виджетами
+WIDGETS_DIALOG_TITLE = "Виджеты"
+WIDGETS_DIALOG_CLOSE = "Закрыть"
+
+# Настройки виджета «Активность (кольцо)»
+WIDGET_OPT_CENTER_LABEL = "В центре"
+WIDGET_OPT_CENTER_PERCENT = "Процент"
+WIDGET_OPT_CENTER_TIME = "Время"
+
 # === Системный трей ===
 
 TRAY_TITLE = "Активность"

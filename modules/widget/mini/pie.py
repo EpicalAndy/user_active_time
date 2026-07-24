@@ -12,6 +12,7 @@ import tkinter as tk
 import config
 from constants import FONT_FAMILY, WIDGET_TYPE_ACTIVITY_PIE
 from modules import theme
+from utility import format_duration_short
 from ..body import _color_for_percent
 from .base import BaseMiniWidget
 
@@ -40,9 +41,17 @@ class ActivityPieWidget(BaseMiniWidget):
     def update(self, stats: dict):
         working = stats.get("is_working_day", True)
         pct = min(float(stats.get("activity_percent", 0)), 100.0) if working else 0.0
-        self._draw(pct, working)
+        self._draw(pct, working, self._center_text(stats, working, pct))
 
-    def _draw(self, pct: float, working: bool):
+    def _center_text(self, stats: dict, working: bool, pct: float) -> str:
+        """Текст в центре кольца: процент или активное время (настройка `center`)."""
+        if not working:
+            return "—"
+        if self.opts.get("center") == "time":
+            return format_duration_short(int(stats.get("active_seconds", 0)))
+        return f"{pct:.0f}%"
+
+    def _draw(self, pct: float, working: bool, center_text: str):
         c = self._canvas
         c.delete("all")
         c.configure(bg=theme.COLOR_DARK_BG)
@@ -69,8 +78,9 @@ class ActivityPieWidget(BaseMiniWidget):
             )
 
         center = _SIZE / 2
-        text = f"{pct:.0f}%" if working else "—"
+        # Время («5ч 51м») длиннее процента — уменьшаем шрифт, чтобы влезло в кольцо.
+        font_size = 18 if len(center_text) <= 4 else 12
         c.create_text(
-            center, center, text=text,
-            fill=theme.COLOR_LIGHT_FG, font=(FONT_FAMILY, 18, "bold"),
+            center, center, text=center_text,
+            fill=theme.COLOR_LIGHT_FG, font=(FONT_FAMILY, font_size, "bold"),
         )

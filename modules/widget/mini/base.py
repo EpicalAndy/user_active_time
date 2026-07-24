@@ -68,6 +68,11 @@ class BaseMiniWidget:
         except Exception:
             pass
 
+    def apply_opts(self, opts: dict):
+        """Применяет новые настройки виджета и немедленно перерисовывает."""
+        self.opts = opts or {}
+        self._first_update()
+
     # --- Позиционирование ---
 
     def _position(self, x: int, y: int):
