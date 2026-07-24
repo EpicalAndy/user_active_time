@@ -42,6 +42,10 @@ REPORT_MENU_PERIOD = "Отчёт за период"
 
 WIDGETS_MENU_LABEL = "🧩"
 WIDGET_TYPE_ACTIVITY_PIE = "Активность (кольцо)"
+WIDGET_TYPE_WORK_TIME_PIE = "Рабочее время (кольцо)"
+# Подписи под кольцами
+WIDGET_CAPTION_ACTIVITY = "Активность"
+WIDGET_CAPTION_WORK_TIME = "Рабочее время"
 # Контекстное меню отдельного виджета (ПКМ)
 WIDGET_REMOVE = "Убрать виджет"
 

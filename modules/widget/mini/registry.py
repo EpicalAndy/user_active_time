@@ -15,24 +15,32 @@ from constants import (
     WIDGET_OPT_CENTER_PERCENT,
     WIDGET_OPT_CENTER_TIME,
     WIDGET_TYPE_ACTIVITY_PIE,
+    WIDGET_TYPE_WORK_TIME_PIE,
 )
 from .pie import ActivityPieWidget
+from .worktime import WorkTimePieWidget
+
+# Общая опция «что в центре кольца» — используют оба кольцевых типа.
+_CENTER_OPTION = {
+    "key": "center",
+    "label": WIDGET_OPT_CENTER_LABEL,
+    "default": "percent",
+    "choices": [
+        ("percent", WIDGET_OPT_CENTER_PERCENT),
+        ("time", WIDGET_OPT_CENTER_TIME),
+    ],
+}
 
 WIDGET_TYPES: dict[str, dict] = {
     "activity_pie": {
         "label": WIDGET_TYPE_ACTIVITY_PIE,
         "class": ActivityPieWidget,
-        "options": [
-            {
-                "key": "center",
-                "label": WIDGET_OPT_CENTER_LABEL,
-                "default": "percent",
-                "choices": [
-                    ("percent", WIDGET_OPT_CENTER_PERCENT),
-                    ("time", WIDGET_OPT_CENTER_TIME),
-                ],
-            },
-        ],
+        "options": [_CENTER_OPTION],
+    },
+    "work_time_pie": {
+        "label": WIDGET_TYPE_WORK_TIME_PIE,
+        "class": WorkTimePieWidget,
+        "options": [_CENTER_OPTION],
     },
 }
 
