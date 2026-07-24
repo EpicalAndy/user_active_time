@@ -81,7 +81,6 @@ class ActivityWidget:
         self._goal_notified = False
         self._last_activity_percent: float | None = None  # кеш для countdown-гейта
         self._tick_count = 0
-        self._checkpoint_count = 1  # начинаем с 1, чтобы не срабатывать на первом тике
         self.root = tk.Tk()
         self.root.withdraw()
 
@@ -247,12 +246,8 @@ class ActivityWidget:
         if self._tick_count % update_every == 0:
             self._update_metrics()
 
-        # CHECKPOINT_INTERVAL — промежуточное сохранение
-        if config.CHECKPOINT_INTERVAL > 0:
-            checkpoint_every = config.CHECKPOINT_INTERVAL * 2
-            if self._checkpoint_count % checkpoint_every == 0:
-                checkpoint_session()
-            self._checkpoint_count = (self._checkpoint_count + 1) % checkpoint_every
+        # Промежуточное сохранение сессии теперь ведёт фоновый монитор
+        # (session_monitor._checkpoint_loop) — виджет только отображает данные.
 
         self._tick_count = (self._tick_count + 1) % update_every
         self.root.after(500, self._tick)

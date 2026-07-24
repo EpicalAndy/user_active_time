@@ -8,6 +8,7 @@ import datetime
 import json
 import os
 import threading
+import time
 from ctypes import wintypes
 
 import config
@@ -48,6 +49,10 @@ os.makedirs(LOG_DIR, exist_ok=True)
 session_start_time = None  # Когда началась текущая активная сессия
 _monitor_thread_id = None  # ID потока монитора для остановки
 _state_lock = threading.Lock()  # Защита state.json и session_start_time от гонок потоков
+
+# Фоновый таймер промежуточного сохранения (не зависит от виджета)
+_checkpoint_thread: threading.Thread | None = None
+_checkpoint_stop = threading.Event()
 
 # Префиксы событий, завершающих рабочий день.
 # LOCK сюда не включён: блокировка — короткий перерыв, и без того обновляет
@@ -613,6 +618,47 @@ def checkpoint_session():
             update_report(date_key, state[date_key], live_idle=live_idle)
 
 
+def _checkpoint_loop():
+    """Фоновый цикл промежуточного сохранения сессии.
+
+    Живёт в мониторе, а не в виджете: данные сохраняются независимо от UI —
+    даже если виджет закрыт или их запущено несколько (иначе чекпойнты либо
+    исчезали бы, либо дублировались). Интервал (config.CHECKPOINT_INTERVAL)
+    читается динамически, чтобы менялся без перезапуска; 0 отключает
+    промежуточные сохранения (сессия всё равно пишется на start/end/событиях).
+    """
+    last = time.monotonic()
+    while not _checkpoint_stop.wait(timeout=1.0):
+        interval = config.CHECKPOINT_INTERVAL
+        if interval <= 0:
+            # Сбрасываем отсчёт, чтобы после включения ждать полный интервал.
+            last = time.monotonic()
+            continue
+        now = time.monotonic()
+        if now - last >= interval:
+            last = now
+            checkpoint_session()
+
+
+def start_checkpoint_timer():
+    """Запускает фоновый поток промежуточного сохранения."""
+    global _checkpoint_thread
+    _checkpoint_stop.clear()
+    _checkpoint_thread = threading.Thread(
+        target=_checkpoint_loop, daemon=True, name="CheckpointTimer",
+    )
+    _checkpoint_thread.start()
+
+
+def stop_checkpoint_timer():
+    """Останавливает фоновый поток промежуточного сохранения."""
+    global _checkpoint_thread
+    _checkpoint_stop.set()
+    if _checkpoint_thread and _checkpoint_thread.is_alive():
+        _checkpoint_thread.join(timeout=3)
+    _checkpoint_thread = None
+
+
 def end_session():
     """Завершает сессию: фиксирует интервал сессии и пересчитывает активное время."""
     global session_start_time
@@ -803,6 +849,7 @@ def main():
     start_session()
     events_monitor.start()
     events_monitor.notify_session_start()
+    start_checkpoint_timer()
 
     hwnd = None
     try:
@@ -814,6 +861,7 @@ def main():
     except KeyboardInterrupt:
         print("\nОстановка...")
     finally:
+        stop_checkpoint_timer()
         events_monitor.notify_session_end()
         events_monitor.stop()
         end_session()
