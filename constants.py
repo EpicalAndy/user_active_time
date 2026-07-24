@@ -40,7 +40,7 @@ REPORT_MENU_PERIOD = "Отчёт за период"
 
 # === Меню «Виджеты» (мини-виджеты на рабочем столе) ===
 
-WIDGETS_MENU_LABEL = "▦"
+WIDGETS_MENU_LABEL = "🧩"
 WIDGET_TYPE_ACTIVITY_PIE = "Активность (кольцо)"
 # Контекстное меню отдельного виджета (ПКМ)
 WIDGET_REMOVE = "Убрать виджет"
