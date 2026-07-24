@@ -36,6 +36,8 @@ from modules.session_monitor import checkpoint_session
 from modules.report_viewer import ReportViewer
 from modules.settings_dialog import SettingsDialog
 from .body import WidgetBody
+from .manager import WidgetManager
+from .mini import type_menu_items
 from .notification import play_notification, play_tick
 from .title_bar import PROGRESS_GOAL, PROGRESS_MIN, PROGRESS_NONE, TitleBar
 from .toolbar import WidgetToolbar
@@ -84,10 +86,15 @@ class ActivityWidget:
         self.root = tk.Tk()
         self.root.withdraw()
 
+        # Менеджер мини-виджетов рабочего стола (создаётся до _build_chrome:
+        # тулбар берёт из него колбэк добавления).
+        self._manager = WidgetManager(self.root, stats_provider)
+
         self.window = tk.Toplevel(self.root)
         self._setup_window()
         self._build_chrome()
         self._position_window()
+        self._manager.restore()
         self._tick()
 
     def _build_chrome(self):
@@ -100,6 +107,7 @@ class ActivityWidget:
             on_close=self.close,
             on_minimize=self._toggle_minimize,
             on_position_changed=self._save_position,
+            on_collapse=self._toggle_minimize,
         )
         self._toolbar = WidgetToolbar(
             self.window,
@@ -113,6 +121,8 @@ class ActivityWidget:
             on_heatmap=self._open_heatmap,
             on_today_report=self._open_today_report,
             on_last_report=self._open_last_report,
+            on_add_widget=self._manager.add,
+            widget_types=type_menu_items(),
         )
         self._toolbar.pack(fill=tk.X)
         self._toolbar_separator = tk.Frame(self.window, bg=theme.COLOR_MUTED, height=1)
@@ -163,6 +173,8 @@ class ActivityWidget:
 
         # Тело и заголовок сами решают, как реагировать на нерабочий день.
         self._body.update(stats)
+        # Мини-виджеты рабочего стола — та же частота, тот же stats.
+        self._manager.update(stats)
 
         if not stats.get("is_working_day", True):
             self._title_bar.clear_metric_labels()

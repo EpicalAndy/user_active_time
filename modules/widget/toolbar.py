@@ -22,6 +22,8 @@ from constants import (
     TOOLTIP_ADD_ACTIVE_TIME,
     TOOLTIP_HELP,
     TOOLTIP_OPEN_SETTINGS,
+    TOOLTIP_WIDGETS,
+    WIDGETS_MENU_LABEL,
 )
 from modules import theme
 
@@ -42,11 +44,25 @@ class WidgetToolbar:
         on_heatmap: Callable | None = None,
         on_today_report: Callable | None = None,
         on_last_report: Callable | None = None,
+        on_add_widget: Callable[[str], None] | None = None,
+        widget_types: list[tuple[str, str]] | None = None,
     ):
         self.frame = tk.Frame(parent, bg=theme.COLOR_DARKER_BG, pady=2)
 
         # Слева: добавление активного времени
         self._add_button("⏱", TOOLTIP_ADD_ACTIVE_TIME, on_add_active_time, side=tk.LEFT)
+
+        # Слева: меню «Виджеты» — добавление мини-виджетов на рабочий стол.
+        if on_add_widget is not None and widget_types:
+            self._add_icon_dropdown(
+                WIDGETS_MENU_LABEL,
+                TOOLTIP_WIDGETS,
+                [
+                    (label, lambda k=key: on_add_widget(k))
+                    for key, label in widget_types
+                ],
+                side=tk.LEFT,
+            )
 
         # Справа: «Помощь», настройки и выпадающий список «Отчёты».
         # Пакуем справа-налево, чтобы сохранить визуальный порядок:

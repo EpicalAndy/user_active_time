@@ -16,6 +16,8 @@ FONT_FAMILY = "Segoe UI"
 TOOLTIP_ADD_ACTIVE_TIME = "Добавить активное время"
 TOOLTIP_OPEN_SETTINGS = "Настройки"
 TOOLTIP_HELP = "Помощь"
+TOOLTIP_WIDGETS = "Виджеты на рабочем столе"
+TOOLTIP_COLLAPSE = "Свернуть до заголовка"
 DEFAULT_MANUAL_ACTIVITY_DESCRIPTION = "Добавлено пользовательское время"
 
 # === Меню «Помощь» ===
@@ -35,6 +37,13 @@ REPORT_MENU_FOLDER = "Папка с отчётами"
 REPORT_MENU_DAILY = "Дневной отчёт"
 REPORT_MENU_HEATMAP = "Тепловая карта"
 REPORT_MENU_PERIOD = "Отчёт за период"
+
+# === Меню «Виджеты» (мини-виджеты на рабочем столе) ===
+
+WIDGETS_MENU_LABEL = "▦"
+WIDGET_TYPE_ACTIVITY_PIE = "Активность (кольцо)"
+# Контекстное меню отдельного виджета (ПКМ)
+WIDGET_REMOVE = "Убрать виджет"
 
 # Ошибки для быстрых пунктов «сегодня» / «последний»
 REPORT_NO_DATA_TITLE = "Нет отчёта"

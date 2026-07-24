@@ -59,10 +59,12 @@ class TitleBar:
         on_close: Callable[[], None],
         on_minimize: Callable[[], None],
         on_position_changed: Callable[[], None],
+        on_collapse: Callable[[], None] | None = None,
     ):
         self._window = parent_window
         self._on_close = on_close
         self._on_minimize = on_minimize
+        self._on_collapse = on_collapse
         self._on_position_changed = on_position_changed
 
         self._countdown_blinking = False
@@ -106,9 +108,19 @@ class TitleBar:
         )
         self._title_label.pack(side=tk.LEFT, fill=tk.Y)
 
+        # Порядок слева направо (как в Windows): «—» (в трей), «□» (до
+        # заголовка), «✕» (закрыть). Пакуются справа-налево, поэтому «✕» —
+        # первым (крайний справа), «—» — последним (крайний слева).
         self._close_btn = self._make_action_button("  ✕  ", self._on_close)
         self._close_btn.pack(side=tk.RIGHT, fill=tk.Y)
 
+        # «□» — свернуть до заголовка и обратно.
+        if self._on_collapse is not None:
+            self._collapse_btn = self._make_action_button("  □  ", self._on_collapse)
+            self._collapse_btn.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # «—» — свернуть в трей. Трея пока нет: интерим-поведение = свернуть до
+        # заголовка; на следующем шаге переназначится на «свернуть в трей».
         self._minimize_btn = self._make_action_button("  —  ", self._on_minimize)
         self._minimize_btn.pack(side=tk.RIGHT, fill=tk.Y)
 
