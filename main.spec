@@ -6,7 +6,8 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[('README.md', '.')],
-    hiddenimports=[],
+    # pystray грузит бэкенд лениво — PyInstaller его не видит без явного указания.
+    hiddenimports=['pystray._win32'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

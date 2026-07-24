@@ -45,6 +45,12 @@ WIDGET_TYPE_ACTIVITY_PIE = "Активность (кольцо)"
 # Контекстное меню отдельного виджета (ПКМ)
 WIDGET_REMOVE = "Убрать виджет"
 
+# === Системный трей ===
+
+TRAY_TITLE = "Активность"
+TRAY_MENU_OPEN = "Открыть"
+TRAY_MENU_QUIT = "Выход"
+
 # Ошибки для быстрых пунктов «сегодня» / «последний»
 REPORT_NO_DATA_TITLE = "Нет отчёта"
 REPORT_NO_TODAY_TEXT = (

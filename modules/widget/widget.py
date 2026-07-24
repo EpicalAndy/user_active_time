@@ -89,12 +89,14 @@ class ActivityWidget:
         # Менеджер мини-виджетов рабочего стола (создаётся до _build_chrome:
         # тулбар берёт из него колбэк добавления).
         self._manager = WidgetManager(self.root, stats_provider)
+        self._tray = None  # значок трея (создаётся ниже; None если трей недоступен)
 
         self.window = tk.Toplevel(self.root)
         self._setup_window()
         self._build_chrome()
         self._position_window()
         self._manager.restore()
+        self._tray = self._create_tray()
         self._tick()
 
     def _build_chrome(self):
@@ -105,7 +107,7 @@ class ActivityWidget:
         self._title_bar = TitleBar(
             self.window,
             on_close=self.close,
-            on_minimize=self._toggle_minimize,
+            on_minimize=self._minimize_to_tray,
             on_position_changed=self._save_position,
             on_collapse=self._toggle_minimize,
         )
@@ -266,6 +268,46 @@ class ActivityWidget:
 
     # --- Управление ---
 
+    def _create_tray(self):
+        """Создаёт и запускает значок в трее. None, если трей недоступен.
+
+        Импорт pystray/Pillow ленивый: если зависимостей нет, приложение
+        продолжает работать, а кнопка «—» откатывается к сворачиванию до заголовка.
+        """
+        try:
+            from .tray import TrayIcon
+        except Exception as e:
+            import sys
+            print(f"[TRAY] Значок трея отключён — нет зависимости ({e}). "
+                  f"Установите: \"{sys.executable}\" -m pip install pystray Pillow")
+            return None
+        try:
+            tray = TrayIcon(
+                on_open=lambda: self.root.after(0, self._show_from_tray),
+                on_quit=lambda: self.root.after(0, self.close),
+            )
+            tray.start()
+            return tray
+        except Exception as e:
+            print(f"[TRAY] Не удалось запустить значок трея: {e}")
+            return None
+
+    def _minimize_to_tray(self):
+        """Прячет окно конфигуратора в трей (мини-виджеты остаются на рабочем столе).
+
+        Значок трея висит всегда, поэтому достаточно скрыть окно. Если трей
+        недоступен — откатываемся к сворачиванию до заголовка.
+        """
+        if self._tray is not None:
+            self.window.withdraw()
+        else:
+            self._toggle_minimize()
+
+    def _show_from_tray(self):
+        """Возвращает окно конфигуратора из трея (двойной клик / «Открыть»)."""
+        self.window.deiconify()
+        self.window.lift()
+
     def _toggle_minimize(self):
         """Сворачивает/разворачивает тело виджета"""
         if self._minimized:
@@ -413,6 +455,8 @@ class ActivityWidget:
 
     def close(self):
         self._save_position()
+        if self._tray is not None:
+            self._tray.stop()
         self.root.quit()
         self.root.destroy()
 

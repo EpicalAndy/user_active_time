@@ -33,7 +33,19 @@
       "Bash(python -c \"from bootstrap import setup_user_config; setup_user_config\\(\\); from modules import session_monitor as s; print\\('import OK'\\); print\\('has start:', hasattr\\(s,'start_checkpoint_timer'\\), 'has stop:', hasattr\\(s,'stop_checkpoint_timer'\\)\\)\")",
       "Bash(python -c \"import pystray; print\\('pystray', pystray.__version__\\)\")",
       "Bash(python -c \"import PIL; print\\('Pillow', PIL.__version__\\)\")",
-      "Bash(PYTHONPATH=h:/Projects/py/user_active_time python -c ' *)"
+      "Bash(PYTHONPATH=h:/Projects/py/user_active_time python -c ' *)",
+      "Bash(python -m pip install \"pystray>=0.19\")",
+      "Bash(python -c \"import pystray, PIL; print\\('pystray', pystray.__version__, '| Pillow', PIL.__version__\\); print\\('backend:', pystray.Icon.__module__\\)\")",
+      "Bash(python -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org --trusted-host pypi.python.org \"pystray>=0.19\")",
+      "Bash(python -c \"import pystray; print\\('pystray', pystray.__version__, '| backend module:', pystray.Icon.__module__\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(where python *)",
+      "Bash(py -0p)",
+      "Bash(\"C:/Users/aaubi/AppData/Local/Programs/Python/Python311/python.exe\" -c \"import pystray,PIL;print\\('есть pystray', PIL.__version__\\)\")",
+      "Bash(py -3.12 -m venv .venv)",
+      "Bash(.venv/Scripts/python.exe -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt)",
+      "Bash(.venv/Scripts/python.exe -c \"import sys, pystray, PIL; print\\('venv python:', sys.executable\\); print\\('pystray OK, Pillow', PIL.__version__\\)\")",
+      "Bash(PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe -c ' *)"
     ]
   }
 }
