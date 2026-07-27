@@ -259,7 +259,7 @@ class ActivityWidget:
             self._update_metrics()
 
         # Промежуточное сохранение сессии теперь ведёт фоновый монитор
-        # (session_monitor._checkpoint_loop) — виджет только отображает данные.
+        # (session_monitor/checkpoint.py) — виджет только отображает данные.
 
         self._tick_count = (self._tick_count + 1) % update_every
         self.root.after(500, self._tick)
