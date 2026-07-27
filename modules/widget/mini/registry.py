@@ -14,9 +14,6 @@ from constants import (
     WIDGET_OPT_CENTER_LABEL,
     WIDGET_OPT_CENTER_PERCENT,
     WIDGET_OPT_CENTER_TIME,
-    WIDGET_OPT_TIMELINE_SCALE_LABEL,
-    WIDGET_OPT_TIMELINE_SCALE_OFF,
-    WIDGET_OPT_TIMELINE_SCALE_ON,
     WIDGET_TYPE_ACTIVITY_PIE,
     WIDGET_TYPE_TIMELINE,
     WIDGET_TYPE_WORK_TIME_PIE,
@@ -36,17 +33,6 @@ _CENTER_OPTION = {
     ],
 }
 
-# Часовые риски на круге таймлайна.
-_TIMELINE_SCALE_OPTION = {
-    "key": "scale",
-    "label": WIDGET_OPT_TIMELINE_SCALE_LABEL,
-    "default": "on",
-    "choices": [
-        ("on", WIDGET_OPT_TIMELINE_SCALE_ON),
-        ("off", WIDGET_OPT_TIMELINE_SCALE_OFF),
-    ],
-}
-
 WIDGET_TYPES: dict[str, dict] = {
     "activity_pie": {
         "label": WIDGET_TYPE_ACTIVITY_PIE,
@@ -61,7 +47,7 @@ WIDGET_TYPES: dict[str, dict] = {
     "day_timeline": {
         "label": WIDGET_TYPE_TIMELINE,
         "class": TimelineWidget,
-        "options": [_CENTER_OPTION, _TIMELINE_SCALE_OPTION],
+        "options": [_CENTER_OPTION],
     },
 }
 

@@ -10,24 +10,15 @@
 - синий  — время, добавленное вручную (рисуется поверх).
 
 Данные приходят готовыми в `stats["timeline"]` (см. session_monitor) — виджет
-только отрисовывает. Опция `scale` добавляет часовые риски по стенным часам:
-каждый круглый час внутри дня прорезает кольцо цветом фона.
+только отрисовывает.
 """
 
-import math
 import tkinter as tk
 
 import config
 from constants import FONT_FAMILY, WIDGET_CAPTION_TIMELINE
 from modules import theme
 from .ring import PAD, RING_WIDTH, SIZE, RingWidget
-
-# Радиусы кольца: bbox задаёт осевую линию дуги, толщина растёт в обе стороны.
-_MID_RADIUS = (SIZE - 2 * PAD) / 2
-_INNER_RADIUS = _MID_RADIUS - RING_WIDTH / 2 - 1
-_OUTER_RADIUS = _MID_RADIUS + RING_WIDTH / 2 + 1
-
-_HOUR = 3600  # шаг часовой шкалы, с
 
 # Отрезок короче этой доли круга не рисуем — дуга всё равно выродится в точку.
 _MIN_EXTENT_DEGREES = 0.05
@@ -95,8 +86,6 @@ class TimelineWidget(RingWidget):
             )
         else:
             self._draw_segments(bbox, timeline)
-            if self.opts.get("scale", "on") == "on":
-                self._draw_hour_ticks(timeline)
 
         center = SIZE / 2
         # Время («5ч 51м») длиннее процента — уменьшаем шрифт, чтобы влезло.
@@ -128,21 +117,4 @@ class TimelineWidget(RingWidget):
                 start=90 - 360.0 * (seg_start - day_start) / span,
                 extent=max(extent, -359.999),
                 style=tk.ARC, outline=color, width=RING_WIDTH,
-            )
-
-    def _draw_hour_ticks(self, timeline: dict):
-        """Риски на круглых часах — прорези цветом фона (шкала таймлайна)."""
-        c = self._canvas
-        center = SIZE / 2
-        day_start = timeline["start_seconds"]
-        span = timeline["end_seconds"] - day_start
-
-        first_mark = (day_start // _HOUR + 1) * _HOUR
-        for mark in range(int(first_mark), int(timeline["end_seconds"]) + 1, _HOUR):
-            angle = math.radians(90 - 360.0 * (mark - day_start) / span)
-            dx, dy = math.cos(angle), -math.sin(angle)
-            c.create_line(
-                center + dx * _INNER_RADIUS, center + dy * _INNER_RADIUS,
-                center + dx * _OUTER_RADIUS, center + dy * _OUTER_RADIUS,
-                fill=theme.COLOR_DARK_BG, width=2,
             )

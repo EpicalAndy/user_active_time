@@ -60,11 +60,6 @@ WIDGET_OPT_CENTER_LABEL = "В центре"
 WIDGET_OPT_CENTER_PERCENT = "Процент"
 WIDGET_OPT_CENTER_TIME = "Время"
 
-# Настройки виджета «Таймлайн дня (диаграмма)»
-WIDGET_OPT_TIMELINE_SCALE_LABEL = "Шкала"
-WIDGET_OPT_TIMELINE_SCALE_ON = "Показывать"
-WIDGET_OPT_TIMELINE_SCALE_OFF = "Скрыть"
-
 # === Системный трей ===
 
 TRAY_TITLE = "Активность"
