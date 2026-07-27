@@ -15,10 +15,11 @@ from utility import format_duration_short
 from ..body import _color_for_percent
 from .base import BaseMiniWidget
 
-# Геометрия канвы и кольца.
-_SIZE = 120           # сторона канвы, px
-_RING_WIDTH = 14      # толщина кольца, px
-_PAD = 12             # отступ дуги от края канвы, px
+# Геометрия канвы и кольца. Публичные — их переиспользуют другие кольцевые
+# мини-виджеты (например, таймлайн), чтобы все кольца были одного размера.
+SIZE = 120           # сторона канвы, px
+RING_WIDTH = 14      # толщина кольца, px
+PAD = 12             # отступ дуги от края канвы, px
 
 
 class RingWidget(BaseMiniWidget):
@@ -44,7 +45,7 @@ class RingWidget(BaseMiniWidget):
 
     def _build(self):
         self._canvas = tk.Canvas(
-            self.window, width=_SIZE, height=_SIZE,
+            self.window, width=SIZE, height=SIZE,
             bg=theme.COLOR_DARK_BG, highlightthickness=0,
         )
         self._canvas.pack()
@@ -75,12 +76,12 @@ class RingWidget(BaseMiniWidget):
         c.delete("all")
         c.configure(bg=theme.COLOR_DARK_BG)
 
-        bbox = (_PAD, _PAD, _SIZE - _PAD, _SIZE - _PAD)
+        bbox = (PAD, PAD, SIZE - PAD, SIZE - PAD)
 
         # Серый трек — полный круг.
         c.create_arc(
             *bbox, start=0, extent=359.999, style=tk.ARC,
-            outline=theme.COLOR_LIGHT_GRAY, width=_RING_WIDTH,
+            outline=theme.COLOR_LIGHT_GRAY, width=RING_WIDTH,
         )
 
         if available and pct > 0:
@@ -90,10 +91,10 @@ class RingWidget(BaseMiniWidget):
             color = _color_for_percent(pct, recommended, minimum)
             c.create_arc(
                 *bbox, start=90, extent=extent, style=tk.ARC,
-                outline=color, width=_RING_WIDTH,
+                outline=color, width=RING_WIDTH,
             )
 
-        center = _SIZE / 2
+        center = SIZE / 2
         # Время («5ч 51м») длиннее процента — уменьшаем шрифт, чтобы влезло.
         font_size = 18 if len(center_text) <= 4 else 12
         c.create_text(

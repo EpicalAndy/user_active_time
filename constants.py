@@ -43,9 +43,11 @@ REPORT_MENU_PERIOD = "Отчёт за период"
 WIDGETS_MENU_LABEL = "🧩"
 WIDGET_TYPE_ACTIVITY_PIE = "Активность (кольцо)"
 WIDGET_TYPE_WORK_TIME_PIE = "Рабочее время (кольцо)"
+WIDGET_TYPE_TIMELINE = "Таймлайн дня (диаграмма)"
 # Подписи под кольцами
 WIDGET_CAPTION_ACTIVITY = "Активность"
 WIDGET_CAPTION_WORK_TIME = "Рабочее время"
+WIDGET_CAPTION_TIMELINE = "Таймлайн дня"
 # Контекстное меню отдельного виджета (ПКМ)
 WIDGET_REMOVE = "Убрать виджет"
 
@@ -57,6 +59,11 @@ WIDGETS_DIALOG_CLOSE = "Закрыть"
 WIDGET_OPT_CENTER_LABEL = "В центре"
 WIDGET_OPT_CENTER_PERCENT = "Процент"
 WIDGET_OPT_CENTER_TIME = "Время"
+
+# Настройки виджета «Таймлайн дня (диаграмма)»
+WIDGET_OPT_TIMELINE_SCALE_LABEL = "Шкала"
+WIDGET_OPT_TIMELINE_SCALE_ON = "Показывать"
+WIDGET_OPT_TIMELINE_SCALE_OFF = "Скрыть"
 
 # === Системный трей ===
 

@@ -302,6 +302,63 @@ def update_report(date_key: str, day_state: dict, live_idle=None):
     )
 
 
+def _build_timeline(
+    day_state: dict, date, span_start, span_end, live_open_session=None, extra_idle=(),
+) -> dict | None:
+    """Таймлайн дня для круговой диаграммы: границы дня + размеченные отрезки.
+
+    Границы — это ровно метрика «Рабочее время»: [первый логин, сейчас]. Внутри
+    них лежат отрезки из тех же сырых интервалов, что и активное время
+    (`day_segments`), плюс ручные интервалы поверх — как в дневном отчёте.
+    Всё, что в границы не попало, отрезается; непокрытая отрезками часть — простой
+    (рисующая сторона считает её фоном).
+
+    Возвращает {start_seconds, end_seconds, segments} в секундах от полуночи,
+    где segments — [(start, end, "active"|"inactive"|"manual")] в порядке
+    отрисовки (ручное время последним, т.е. поверх). None — рабочего времени
+    за день ещё нет.
+    """
+    if span_end <= span_start:
+        return None
+
+    sessions = _parse_session_intervals(day_state.get("sessions", []))
+    if live_open_session is not None:
+        sessions.append(live_open_session)
+    elif day_state.get("open_session"):
+        sessions += _parse_session_intervals([day_state["open_session"]])
+    idle = _parse_idle_intervals(day_state.get("idle", [])) + list(extra_idle)
+
+    raw = list(activity_intervals.day_segments(
+        sessions, idle, config.INPUT_ACTIVITY_TIMEOUT, date,
+    ))
+    for pair in _parse_manual_entries(day_state.get("log_entries", [])):
+        try:
+            manual_start = datetime.datetime.combine(date, parse_time(pair["start"]).time())
+            manual_end = datetime.datetime.combine(date, parse_time(pair["end"]).time())
+        except ValueError:
+            continue
+        if manual_end > manual_start:
+            raw.append((manual_start, manual_end, "manual"))
+
+    day_start = datetime.datetime.combine(date, datetime.time.min)
+    segments = []
+    for seg_start, seg_end, kind in raw:
+        start = max(seg_start, span_start)
+        end = min(seg_end, span_end)
+        if end > start:
+            segments.append((
+                int((start - day_start).total_seconds()),
+                int((end - day_start).total_seconds()),
+                kind,
+            ))
+
+    return {
+        "start_seconds": int((span_start - day_start).total_seconds()),
+        "end_seconds": int((span_end - day_start).total_seconds()),
+        "segments": segments,
+    }
+
+
 def get_current_stats() -> dict:
     """Возвращает текущую статистику за сегодня (включая незавершённую сессию)"""
     with _state_lock:
@@ -311,18 +368,22 @@ def get_current_stats() -> dict:
         day_state = state.get(today, {})
 
         session_count = day_state.get("session_count", 0)
+        now = datetime.datetime.now()
 
         # Активное время — проекция от сырых интервалов с ТЕКУЩИМ таймаутом.
         # Незавершённую сессию и открытый гэп простоя подмешиваем как открытые
         # интервалы; формула сама обрежет их сегодняшней частью суток.
+        live_open_session = None
+        extra_idle = []
         if session_start_time is not None:
             _ensure_v2(day_state)  # подтянуть legacy_base для старой записи (без сохранения)
-            now = datetime.datetime.now()
             open_idle = events_monitor.get_open_idle()
+            live_open_session = (session_start_time, now)
+            extra_idle = [open_idle] if open_idle else []
             active_seconds = _recompute_active(
                 day_state, today_date,
-                live_open_session=(session_start_time, now),
-                extra_idle=[open_idle] if open_idle else [],
+                live_open_session=live_open_session,
+                extra_idle=extra_idle,
             )
         else:
             active_seconds = day_state.get("active_seconds", 0)
@@ -337,14 +398,20 @@ def get_current_stats() -> dict:
 
         # Общее рабочее время (от первого логина до сейчас)
         full_day_seconds = 0
+        timeline = None
         first_login = day_state.get("first_login")
         # Сессия началась до сегодня и продолжается — считаем логин с полуночи
         if first_login is None and session_start_time is not None and session_start_time.date() < datetime.date.today():
             first_login = "00:00:00"
         if first_login:
-            now = datetime.datetime.now()
             login_time = datetime.datetime.combine(datetime.date.today(), parse_time(first_login).time())
             full_day_seconds = max(0, int((now - login_time).total_seconds()))
+            # Тот же отрезок [логин, сейчас], но с разбивкой на активность/простой.
+            timeline = _build_timeline(
+                day_state, today_date, login_time, now,
+                live_open_session=live_open_session,
+                extra_idle=extra_idle,
+            )
 
     recommended_active_seconds = int(work_hours * 3600 * config.RECOMMENDED_ACTIVITY_THRESHOLD / 100)
 
@@ -370,6 +437,7 @@ def get_current_stats() -> dict:
         "recommended_remaining_seconds": max(0, recommended_active_seconds - active_seconds),
         "max_work_seconds": max_work_seconds,
         "work_day_end": work_day_end,
+        "timeline": timeline,
     }
 
 

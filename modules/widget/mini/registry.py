@@ -14,13 +14,18 @@ from constants import (
     WIDGET_OPT_CENTER_LABEL,
     WIDGET_OPT_CENTER_PERCENT,
     WIDGET_OPT_CENTER_TIME,
+    WIDGET_OPT_TIMELINE_SCALE_LABEL,
+    WIDGET_OPT_TIMELINE_SCALE_OFF,
+    WIDGET_OPT_TIMELINE_SCALE_ON,
     WIDGET_TYPE_ACTIVITY_PIE,
+    WIDGET_TYPE_TIMELINE,
     WIDGET_TYPE_WORK_TIME_PIE,
 )
 from .pie import ActivityPieWidget
+from .timeline import TimelineWidget
 from .worktime import WorkTimePieWidget
 
-# Общая опция «что в центре кольца» — используют оба кольцевых типа.
+# Общая опция «что в центре кольца» — используют все кольцевые типы.
 _CENTER_OPTION = {
     "key": "center",
     "label": WIDGET_OPT_CENTER_LABEL,
@@ -28,6 +33,17 @@ _CENTER_OPTION = {
     "choices": [
         ("percent", WIDGET_OPT_CENTER_PERCENT),
         ("time", WIDGET_OPT_CENTER_TIME),
+    ],
+}
+
+# Часовые риски на круге таймлайна.
+_TIMELINE_SCALE_OPTION = {
+    "key": "scale",
+    "label": WIDGET_OPT_TIMELINE_SCALE_LABEL,
+    "default": "on",
+    "choices": [
+        ("on", WIDGET_OPT_TIMELINE_SCALE_ON),
+        ("off", WIDGET_OPT_TIMELINE_SCALE_OFF),
     ],
 }
 
@@ -41,6 +57,11 @@ WIDGET_TYPES: dict[str, dict] = {
         "label": WIDGET_TYPE_WORK_TIME_PIE,
         "class": WorkTimePieWidget,
         "options": [_CENTER_OPTION],
+    },
+    "day_timeline": {
+        "label": WIDGET_TYPE_TIMELINE,
+        "class": TimelineWidget,
+        "options": [_CENTER_OPTION, _TIMELINE_SCALE_OPTION],
     },
 }
 
