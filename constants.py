@@ -44,10 +44,12 @@ WIDGETS_MENU_LABEL = "🧩"
 WIDGET_TYPE_ACTIVITY_PIE = "Активность (кольцо)"
 WIDGET_TYPE_WORK_TIME_PIE = "Рабочее время (кольцо)"
 WIDGET_TYPE_TIMELINE = "Таймлайн дня (диаграмма)"
+WIDGET_TYPE_COUNTDOWN = "Счётчик активности (круг)"
 # Подписи под кольцами
 WIDGET_CAPTION_ACTIVITY = "Активность"
 WIDGET_CAPTION_WORK_TIME = "Рабочее время"
 WIDGET_CAPTION_TIMELINE = "Таймлайн дня"
+WIDGET_CAPTION_COUNTDOWN = "До неактивности"
 # Контекстное меню отдельного виджета (ПКМ)
 WIDGET_REMOVE = "Убрать виджет"
 
