@@ -48,7 +48,14 @@
       "PowerShell(if \\($?\\) { \"JSON OK\" })",
       "PowerShell(git add .claude/settings.local.json)",
       "PowerShell(.\\\\.venv\\\\Scripts\\\\python.exe -m py_compile constants.py modules/widget/widget.py modules/widget/manager.py modules/widget/mini/base.py modules/widget/mini/registry.py modules/widget/mini/countdown.py)",
-      "PowerShell(if \\($?\\) { \"compile OK\" })"
+      "PowerShell(if \\($?\\) { \"compile OK\" })",
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; .\\\\.venv\\\\Scripts\\\\python.exe \"C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\h--Projects-py-user-active-time\\\\505f754d-7ee2-4fa9-a5ad-b7569f2b964d\\\\scratchpad\\\\test_close_button.py\")",
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; .\\\\.venv\\\\Scripts\\\\python.exe \"C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\h--Projects-py-user-active-time\\\\505f754d-7ee2-4fa9-a5ad-b7569f2b964d\\\\scratchpad\\\\probe_geom.py\")",
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; .\\\\.venv\\\\Scripts\\\\python.exe \"C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\h--Projects-py-user-active-time\\\\505f754d-7ee2-4fa9-a5ad-b7569f2b964d\\\\scratchpad\\\\test_close_disables.py\")",
+      "PowerShell(.\\\\.venv\\\\Scripts\\\\python.exe -m py_compile modules/widget/mini/base.py modules/widget/mini/ring.py modules/widget/mini/countdown.py modules/widget/manager.py)",
+      "PowerShell(.\\\\.venv\\\\Scripts\\\\python.exe -m unittest discover -s tests -q)",
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; .\\\\.venv\\\\Scripts\\\\python.exe tests/test_activity_intervals.py)",
+      "PowerShell($env:PYTHONIOENCODING='utf-8'; .\\\\.venv\\\\Scripts\\\\python.exe \"C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\h--Projects-py-user-active-time\\\\505f754d-7ee2-4fa9-a5ad-b7569f2b964d\\\\scratchpad\\\\probe_geom.py\"; .\\\\.venv\\\\Scripts\\\\python.exe \"C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\h--Projects-py-user-active-time\\\\505f754d-7ee2-4fa9-a5ad-b7569f2b964d\\\\scratchpad\\\\test_close_button.py\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\aaubi\\active_time.backup_pre_json",

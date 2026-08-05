@@ -2,9 +2,9 @@
 Базовый мини-виджет рабочего стола.
 
 Общий каркас для минимальных виджетов, отображающих ОДНУ метрику: окно без
-рамки поверх остальных, перетаскивание с любого места, контекстное меню (ПКМ)
-с удалением, сохранение позиции. Конкретный тип реализует `_build()` (наполнение)
-и `update(stats)` (перерисовку по данным).
+рамки поверх остальных, перетаскивание с любого места, крестик закрытия,
+контекстное меню (ПКМ) с удалением, сохранение позиции. Конкретный тип
+реализует `_build()` (наполнение) и `update(stats)` (перерисовку по данным).
 
 Все мини-виджеты живут на общем `tk.Tk()` root основного виджета — отдельного
 mainloop у них нет, обновляются в такт метрикам конфигуратора (см. WidgetManager).
@@ -13,8 +13,16 @@ mainloop у них нет, обновляются в такт метрикам �
 import tkinter as tk
 from collections.abc import Callable
 
-from constants import WIDGET_REMOVE
+from constants import FONT_FAMILY, WIDGET_REMOVE
 from modules import theme
+
+# Крестик закрытия. Живёт в правом верхнем углу — у всех мини-виджетов там
+# пустое место (круг вписан в квадратную канву с отступом), поэтому кнопка
+# ничего не перекрывает и не требует увеличивать окно.
+_CLOSE_GLYPH = "✕"
+_CLOSE_FONT_SIZE = 9
+_CLOSE_INSET = 2      # отступ от края окна, px
+_HIDE_DELAY_MS = 60   # пауза перед тем, как прятать крестик после <Leave>
 
 
 class BaseMiniWidget:
@@ -49,6 +57,9 @@ class BaseMiniWidget:
         self._build()
         self._position(x, y)
         self._bind_events()
+        # Строго после _bind_events: иначе на крестик навесится drag с общего
+        # обхода потомков и клик по нему превратится в перетаскивание.
+        self._build_close_button()
         self._first_update()
 
     # --- Переопределяют подклассы ---
@@ -137,6 +148,71 @@ class BaseMiniWidget:
 
     def _remove(self):
         self._on_remove(self.widget_id)
+
+    # --- Крестик закрытия ---
+
+    def _build_close_button(self):
+        """Создаёт крестик в правом верхнем углу окна.
+
+        Кладётся через `place()`, а не в общий поток `pack()`, поэтому не
+        участвует в расчёте `winfo_reqwidth/reqheight` — размер виджета
+        остаётся прежним, крестик просто лежит поверх канвы в её пустом углу.
+
+        Показывается только при наведении на виджет, чтобы не мозолить глаза:
+        мини-виджет должен выглядеть как чистая картинка на рабочем столе.
+        """
+        # padx/pady/bd в ноль: у Label свои отступы по умолчанию, с ними
+        # кнопка раздувается до ~18x21 и нижним углом задевает кольцо.
+        self._close_btn = tk.Label(
+            self.window, text=_CLOSE_GLYPH,
+            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED,
+            font=(FONT_FAMILY, _CLOSE_FONT_SIZE, "bold"), cursor="hand2",
+            padx=0, pady=0, bd=0, highlightthickness=0,
+        )
+        self._close_btn.bind("<Button-1>", lambda _e: self._remove())
+        self._close_btn.bind("<Enter>", self._highlight_close)
+        self._close_btn.bind("<Leave>", self._unhighlight_close)
+
+        # Наведение на любую часть виджета показывает крестик, уход — прячет.
+        # add="+", чтобы не снести уже навешенные drag/меню обработчики.
+        for w in self._all_widgets():
+            w.bind("<Enter>", self._show_close, add="+")
+            w.bind("<Leave>", self._hide_close_later, add="+")
+
+    def _show_close(self, _event=None):
+        # Цвета переназначаем при каждом показе: мини-виджеты не перекрашивают
+        # себя при смене темы, а так крестик подхватит актуальную палитру.
+        self._close_btn.configure(bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED)
+        self._close_btn.place(
+            relx=1.0, x=-_CLOSE_INSET, y=_CLOSE_INSET, anchor="ne",
+        )
+
+    def _hide_close_later(self, _event=None):
+        """Прячет крестик, но не сразу.
+
+        `<Leave>` прилетает и при переходе курсора между вложенными виджетами
+        внутри окна (канва → крестик и обратно), поэтому решение принимаем на
+        следующем тике — по фактическому положению курсора, а не по событию.
+        """
+        self.window.after(_HIDE_DELAY_MS, self._hide_close_if_outside)
+
+    def _hide_close_if_outside(self):
+        if not self.window.winfo_exists():
+            return
+        px, py = self.window.winfo_pointerxy()
+        wx, wy = self.window.winfo_rootx(), self.window.winfo_rooty()
+        inside = (
+            wx <= px < wx + self.window.winfo_width()
+            and wy <= py < wy + self.window.winfo_height()
+        )
+        if not inside:
+            self._close_btn.place_forget()
+
+    def _highlight_close(self, _event=None):
+        self._close_btn.configure(fg=theme.COLOR_RED)
+
+    def _unhighlight_close(self, _event=None):
+        self._close_btn.configure(fg=theme.COLOR_MUTED)
 
     # --- Жизненный цикл ---
 
