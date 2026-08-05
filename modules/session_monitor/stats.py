@@ -10,7 +10,14 @@ import datetime
 
 import config
 from modules import events_monitor
-from utility import calculate_activity_percent, format_date_key, get_work_hours, parse_time
+from utility import (
+    calculate_activity_percent,
+    format_date_key,
+    get_activity_norm_hours,
+    get_break_hours,
+    get_work_hours,
+    parse_time,
+)
 from . import session
 from .activity import build_timeline, recompute_active
 from .state_store import ensure_v2, load_state
@@ -53,7 +60,12 @@ def get_current_stats() -> dict:
         if work_hours == 0:
             return {"is_working_day": False}
 
-        activity_percent = calculate_activity_percent(active_seconds, work_hours)
+        # Две разные нормы: work_hours — сколько нужно присутствовать (общее
+        # рабочее время), norm_hours — от чего считается 100% активности.
+        norm_hours = get_activity_norm_hours(today_date)
+        break_hours = get_break_hours(today_date)
+
+        activity_percent = calculate_activity_percent(active_seconds, norm_hours)
 
         # Общее рабочее время (от первого логина до сейчас)
         full_day_seconds = 0
@@ -72,7 +84,12 @@ def get_current_stats() -> dict:
                 extra_idle=extra_idle,
             )
 
-    recommended_active_seconds = int(work_hours * 3600 * config.RECOMMENDED_ACTIVITY_THRESHOLD / 100)
+    activity_norm_seconds = int(norm_hours * 3600)
+    break_seconds = int(break_hours * 3600)
+
+    recommended_active_seconds = int(
+        activity_norm_seconds * config.RECOMMENDED_ACTIVITY_THRESHOLD / 100
+    )
 
     max_work_seconds = int(work_hours * 3600)
 
@@ -93,6 +110,8 @@ def get_current_stats() -> dict:
         "remaining_work_seconds": max(0, max_work_seconds - full_day_seconds),
         "recommended_remaining_seconds": max(0, recommended_active_seconds - active_seconds),
         "max_work_seconds": max_work_seconds,
+        "activity_norm_seconds": activity_norm_seconds,
+        "break_seconds": break_seconds,
         "work_day_end": work_day_end,
         "timeline": timeline,
     }

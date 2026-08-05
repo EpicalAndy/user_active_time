@@ -6,6 +6,7 @@ import datetime
 import os
 import sys
 
+import config
 from modules import work_calendar
 from config import (
     DATE_DISPLAY_FORMAT,
@@ -99,9 +100,29 @@ def get_work_hours(date: datetime.date) -> float:
     return hours
 
 
-def calculate_activity_percent(active_seconds: int, max_work_hours: float) -> float:
-    """Вычисляет процент активности относительно максимального рабочего времени"""
-    max_work_seconds = max_work_hours * 3600
-    if max_work_seconds > 0:
-        return (active_seconds / max_work_seconds) * 100
+def get_break_hours(date: datetime.date) -> float:
+    """Возвращает перерыв за день в часах — часть рабочего времени вне нормы активности.
+
+    Для нерабочего дня — 0: вычитать не из чего. Значение читается динамически
+    (`config.BREAK_MINUTES`) — см. конвенцию hot-reload в шапке config.py.
+    """
+    if get_work_hours(date) == 0:
+        return 0.0
+    return max(0.0, config.BREAK_MINUTES / 60)
+
+
+def get_activity_norm_hours(date: datetime.date) -> float:
+    """Возвращает норму активности (100%) в часах: рабочие часы минус перерыв.
+
+    Отличается от get_work_hours: та задаёт, сколько нужно *присутствовать*
+    (общее рабочее время), а эта — от чего считается процент активности.
+    """
+    return max(0.0, get_work_hours(date) - get_break_hours(date))
+
+
+def calculate_activity_percent(active_seconds: int, norm_hours: float) -> float:
+    """Вычисляет процент активности относительно нормы активности (см. get_activity_norm_hours)"""
+    norm_seconds = norm_hours * 3600
+    if norm_seconds > 0:
+        return (active_seconds / norm_seconds) * 100
     return 0.0

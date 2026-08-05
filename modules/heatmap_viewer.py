@@ -57,19 +57,19 @@ class HeatmapViewer(MonthCalendarGrid):
         metrics = self._metrics(date)
         if metrics is None:
             return theme.COLOR_GRAY, theme.COLOR_LIGHT_FG
-        pct = percent(metrics["active_seconds"], metrics["max_work_seconds"])
+        pct = percent(metrics["active_seconds"], metrics["activity_norm_seconds"])
         return _cell_color(pct), theme.COLOR_WHITE
 
     def _cell_tooltip(self, date: datetime.date) -> str | None:
         metrics = self._metrics(date)
         if metrics is None:
             return f"{format_date_display(date)}\n{HEATMAP_LEGEND_NO_DATA}"
-        pct = percent(metrics["active_seconds"], metrics["max_work_seconds"])
+        pct = percent(metrics["active_seconds"], metrics["activity_norm_seconds"])
         pct_str = f"{pct:.1f}%" if pct is not None else "—"
         return (
             f"{format_date_display(date)}\n"
             f"{HEATMAP_TOOLTIP_ACTIVE}: {format_duration_short(metrics['active_seconds'])}\n"
-            f"{HEATMAP_TOOLTIP_NORM}: {format_duration_short(metrics['max_work_seconds'])}\n"
+            f"{HEATMAP_TOOLTIP_NORM}: {format_duration_short(metrics['activity_norm_seconds'])}\n"
             f"{HEATMAP_TOOLTIP_PERCENT}: {pct_str}"
         )
 

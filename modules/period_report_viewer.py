@@ -13,6 +13,7 @@ from constants import (
     PERIOD_REPORT_CLOSE,
     PERIOD_REPORT_COL_ACTIVE,
     PERIOD_REPORT_COL_ACTIVE_PCT,
+    PERIOD_REPORT_COL_ACTIVITY_NORM,
     PERIOD_REPORT_COL_DATE,
     PERIOD_REPORT_COL_MAX,
     PERIOD_REPORT_COL_WORK,
@@ -22,6 +23,7 @@ from constants import (
     PERIOD_REPORT_NO_NORM,
     PERIOD_REPORT_PERIOD_LABEL,
     PERIOD_REPORT_TOTAL_ACTIVE,
+    PERIOD_REPORT_TOTAL_ACTIVITY_NORM,
     PERIOD_REPORT_TOTAL_MAX_WORK,
     PERIOD_REPORT_TOTAL_WORK,
     PERIOD_REPORT_TOTALS_LABEL,
@@ -116,10 +118,12 @@ class PeriodReportViewer:
         totals_frame.pack(fill=tk.X)
 
         max_work = totals["max_work_seconds"]
-        active_pct = percent(totals["active_seconds"], max_work)
+        # Активность считается от нормы без перерыва, присутствие — от полной.
+        activity_norm = totals["activity_norm_seconds"]
+        active_pct = percent(totals["active_seconds"], activity_norm)
         work_pct = percent(totals["total_work_seconds"], max_work)
 
-        recommended_active = int(max_work * RECOMMENDED_ACTIVITY_THRESHOLD / 100)
+        recommended_active = int(activity_norm * RECOMMENDED_ACTIVITY_THRESHOLD / 100)
         active_deficit = max(0, recommended_active - totals["active_seconds"])
         work_deficit = max(0, max_work - totals["total_work_seconds"])
 
@@ -134,6 +138,10 @@ class PeriodReportViewer:
         self._stat_row(
             totals_frame, PERIOD_REPORT_TOTAL_MAX_WORK,
             format_duration_short(max_work),
+        )
+        self._stat_row(
+            totals_frame, PERIOD_REPORT_TOTAL_ACTIVITY_NORM,
+            format_duration_short(activity_norm),
         )
         self._stat_row(
             totals_frame, PERIOD_REPORT_DEFICIT_ACTIVE,
@@ -181,7 +189,7 @@ class PeriodReportViewer:
 
         _patch_treeview_tag_colors()
 
-        columns = ("date", "active", "active_pct", "work", "work_pct", "max")
+        columns = ("date", "active", "active_pct", "work", "work_pct", "max", "activity_norm")
         tree = ttk.Treeview(
             container, columns=columns, show="headings",
             height=min(15, max(3, len(days))),
@@ -200,6 +208,7 @@ class PeriodReportViewer:
             "work": PERIOD_REPORT_COL_WORK,
             "work_pct": PERIOD_REPORT_COL_WORK_PCT,
             "max": PERIOD_REPORT_COL_MAX,
+            "activity_norm": PERIOD_REPORT_COL_ACTIVITY_NORM,
         }
         widths = {
             "date": 100,
@@ -208,6 +217,7 @@ class PeriodReportViewer:
             "work": 100,
             "work_pct": 70,
             "max": 100,
+            "activity_norm": 100,
         }
         for col in columns:
             tree.heading(col, text=headings[col])
@@ -216,7 +226,8 @@ class PeriodReportViewer:
 
         for d in days:
             max_s = d["max_work_seconds"]
-            active_p = percent(d["active_seconds"], max_s)
+            norm_s = d["activity_norm_seconds"]
+            active_p = percent(d["active_seconds"], norm_s)
             work_p = percent(d["total_work_seconds"], max_s)
             tree.insert(
                 "", tk.END,
@@ -227,6 +238,7 @@ class PeriodReportViewer:
                     format_duration_short(d["total_work_seconds"]),
                     _fmt_pct(work_p),
                     format_duration_short(max_s),
+                    format_duration_short(norm_s),
                 ),
                 tags=(_activity_tag(active_p),),
             )

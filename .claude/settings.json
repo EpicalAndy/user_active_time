@@ -35,7 +35,16 @@
       "Bash(python -m py_compile modules/report_viewer.py modules/heatmap_viewer.py)",
       "Bash(python -m py_compile config.py modules/widget/notification.py modules/widget/widget.py modules/settings_dialog.py)",
       "Bash(python -m py_compile config.py modules/widget/widget.py modules/settings_dialog.py)",
-      "Bash(python -m py_compile constants.py modules/period_report.py modules/widget/toolbar.py modules/widget/widget.py)"
+      "Bash(python -m py_compile constants.py modules/period_report.py modules/widget/toolbar.py modules/widget/widget.py)",
+      "Bash(grep -E '\\\\.\\(py|md\\)$')",
+      "Bash(.venv/Scripts/python.exe -m compileall -q config.py utility.py constants.py modules scripts)",
+      "Read(//c/Users/aaubi/active_time/**)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests -q)",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Bash(.venv/Scripts/python.exe -m unittest discover -s tests -q)",
+      "Bash(.venv/Scripts/python.exe tests/test_activity_intervals.py)",
+      "Bash(git --no-pager diff --stat)",
+      "Bash(git --no-pager diff -- utility.py modules/session_monitor/stats.py)"
     ],
     "additionalDirectories": [
       "C:\\Users\\aaubi\\active_time.backup_pre_json",

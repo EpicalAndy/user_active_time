@@ -68,15 +68,16 @@ def _remaining_time_percent(stats: dict) -> float | None:
 def _recommended_remaining_percent(stats: dict) -> float | None:
     """Сколько осталось добрать до рекомендуемой нормы, в % от неё.
 
-    Считается как `recommended_remaining / recommended × 100`,
-    где `recommended = max_work × RECOMMENDED_ACTIVITY_THRESHOLD / 100`.
+    Считается как `recommended_remaining / recommended × 100`, где
+    `recommended = activity_norm × RECOMMENDED_ACTIVITY_THRESHOLD / 100`,
+    а `activity_norm` — рабочее время без перерыва.
     None — если нормы или порога нет.
     """
-    max_work = stats.get("max_work_seconds", 0)
+    activity_norm = stats.get("activity_norm_seconds", 0)
     threshold = config.RECOMMENDED_ACTIVITY_THRESHOLD
-    if max_work <= 0 or threshold <= 0:
+    if activity_norm <= 0 or threshold <= 0:
         return None
-    recommended = max_work * threshold / 100
+    recommended = activity_norm * threshold / 100
     remaining = max(0, stats.get("recommended_remaining_seconds", 0))
     return remaining / recommended * 100
 

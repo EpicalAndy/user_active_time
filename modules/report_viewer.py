@@ -16,6 +16,8 @@ from constants import (
     ENCODING,
     FONT_FAMILY,
     METRIC_ACTIVE_TIME,
+    METRIC_ACTIVITY_NORM,
+    METRIC_BREAK_TIME,
     METRIC_FULL_DAY_TIME,
     METRIC_SESSION_COUNT_FULL,
 )
@@ -70,9 +72,17 @@ def _parse_report(filepath: str) -> dict | None:
     max_work_seconds = int(data.get("max_work_seconds") or 0)
     total_work_seconds = data.get("total_work_seconds")
 
+    # Перерыв не входит в норму активности: активность считаем от
+    # activity_norm_seconds, присутствие — от max_work_seconds. В отчётах до
+    # появления перерыва поля нет — норма совпадает с рабочим временем.
+    break_seconds = int(data.get("break_seconds") or 0)
+    activity_norm_seconds = data.get("activity_norm_seconds")
+    if not isinstance(activity_norm_seconds, int):
+        activity_norm_seconds = max_work_seconds
+
     # Парные метрики «время + процент» собираем заранее, чтобы _show_window
     # оставался простым рендером.
-    active_combined = _combine_time_percent(active_seconds, max_work_seconds)
+    active_combined = _combine_time_percent(active_seconds, activity_norm_seconds)
     work_combined = _combine_time_percent(total_work_seconds, max_work_seconds)
 
     # Парсим строки лога (формат строки не менялся при переходе на JSON).
@@ -116,6 +126,8 @@ def _parse_report(filepath: str) -> dict | None:
         "active_combined": active_combined,
         "work_combined": work_combined,
         "max_work_time": _format_dash(max_work_seconds),
+        "break_time": _format_dash(break_seconds),
+        "activity_norm": _format_dash(activity_norm_seconds),
         "session_count": str(data.get("session_count") or 0),
         "events": events,
         "intervals": intervals,
@@ -123,18 +135,19 @@ def _parse_report(filepath: str) -> dict | None:
     }
 
 
-def _combine_time_percent(seconds, max_work_seconds: int) -> str:
-    """Форматирует «Xч Yм Zс (NN.N%)» по секундам и норме.
+def _combine_time_percent(seconds, norm_seconds: int) -> str:
+    """Форматирует «Xч Yм Zс (NN.N%)» по секундам и переданной норме.
 
-    Возвращает «—», если seconds None или 0 без нормы; без скобок — если
-    нормы нет (поделить не на что).
+    Норма у метрик разная: активность считается от нормы без перерыва,
+    рабочее время — от полного. Возвращает «—», если seconds None или 0
+    без нормы; без скобок — если нормы нет (поделить не на что).
     """
     if not seconds:
         return "—"
     time_str = format_duration(int(seconds))
-    if max_work_seconds <= 0:
+    if norm_seconds <= 0:
         return time_str
-    pct = calculate_activity_percent(int(seconds), max_work_seconds / 3600)
+    pct = calculate_activity_percent(int(seconds), norm_seconds / 3600)
     return f"{time_str} ({pct:.1f}%)"
 
 
@@ -284,6 +297,8 @@ class ReportViewer:
             (METRIC_ACTIVE_TIME, data.get("active_combined", "—")),
             (METRIC_FULL_DAY_TIME, data.get("work_combined", "—")),
             ("Максимальное рабочее время", data.get("max_work_time", "—")),
+            (METRIC_BREAK_TIME, data.get("break_time", "—")),
+            (METRIC_ACTIVITY_NORM, data.get("activity_norm", "—")),
             (METRIC_SESSION_COUNT_FULL, data.get("session_count", "—")),
         ]
 

@@ -82,11 +82,18 @@ def _read_day_metrics(date: datetime.date) -> dict | None:
     if not isinstance(max_work_seconds, int):
         max_work_seconds = int(get_work_hours(date) * 3600)
 
+    # Норма активности = рабочее время минус перерыв. В отчётах, записанных до
+    # появления перерыва, поля нет — тогда норма совпадает с рабочим временем.
+    activity_norm_seconds = data.get("activity_norm_seconds")
+    if not isinstance(activity_norm_seconds, int):
+        activity_norm_seconds = max_work_seconds
+
     return {
         "date": date,
         "active_seconds": active_seconds,
         "total_work_seconds": total_work_seconds,
         "max_work_seconds": max_work_seconds,
+        "activity_norm_seconds": activity_norm_seconds,
     }
 
 
@@ -106,6 +113,7 @@ def build_period_report(start: datetime.date, end: datetime.date) -> dict:
         "active_seconds": sum(d["active_seconds"] for d in days),
         "total_work_seconds": sum(d["total_work_seconds"] for d in days),
         "max_work_seconds": sum(d["max_work_seconds"] for d in days),
+        "activity_norm_seconds": sum(d["activity_norm_seconds"] for d in days),
     }
 
     return {"days": days, "totals": totals}

@@ -14,6 +14,7 @@ from constants import (
     FONT_FAMILY,
     METRIC_ACTIVE_TIME,
     METRIC_ACTIVITY_PERCENT_FULL,
+    METRIC_BREAK_TIME,
     METRIC_FULL_DAY_TIME,
     METRIC_FULL_DAY_TIME_PERCENT_FULL,
     METRIC_HIDE_OPTION,
@@ -106,12 +107,15 @@ class SettingsDialog:
         # ===== Вкладка "Общие" =====
 
         # --- Рабочие часы ---
-        hours_frame = ttk.LabelFrame(tab_general, text="Рабочие часы по дням недели")
+        hours_frame = ttk.LabelFrame(tab_general, text="Рабочие часы")
         hours_frame.pack(fill=tk.X, **pad)
 
         self._day_vars: dict[str, tk.DoubleVar] = {}
+        tk.Label(hours_frame, text="Часы по дням недели:", font=(FONT_FAMILY, 9)).pack(
+            anchor=tk.W, padx=8, pady=(6, 0),
+        )
         row = tk.Frame(hours_frame)
-        row.pack(fill=tk.X, padx=8, pady=6)
+        row.pack(fill=tk.X, padx=8, pady=(2, 6))
 
         for key, label in _DAYS:
             col = tk.Frame(row)
@@ -123,6 +127,22 @@ class SettingsDialog:
                 col, from_=0, to=24, increment=0.25, width=5,
                 textvariable=var, justify=tk.CENTER, format="%.2f",
             ).pack()
+
+        # Перерыв вычитается из нормы активности, но не из рабочих часов —
+        # присутствовать нужно всё время, 100% активности считается без перерыва.
+        break_row = tk.Frame(hours_frame)
+        break_row.pack(fill=tk.X, padx=8, pady=(0, 6))
+        tk.Label(break_row, text=f"{METRIC_BREAK_TIME} (мин):", font=(FONT_FAMILY, 9)).pack(
+            side=tk.LEFT,
+        )
+        self._break_var = tk.IntVar(value=config.BREAK_MINUTES)
+        ttk.Spinbox(
+            break_row, from_=0, to=480, increment=5, width=6,
+            textvariable=self._break_var, justify=tk.CENTER,
+        ).pack(side=tk.LEFT, padx=(8, 0))
+        tk.Label(
+            break_row, text="не входит в норму активности", font=(FONT_FAMILY, 8),
+        ).pack(side=tk.LEFT, padx=(8, 0))
 
         # Привязка лимитов к конкретным датам (исключения из расписания выше).
         ttk.Button(
@@ -334,6 +354,7 @@ class SettingsDialog:
         title_metrics = {attr: (attr == selected_title) for attr in _TITLE_METRIC_ATTRS}
         return {
             "work_hours": {key: self._day_vars[key].get() for key, _ in _DAYS},
+            "break_minutes": self._break_var.get(),
             "metrics": {**body_metrics, **title_metrics},
             "theme": self._theme_var.get(),
             "input_activity_timeout": self._timeout_var.get(),
@@ -432,6 +453,13 @@ class SettingsDialog:
             content, flags=re.MULTILINE | re.DOTALL,
         )
 
+        # Перерыв
+        content = re.sub(
+            r"^BREAK_MINUTES\s*=\s*.+$",
+            f"BREAK_MINUTES = {values['break_minutes']}",
+            content, flags=re.MULTILINE,
+        )
+
         with open(_CONFIG_PATH, "w", encoding=ENCODING) as f:
             f.write(content)
 
@@ -452,6 +480,7 @@ class SettingsDialog:
             setattr(config, attr, val)
         for key, val in values["work_hours"].items():
             config.WORK_HOURS_BY_DAY[key] = val
+        config.BREAK_MINUTES = values["break_minutes"]
         # Тема: обновляем config и перепривязываем палитру theme.COLOR_*.
         # Окна, открытые после этого, отрисуются в новой теме; постоянный
         # виджет перекрасит себя сам (ActivityWidget._apply_theme).

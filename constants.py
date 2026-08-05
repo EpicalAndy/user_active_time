@@ -84,7 +84,7 @@ HEATMAP_LEGEND_NO_DATA = "Нет данных"
 HEATMAP_CLOSE = "Закрыть"
 HEATMAP_TOOLTIP_NO_DATA = "Нет данных"
 HEATMAP_TOOLTIP_ACTIVE = "Активное"
-HEATMAP_TOOLTIP_NORM = "Норма"
+HEATMAP_TOOLTIP_NORM = "Норма активности"
 HEATMAP_TOOLTIP_PERCENT = "Активность"
 
 # === Календарь рабочего времени (планировщик-исключения) ===
@@ -136,12 +136,14 @@ PERIOD_REPORT_BREAKDOWN_LABEL = "По дням"
 PERIOD_REPORT_TOTAL_ACTIVE = "Общее активное время"
 PERIOD_REPORT_TOTAL_WORK = "Общее время работы"
 PERIOD_REPORT_TOTAL_MAX_WORK = "Максимальное рабочее время (норма)"
+PERIOD_REPORT_TOTAL_ACTIVITY_NORM = "Норма активности (без перерыва)"
 PERIOD_REPORT_DEFICIT_ACTIVE = "Недобор активности до рекомендуемой нормы"
 PERIOD_REPORT_DEFICIT_WORK = "Недобор рабочего времени до нормы"
 PERIOD_REPORT_COL_DATE = "Дата"
 PERIOD_REPORT_COL_ACTIVE = "Активное"
 PERIOD_REPORT_COL_WORK = "Работа"
 PERIOD_REPORT_COL_MAX = "Норма"
+PERIOD_REPORT_COL_ACTIVITY_NORM = "Норма акт."
 PERIOD_REPORT_COL_ACTIVE_PCT = "Акт. %"
 PERIOD_REPORT_COL_WORK_PCT = "Раб. %"
 PERIOD_REPORT_CLOSE = "Закрыть"
@@ -153,6 +155,10 @@ PERIOD_REPORT_NO_NORM = "—"
 #
 # v2: добавлены сырые интервалы `sessions` и `idle`; `active_seconds` стал
 # вычисляемой проекцией от них и текущего таймаута неактивности.
+#
+# Совместимые дополнения v2 (версия не повышалась — читатели подставляют
+# дефолт): `break_seconds` и `activity_norm_seconds`. Отчёты, записанные до их
+# появления, читаются как «перерыва не было»: норма активности = max_work_seconds.
 REPORT_JSON_VERSION = 2
 REPORT_JSON_EXT = ".json"
 
@@ -176,6 +182,8 @@ METRIC_REMAINING_TIME_PERCENT_FULL = "Осталось до конца дня (%
 METRIC_RECOMMENDED_REMAINING_FULL = "До рекомендуемой нормы"
 METRIC_RECOMMENDED_REMAINING_PERCENT_FULL = "До рекомендуемой нормы (%)"
 METRIC_WORK_DAY_END_FULL = "Окончание рабочего дня"
+METRIC_BREAK_TIME = "Перерыв"
+METRIC_ACTIVITY_NORM = "Норма активности"
 METRIC_FIRST_LOGIN = "Начало рабочего дня"
 METRIC_LAST_LOGOUT = "Конец рабочего дня"
 METRIC_HIDE_OPTION = "Не отображать"

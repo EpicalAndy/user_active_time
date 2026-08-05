@@ -46,7 +46,13 @@
       "Bash(.venv/Scripts/python.exe -m pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt)",
       "Bash(.venv/Scripts/python.exe -c \"import sys, pystray, PIL; print\\('venv python:', sys.executable\\); print\\('pystray OK, Pillow', PIL.__version__\\)\")",
       "Bash(PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe -c ' *)",
-      "PowerShell(cd h:\\\\Projects\\\\py\\\\user_active_time; $f = \"C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\h--Projects-py-user-active-time\\\\ebdf894e-930c-475a-a933-e760b293ddf2\\\\scratchpad\\\\check_timeline.py\"; \\(Get-Content $f -Raw -Encoding UTF8\\) -replace 'sm\\\\._build_timeline', 'activity.build_timeline' -replace 'sm\\\\._recompute_active', 'activity.recompute_active' -replace 'sm\\\\._manual_seconds\\\\\\(day_state\\\\\\)', 'journal.manual_seconds\\(day_state[\"log_entries\"]\\)' | Set-Content $f -Encoding UTF8; .\\\\.venv\\\\Scripts\\\\python.exe $f)"
+      "PowerShell(cd h:\\\\Projects\\\\py\\\\user_active_time; $f = \"C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\h--Projects-py-user-active-time\\\\ebdf894e-930c-475a-a933-e760b293ddf2\\\\scratchpad\\\\check_timeline.py\"; \\(Get-Content $f -Raw -Encoding UTF8\\) -replace 'sm\\\\._build_timeline', 'activity.build_timeline' -replace 'sm\\\\._recompute_active', 'activity.recompute_active' -replace 'sm\\\\._manual_seconds\\\\\\(day_state\\\\\\)', 'journal.manual_seconds\\(day_state[\"log_entries\"]\\)' | Set-Content $f -Encoding UTF8; .\\\\.venv\\\\Scripts\\\\python.exe $f)",
+      "PowerShell(node -v)",
+      "PowerShell(npm -v)",
+      "PowerShell(nvm list)",
+      "PowerShell(nvm list available)",
+      "PowerShell(nvm install 24.18.0)",
+      "PowerShell(nvm use 24.18.0)"
     ]
   }
 }
