@@ -249,9 +249,10 @@ class ActivityWidget:
         self._title_bar.tick_blink()
         self._apply_border_indicator()
 
-        # 1с — countdown
+        # 1с — countdown (в заголовке и в мини-виджетах, которым мало stats)
         if self._tick_count % 2 == 0:
             self._update_countdown()
+            self._manager.tick_second()
 
         # WIDGET_UPDATE_INTERVAL — метрики
         update_every = config.WIDGET_UPDATE_INTERVAL * 2

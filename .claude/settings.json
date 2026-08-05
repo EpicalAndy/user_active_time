@@ -44,7 +44,11 @@
       "Bash(.venv/Scripts/python.exe -m unittest discover -s tests -q)",
       "Bash(.venv/Scripts/python.exe tests/test_activity_intervals.py)",
       "Bash(git --no-pager diff --stat)",
-      "Bash(git --no-pager diff -- utility.py modules/session_monitor/stats.py)"
+      "Bash(git --no-pager diff -- utility.py modules/session_monitor/stats.py)",
+      "PowerShell(if \\($?\\) { \"JSON OK\" })",
+      "PowerShell(git add .claude/settings.local.json)",
+      "PowerShell(.\\\\.venv\\\\Scripts\\\\python.exe -m py_compile constants.py modules/widget/widget.py modules/widget/manager.py modules/widget/mini/base.py modules/widget/mini/registry.py modules/widget/mini/countdown.py)",
+      "PowerShell(if \\($?\\) { \"compile OK\" })"
     ],
     "additionalDirectories": [
       "C:\\Users\\aaubi\\active_time.backup_pre_json",

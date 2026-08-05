@@ -154,6 +154,14 @@ class WidgetManager:
             except Exception:
                 pass
 
+    def tick_second(self):
+        """Раздаёт секундный тик живым виджетам (для тех, кому мало stats)."""
+        for widget in self._widgets.values():
+            try:
+                widget.tick_second()
+            except Exception:
+                pass
+
     # --- Внутреннее ---
 
     def _entries_for_type(self, type_key: str) -> list[dict]:

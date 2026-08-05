@@ -52,7 +52,13 @@
       "PowerShell(nvm list)",
       "PowerShell(nvm list available)",
       "PowerShell(nvm install 24.18.0)",
-      "PowerShell(nvm use 24.18.0)"
+      "PowerShell(nvm use 24.18.0)",
+      "Bash(python -m py_compile modules/widget/mini/countdown.py modules/widget/mini/registry.py modules/widget/mini/base.py modules/widget/manager.py modules/widget/widget.py constants.py)",
+      "Bash(python3 -m py_compile modules/widget/mini/countdown.py modules/widget/mini/registry.py modules/widget/mini/base.py modules/widget/manager.py modules/widget/widget.py constants.py)",
+      "Bash(python3 -c \"import constants; print\\(constants.WIDGET_TYPE_COUNTDOWN, constants.WIDGET_CAPTION_COUNTDOWN\\)\")",
+      "Bash(python3 -c \"import tkinter; print\\('tk ok'\\)\")",
+      "Bash(python3 /tmp/claude-1000/-home-andy-Projects-user-active-time/429b52f4-08a8-4fc6-ab60-ee0c22bb3216/scratchpad/test_countdown_state.py)",
+      "Bash(grep -n \"mini/\\\\` — мини-виджеты\" -A2 README.md)"
     ]
   }
 }

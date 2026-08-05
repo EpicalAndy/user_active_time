@@ -15,9 +15,11 @@ from constants import (
     WIDGET_OPT_CENTER_PERCENT,
     WIDGET_OPT_CENTER_TIME,
     WIDGET_TYPE_ACTIVITY_PIE,
+    WIDGET_TYPE_COUNTDOWN,
     WIDGET_TYPE_TIMELINE,
     WIDGET_TYPE_WORK_TIME_PIE,
 )
+from .countdown import CountdownWidget
 from .pie import ActivityPieWidget
 from .timeline import TimelineWidget
 from .worktime import WorkTimePieWidget
@@ -48,6 +50,12 @@ WIDGET_TYPES: dict[str, dict] = {
         "label": WIDGET_TYPE_TIMELINE,
         "class": TimelineWidget,
         "options": [_CENTER_OPTION],
+    },
+    # Счётчик показывает одно — обратный отсчёт, настраивать нечего.
+    "countdown": {
+        "label": WIDGET_TYPE_COUNTDOWN,
+        "class": CountdownWidget,
+        "options": [],
     },
 }
 
