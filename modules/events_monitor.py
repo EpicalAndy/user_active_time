@@ -203,6 +203,20 @@ def drain_idle_gaps() -> list[tuple[datetime.datetime, datetime.datetime]]:
     return gaps
 
 
+def peek_idle_gaps() -> list[tuple[datetime.datetime, datetime.datetime]]:
+    """Копия закрытых гэпов, ещё НЕ слитых в state.json (буфер не очищает).
+
+    Гэп попадает в state.json только на ближайшем checkpoint, поэтому между
+    его закрытием и checkpoint'ом он не виден ни в одном расчёте, читающем
+    state (`stats.get_current_stats`). Для «живых» метрик такой гэп нужно
+    подмешивать отсюда — иначе только что закончившийся простой на минуту
+    исчезает из статистики и с таймлайна. Очищать буфер здесь нельзя: слить
+    гэпы в состояние должен checkpoint, иначе они потеряются насовсем.
+    """
+    with _gaps_lock:
+        return _closed_gaps[:]
+
+
 def get_open_idle() -> tuple[datetime.datetime, datetime.datetime] | None:
     """Текущий незакрытый гэп простоя [from, now] или None, если мониторинг неактивен."""
     if not _session_running or _screen_locked:

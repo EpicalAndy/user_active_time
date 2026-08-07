@@ -45,7 +45,14 @@ def get_current_stats() -> dict:
             ensure_v2(day_state)  # подтянуть legacy_base для старой записи (без сохранения)
             open_idle = events_monitor.get_open_idle()
             live_open_session = (session_start, now)
-            extra_idle = [open_idle] if open_idle else []
+            # Закрытые, но ещё не сохранённые гэпы: попадут в state.json только
+            # на ближайшем checkpoint, а до тех пор их нет в day_state["idle"].
+            # Без них только что закончившийся простой пропадал бы из метрик и
+            # с таймлайна до checkpoint'а. Двойного учёта нет: и мы, и checkpoint
+            # работаем под state_lock, а после слива буфер пуст.
+            extra_idle = events_monitor.peek_idle_gaps()
+            if open_idle:
+                extra_idle.append(open_idle)
             active_seconds = recompute_active(
                 day_state, today_date,
                 live_open_session=live_open_session,
