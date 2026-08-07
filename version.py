@@ -20,7 +20,7 @@
 строковое сравнение врёт ("2026.08.10" < "2026.08.9").
 """
 
-__version__ = "2026.08.2"
+__version__ = "2026.08.3"
 
 
 def version_tuple(version: str = __version__) -> tuple[int, int, int]:
