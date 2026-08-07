@@ -56,12 +56,15 @@ WIDGET_TYPE_WORK_TIME_PIE = "Рабочее время (кольцо)"
 WIDGET_TYPE_TIMELINE = "Таймлайн дня (диаграмма)"
 WIDGET_TYPE_COUNTDOWN = "Счётчик активности (круг)"
 WIDGET_TYPE_FREE_TIME_PIE = "Свободное время (кольцо)"
+WIDGET_TYPE_BARS = "Метрики (полосы)"
 # Подписи под кольцами
 WIDGET_CAPTION_ACTIVITY = "Активность"
 WIDGET_CAPTION_WORK_TIME = "Рабочее время"
 WIDGET_CAPTION_TIMELINE = "Таймлайн дня"
 WIDGET_CAPTION_COUNTDOWN = "До неактивности"
 WIDGET_CAPTION_FREE_TIME = "Свободное время"
+WIDGET_CAPTION_BARS = "Метрики"
+WIDGET_BARS_EMPTY = "Метрики не выбраны"
 # Контекстное меню отдельного виджета (ПКМ)
 WIDGET_REMOVE = "Убрать виджет"
 
@@ -70,6 +73,7 @@ WIDGETS_DIALOG_TITLE = "Виджеты"
 WIDGETS_DIALOG_CLOSE = "Закрыть"
 
 # Настройки виджета «Активность (кольцо)»
+WIDGET_OPT_METRICS_LABEL = "Показывать"
 WIDGET_OPT_CENTER_LABEL = "В центре"
 WIDGET_OPT_CENTER_PERCENT = "Процент"
 WIDGET_OPT_CENTER_TIME = "Время"

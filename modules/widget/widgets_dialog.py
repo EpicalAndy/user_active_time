@@ -19,7 +19,7 @@ from constants import (
     WIDGETS_DIALOG_TITLE,
 )
 from modules.ui_utils import center_on_parent
-from .mini.registry import options_for, type_menu_items
+from .mini.registry import OPTION_MULTI, options_for, type_menu_items
 
 
 class WidgetsDialog:
@@ -72,6 +72,10 @@ class WidgetsDialog:
             self._build_option_row(opts_frame, type_key, opt, current)
 
     def _build_option_row(self, parent: tk.Frame, type_key: str, opt: dict, current: dict):
+        if opt.get("kind") == OPTION_MULTI:
+            self._build_multi_option(parent, type_key, opt, current)
+            return
+
         row = tk.Frame(parent)
         row.pack(fill=tk.X, pady=(2, 0))
         tk.Label(
@@ -87,6 +91,36 @@ class WidgetsDialog:
             ttk.Radiobutton(
                 row, text=vlabel, value=value, variable=var, command=on_change,
             ).pack(side=tk.LEFT, padx=(6, 0))
+
+    def _build_multi_option(self, parent: tk.Frame, type_key: str, opt: dict, current: dict):
+        """Набор галочек: значение опции — список выбранных ключей.
+
+        Галочки идут колонкой (в строку не помещаются), а список собирается в
+        порядке `choices` — виджет не должен зависеть от порядка кликов.
+        """
+        tk.Label(
+            parent, text=f"{opt['label']}:", font=(FONT_FAMILY, 9), anchor=tk.W,
+        ).pack(anchor=tk.W, pady=(2, 0))
+
+        selected = current.get(opt["key"], opt["default"])
+        if not isinstance(selected, (list, tuple)):
+            selected = opt["default"]
+        chosen = set(selected)
+
+        box = tk.Frame(parent)
+        box.pack(fill=tk.X, padx=(12, 0))
+        variables: dict[str, tk.BooleanVar] = {}
+
+        def on_change(k=opt["key"], t=type_key):
+            values = [value for value, _ in opt["choices"] if variables[value].get()]
+            self._manager.update_type_opts(t, {k: values})
+
+        for value, vlabel in opt["choices"]:
+            var = tk.BooleanVar(value=value in chosen)
+            variables[value] = var
+            ttk.Checkbutton(
+                box, text=vlabel, variable=var, command=on_change,
+            ).pack(anchor=tk.W)
 
     def _close(self):
         self.dialog.destroy()

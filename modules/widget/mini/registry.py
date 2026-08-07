@@ -8,23 +8,36 @@
 
 Формат `options` — список опций, каждая:
     {"key": str, "label": str, "default": value, "choices": [(value, label), ...]}
+
+Вид контрола задаёт `kind`:
+    OPTION_CHOICE (по умолчанию, можно не указывать) — выбор одного значения,
+        радиокнопки; значение опции — строка;
+    OPTION_MULTI — набор галочек; значение опции — список выбранных ключей
+        в порядке `choices`, а не в порядке кликов.
 """
 
 from constants import (
     WIDGET_OPT_CENTER_LABEL,
     WIDGET_OPT_CENTER_PERCENT,
     WIDGET_OPT_CENTER_TIME,
+    WIDGET_OPT_METRICS_LABEL,
     WIDGET_TYPE_ACTIVITY_PIE,
+    WIDGET_TYPE_BARS,
     WIDGET_TYPE_COUNTDOWN,
     WIDGET_TYPE_FREE_TIME_PIE,
     WIDGET_TYPE_TIMELINE,
     WIDGET_TYPE_WORK_TIME_PIE,
 )
+from .bars import BAR_CHOICES, DEFAULT_BARS, MetricBarsWidget
 from .countdown import CountdownWidget
 from .freetime import FreeTimePieWidget
 from .pie import ActivityPieWidget
 from .timeline import TimelineWidget
 from .worktime import WorkTimePieWidget
+
+# Виды контролов настройки (см. шапку модуля).
+OPTION_CHOICE = "choice"
+OPTION_MULTI = "multi"
 
 # Общая опция «что в центре кольца» — используют все кольцевые типы.
 _CENTER_OPTION = {
@@ -35,6 +48,15 @@ _CENTER_OPTION = {
         ("percent", WIDGET_OPT_CENTER_PERCENT),
         ("time", WIDGET_OPT_CENTER_TIME),
     ],
+}
+
+# Набор метрик виджета-полос: галочки, значение — список ключей.
+_BARS_OPTION = {
+    "key": "metrics",
+    "kind": OPTION_MULTI,
+    "label": WIDGET_OPT_METRICS_LABEL,
+    "default": list(DEFAULT_BARS),
+    "choices": BAR_CHOICES,
 }
 
 # То же, но по умолчанию «Время»: у свободного времени осмысленный ответ —
@@ -62,6 +84,11 @@ WIDGET_TYPES: dict[str, dict] = {
         "class": TimelineWidget,
         "options": [_CENTER_OPTION],
     },
+    "metric_bars": {
+        "label": WIDGET_TYPE_BARS,
+        "class": MetricBarsWidget,
+        "options": [_BARS_OPTION],
+    },
     # Счётчик показывает одно — обратный отсчёт, настраивать нечего.
     "countdown": {
         "label": WIDGET_TYPE_COUNTDOWN,
@@ -83,5 +110,12 @@ def options_for(type_key: str) -> list[dict]:
 
 
 def default_opts(type_key: str) -> dict:
-    """Дефолтные значения настроек для нового виджета данного типа."""
-    return {opt["key"]: opt["default"] for opt in options_for(type_key)}
+    """Дефолтные значения настроек для нового виджета данного типа.
+
+    Списки копируются: иначе один и тот же объект попал бы в записи всех
+    виджетов сразу, и правка настроек у одного задела бы остальных.
+    """
+    return {
+        opt["key"]: list(opt["default"]) if isinstance(opt["default"], list) else opt["default"]
+        for opt in options_for(type_key)
+    }
