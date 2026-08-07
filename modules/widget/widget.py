@@ -21,6 +21,9 @@ from config import (
 )
 import config
 from constants import (
+    ABOUT_DESCRIPTION,
+    ABOUT_TITLE,
+    APP_NAME,
     GITHUB_URL,
     REPORT_NO_DATA_TITLE,
     REPORT_NO_PAST_TEXT,
@@ -41,6 +44,7 @@ from .notification import play_notification, play_tick
 from .title_bar import PROGRESS_GOAL, PROGRESS_MIN, PROGRESS_NONE, TitleBar
 from .toolbar import WidgetToolbar
 from utility import format_date_key, resource_path
+from version import __version__
 
 # Фон окна (под телом и тулбаром) и тонкая линия-разделитель читаются
 # динамически из theme.* — см. _build_chrome / _apply_theme.
@@ -118,6 +122,7 @@ class ActivityWidget:
             on_open_settings=self._open_settings,
             on_open_readme=self._open_readme,
             on_open_github=lambda: webbrowser.open(GITHUB_URL),
+            on_open_about=self._open_about,
             on_period_report=self._open_period_report,
             on_heatmap=self._open_heatmap,
             on_today_report=self._open_today_report,
@@ -364,6 +369,16 @@ class ActivityWidget:
             messagebox.showwarning(
                 "Помощь", f"Файл README не найден:\n{path}",
             )
+
+    def _open_about(self):
+        """Показывает версию приложения и ссылку на репозиторий."""
+        messagebox.showinfo(
+            ABOUT_TITLE,
+            f"{APP_NAME}\n{ABOUT_DESCRIPTION}\n\n"
+            f"Версия: {__version__}\n"
+            f"{GITHUB_URL}",
+            parent=self.window,
+        )
 
     def _open_widgets_dialog(self):
         """Открывает диалог управления мини-виджетами рабочего стола"""

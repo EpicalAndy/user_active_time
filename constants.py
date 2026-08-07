@@ -1,10 +1,15 @@
 import ctypes
 from ctypes import wintypes
 
+from version import __version__
+
 # === Общие константы ===
 
 ENCODING = "utf-8"
 FONT_FAMILY = "Segoe UI"
+
+# Отображаемое имя приложения (трей, окно «О программе»).
+APP_NAME = "Активность"
 
 # === Цвета UI ===
 #
@@ -25,8 +30,13 @@ DEFAULT_MANUAL_ACTIVITY_DESCRIPTION = "Добавлено пользовател
 HELP_MENU_LABEL = "❓"
 HELP_MENU_README = "Помощь"
 HELP_MENU_GITHUB = "github"
+HELP_MENU_ABOUT = "О программе"
 # «Помощь» открывает локальный README.md (поставляется со сборкой — см. main.spec).
 GITHUB_URL = "https://github.com/EpicalAndy/user_active_time"
+
+# Окно «О программе»: версия подставляется из version.__version__.
+ABOUT_TITLE = "О программе"
+ABOUT_DESCRIPTION = "Монитор активности пользователя Windows"
 
 # === Меню «Отчёты» ===
 
@@ -64,7 +74,9 @@ WIDGET_OPT_CENTER_TIME = "Время"
 
 # === Системный трей ===
 
-TRAY_TITLE = "Активность"
+# Всплывающая подсказка значка в трее — единственное место, где версия видна
+# без открытия «О программе» (у виджета кастомный заголовок фиксированной ширины).
+TRAY_TITLE = f"{APP_NAME} {__version__}"
 TRAY_MENU_OPEN = "Открыть"
 TRAY_MENU_QUIT = "Выход"
 

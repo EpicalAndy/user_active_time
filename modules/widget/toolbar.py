@@ -9,6 +9,7 @@ from typing import Literal
 from config import MAIN_FONT_SIZE
 from constants import (
     FONT_FAMILY,
+    HELP_MENU_ABOUT,
     HELP_MENU_GITHUB,
     HELP_MENU_LABEL,
     HELP_MENU_README,
@@ -40,6 +41,7 @@ class WidgetToolbar:
         on_open_settings: Callable,
         on_open_readme: Callable,
         on_open_github: Callable,
+        on_open_about: Callable,
         on_period_report: Callable | None = None,
         on_heatmap: Callable | None = None,
         on_today_report: Callable | None = None,
@@ -64,6 +66,8 @@ class WidgetToolbar:
             [
                 (HELP_MENU_README, on_open_readme),
                 (HELP_MENU_GITHUB, on_open_github),
+                None,
+                (HELP_MENU_ABOUT, on_open_about),
             ],
             side=tk.RIGHT,
         )
