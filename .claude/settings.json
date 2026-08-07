@@ -67,11 +67,34 @@
       "PowerShell(.venv\\\\Scripts\\\\python.exe -c \"import version, constants; print\\(version.__version__, version.version_tuple\\(\\), constants.TRAY_TITLE\\)\")",
       "PowerShell(.venv\\\\Scripts\\\\python.exe -c \"from bootstrap import setup_user_config; setup_user_config\\(\\); import modules.widget.widget as w; print\\('import OK'\\); print\\(w.ActivityWidget._open_about.__doc__\\)\")",
       "PowerShell(git add README.md)",
-      "PowerShell(git fetch --tags 2>$null)"
+      "PowerShell(git fetch --tags 2>$null)",
+      "PowerShell($s = Get-Content \"$env:USERPROFILE\\\\active_time\\\\state.json\" -Raw | ConvertFrom-Json; $d = $s.'07.08.2026'; Write-Output \"first_login: $\\($d.first_login\\)  last_logout: $\\($d.last_logout\\)  session_count: $\\($d.session_count\\)  active: $\\($d.active_seconds\\)\"; Write-Output \"sessions: $\\($d.sessions.Count\\)  idle: $\\($d.idle.Count\\)  legacy: $\\($d.legacy_base_seconds\\)\"; Write-Output \"open_session: $\\($d.open_session | ConvertTo-Json -Compress\\)\"; Write-Output \"--- sessions:\"; $d.sessions | ConvertTo-Json -Compress; Write-Output \"--- idle \\(первые 15\\):\"; $d.idle | Select-Object -First 15 | ForEach-Object { \"$\\($_.from\\)  ->  $\\($_.to\\)\" })",
+      "PowerShell($raw = Get-Content \"$env:USERPROFILE\\\\active_time\\\\state.json\" -Raw; $s = $raw | ConvertFrom-Json; $s.PSObject.Properties.Name)",
+      "PowerShell($s = Get-Content \"$env:USERPROFILE\\\\active_time\\\\state.json\" -Raw | ConvertFrom-Json; $d = $s.'2026-08-07'; Write-Output \"first_login=$\\($d.first_login\\) last_logout=$\\($d.last_logout\\) count=$\\($d.session_count\\) active=$\\($d.active_seconds\\) legacy=$\\($d.legacy_base_seconds\\)\"; Write-Output \"sessions=$\\($d.sessions.Count\\) idle=$\\($d.idle.Count\\)\"; Write-Output \"open_session: $\\($d.open_session | ConvertTo-Json -Compress\\)\"; Write-Output \"--- sessions:\"; $d.sessions | ForEach-Object { \"$\\($_.start\\) -> $\\($_.end\\)\" }; Write-Output \"--- idle:\"; $d.idle | ForEach-Object { \"$\\($_.from\\) -> $\\($_.to\\)\" })",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\tl_debug.py)",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\tl_draw.py)",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\tl_day.py)",
+      "PowerShell($r = Get-Content \"$env:USERPROFILE\\\\active_time\\\\aaubi_04.08.2026.json\" -Raw | ConvertFrom-Json; Write-Output \"first_login=$\\($r.first_login\\) last_logout=$\\($r.last_logout\\) active=$\\($r.active_seconds\\)\"; Write-Output \"--- sessions:\"; $r.sessions | ForEach-Object { \"$\\($_.start\\) -> $\\($_.end\\)\" }; Write-Output \"--- idle: $\\($r.idle.Count\\) шт, первые 6 и последние 6:\"; $r.idle | Select-Object -First 6 | ForEach-Object { \"$\\($_.from\\) -> $\\($_.to\\)\" }; Write-Output \"   ...\"; $r.idle | Select-Object -Last 6 | ForEach-Object { \"$\\($_.from\\) -> $\\($_.to\\)\" })",
+      "PowerShell(Select-String -Path \"$env:USERPROFILE\\\\active_time\\\\config.py\" -Pattern 'CHECKPOINT_INTERVAL|INPUT_ACTIVITY_TIMEOUT|WIDGET_UPDATE_INTERVAL|MAX_WORK_HOURS' | ForEach-Object { $_.Line })",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe tests\\\\test_stats_pending_idle.py)",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe tests\\\\test_activity_intervals.py)",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe -c \"import constants; print\\(constants.TRAY_TITLE\\)\")",
+      "PowerShell(git add version.py)",
+      "PowerShell(git tag -a v2026.08.2 -m \"Release 2026.08.2\")",
+      "PowerShell(git tag -n1)",
+      "PowerShell(Select-String -Path \"$env:USERPROFILE\\\\active_time\\\\config.py\" -Pattern 'THRESHOLD|BREAK_MINUTES|WORK_HOURS' | ForEach-Object { $_.Line })",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe -c \"from bootstrap import setup_user_config; setup_user_config\\(\\); import modules.widget.widget, modules.settings_dialog, modules.widget.mini.registry as r; print\\('import OK'\\); print\\(list\\(r.WIDGET_TYPES\\)\\); print\\(r.default_opts\\('free_time_pie'\\)\\)\")",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe tests\\\\test_free_time.py)",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\ft_draw.py)",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe -c \"from modules import theme; print\\(theme.COLOR_GREEN, theme.COLOR_YELLOW, theme.COLOR_RED, theme.COLOR_LIGHT_GRAY\\)\")",
+      "PowerShell(Remove-Item C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\ft_draw.py -ErrorAction SilentlyContinue; foreach \\($t in @\\(\"test_activity_intervals\",\"test_stats_pending_idle\",\"test_free_time\"\\)\\) { Write-Output \"--- $t\"; .venv\\\\Scripts\\\\python.exe \"tests\\\\$t.py\" | Select-Object -Last 1 }; Write-Output \"--- import\"; .venv\\\\Scripts\\\\python.exe -c \"from bootstrap import setup_user_config; setup_user_config\\(\\); import modules.widget.widget, modules.settings_dialog; print\\('OK'\\)\"; git status --short)",
+      "PowerShell(git tag -a v2026.08.3 -m \"Release 2026.08.3\")",
+      "PowerShell(git push --follow-tags)"
     ],
     "additionalDirectories": [
       "C:\\Users\\aaubi\\active_time.backup_pre_json",
-      "H:\\Projects\\py\\user_active_time\\modules\\__pycache__"
+      "H:\\Projects\\py\\user_active_time\\modules\\__pycache__",
+      "C:\\Users\\aaubi\\AppData\\Local\\Temp"
     ]
   }
 }
