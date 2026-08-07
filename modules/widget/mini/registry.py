@@ -16,10 +16,12 @@ from constants import (
     WIDGET_OPT_CENTER_TIME,
     WIDGET_TYPE_ACTIVITY_PIE,
     WIDGET_TYPE_COUNTDOWN,
+    WIDGET_TYPE_FREE_TIME_PIE,
     WIDGET_TYPE_TIMELINE,
     WIDGET_TYPE_WORK_TIME_PIE,
 )
 from .countdown import CountdownWidget
+from .freetime import FreeTimePieWidget
 from .pie import ActivityPieWidget
 from .timeline import TimelineWidget
 from .worktime import WorkTimePieWidget
@@ -35,6 +37,10 @@ _CENTER_OPTION = {
     ],
 }
 
+# То же, но по умолчанию «Время»: у свободного времени осмысленный ответ —
+# «сколько ещё осталось», а не доля бюджета.
+_CENTER_OPTION_TIME_FIRST = {**_CENTER_OPTION, "default": "time"}
+
 WIDGET_TYPES: dict[str, dict] = {
     "activity_pie": {
         "label": WIDGET_TYPE_ACTIVITY_PIE,
@@ -45,6 +51,11 @@ WIDGET_TYPES: dict[str, dict] = {
         "label": WIDGET_TYPE_WORK_TIME_PIE,
         "class": WorkTimePieWidget,
         "options": [_CENTER_OPTION],
+    },
+    "free_time_pie": {
+        "label": WIDGET_TYPE_FREE_TIME_PIE,
+        "class": FreeTimePieWidget,
+        "options": [_CENTER_OPTION_TIME_FIRST],
     },
     "day_timeline": {
         "label": WIDGET_TYPE_TIMELINE,

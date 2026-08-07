@@ -38,8 +38,26 @@ class RingWidget(BaseMiniWidget):
         raise NotImplementedError
 
     def _thresholds(self) -> tuple[float, float]:
-        """(recommended, min) — пороги цвета; читать из config динамически."""
+        """(recommended, min) — пороги цвета; читать из config динамически.
+
+        Нужен, только если подкласс красится по процентной шкале (поведение
+        `_arc_color` по умолчанию). Подкласс с другой логикой цвета переопределяет
+        `_arc_color`/`_track_color` и `_thresholds` не реализует.
+        """
         raise NotImplementedError
+
+    def _arc_color(self, pct: float, stats: dict) -> str:
+        """Цвет дуги прогресса. По умолчанию — процентная шкала подкласса."""
+        recommended, minimum = self._thresholds()
+        return _color_for_percent(pct, recommended, minimum)
+
+    def _track_color(self, pct: float, stats: dict) -> str:
+        """Цвет трека (незаполненной части кольца).
+
+        По умолчанию нейтральный серый. Переопределяют те, у кого пустое кольцо
+        само по себе что-то значит и цвет нести больше нечему.
+        """
+        return theme.COLOR_LIGHT_GRAY
 
     # --- Отрисовка ---
 
@@ -61,37 +79,46 @@ class RingWidget(BaseMiniWidget):
         frac = self._fraction(stats) if working else None
         available = frac is not None
         pct = min(float(frac), 100.0) if available else 0.0
-        self._draw(pct, available, self._center_text(stats, available, pct))
+        self._draw(
+            pct, available, self._center_text(stats, available, pct),
+            arc_color=self._arc_color(pct, stats),
+            track_color=self._track_color(pct, stats),
+        )
 
     def _center_text(self, stats: dict, available: bool, pct: float) -> str:
         """Текст в центре кольца: процент или время (настройка `center`)."""
         if not available:
             return "—"
         if self.opts.get("center") == "time":
-            return format_duration_short(int(self._time_seconds(stats)))
+            return self._format_time(int(self._time_seconds(stats)))
         return f"{pct:.0f}%"
 
-    def _draw(self, pct: float, available: bool, center_text: str):
+    def _format_time(self, seconds: int) -> str:
+        """Текст режима «Время». Переопределяют те, чья метрика уходит в минус."""
+        return format_duration_short(seconds)
+
+    def _draw(
+        self, pct: float, available: bool, center_text: str,
+        arc_color: str, track_color: str,
+    ):
         c = self._canvas
         c.delete("all")
         c.configure(bg=theme.COLOR_DARK_BG)
 
         bbox = (PAD, PAD, SIZE - PAD, SIZE - PAD)
 
-        # Серый трек — полный круг.
+        # Трек — полный круг под дугой прогресса.
         c.create_arc(
             *bbox, start=0, extent=359.999, style=tk.ARC,
-            outline=theme.COLOR_LIGHT_GRAY, width=RING_WIDTH,
+            outline=track_color, width=RING_WIDTH,
         )
 
         if available and pct > 0:
             # Дуга прогресса: от 12ч (start=90) по часовой (extent < 0).
             extent = -359.999 if pct >= 100 else -360.0 * pct / 100.0
-            recommended, minimum = self._thresholds()
-            color = _color_for_percent(pct, recommended, minimum)
             c.create_arc(
                 *bbox, start=90, extent=extent, style=tk.ARC,
-                outline=color, width=RING_WIDTH,
+                outline=arc_color, width=RING_WIDTH,
             )
 
         center = SIZE / 2

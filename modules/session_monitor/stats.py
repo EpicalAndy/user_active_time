@@ -100,6 +100,16 @@ def get_current_stats() -> dict:
 
     max_work_seconds = int(work_hours * 3600)
 
+    # Свободное время — сколько ещё можно НЕ быть активным, оставаясь в норме.
+    # Бюджет за день = норма присутствия минус требуемая активность. Порогов два,
+    # значит и бюджета два: до рекомендуемой нормы и до минимальной (он больше).
+    # Потрачено = присутствие минус активность; перерыв входит сюда же, ведь в
+    # норму активности он не заложен.
+    min_active_seconds = int(activity_norm_seconds * config.MIN_ACTIVITY_THRESHOLD / 100)
+    free_budget_seconds = max(0, max_work_seconds - recommended_active_seconds)
+    free_budget_min_seconds = max(0, max_work_seconds - min_active_seconds)
+    spent_free_seconds = max(0, full_day_seconds - active_seconds)
+
     # Расчётное время окончания дня = первый логин + норма (формат HH:MM).
     # Если за день ещё не было сессий — None.
     work_day_end = None
@@ -119,6 +129,13 @@ def get_current_stats() -> dict:
         "max_work_seconds": max_work_seconds,
         "activity_norm_seconds": activity_norm_seconds,
         "break_seconds": break_seconds,
+        # Остатки свободного времени НЕ подрезаются нулём: уход в минус — это
+        # рабочее состояние метрики (перерасход), а не ошибка.
+        "free_budget_seconds": free_budget_seconds,
+        "free_budget_min_seconds": free_budget_min_seconds,
+        "spent_free_seconds": spent_free_seconds,
+        "free_remaining_seconds": free_budget_seconds - spent_free_seconds,
+        "free_remaining_min_seconds": free_budget_min_seconds - spent_free_seconds,
         "work_day_end": work_day_end,
         "timeline": timeline,
     }

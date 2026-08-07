@@ -11,6 +11,8 @@ from constants import (
     FONT_FAMILY,
     METRIC_ACTIVE_TIME,
     METRIC_ACTIVITY_PERCENT,
+    METRIC_FREE_TIME,
+    METRIC_FREE_TIME_PERCENT_FULL,
     METRIC_FULL_DAY_TIME,
     METRIC_FULL_DAY_TIME_PERCENT_FULL,
     METRIC_RECOMMENDED_REMAINING_FULL,
@@ -21,11 +23,12 @@ from constants import (
     METRIC_WORK_DAY_END_FULL,
 )
 from modules import theme
-from utility import format_duration_short
+from utility import format_duration_short, format_duration_signed
 
 # Шкалы цветовой подсветки: какая метрика по какой шкале считается.
 _SCALE_ACTIVITY = "activity"
 _SCALE_WORK_TIME = "work_time"
+_SCALE_FREE_TIME = "free_time"
 _METRIC_COLOR_SCALES: dict[str, str] = {
     "active_time": _SCALE_ACTIVITY,
     "activity_percent": _SCALE_ACTIVITY,
@@ -35,6 +38,8 @@ _METRIC_COLOR_SCALES: dict[str, str] = {
     "full_day_time_percent": _SCALE_WORK_TIME,
     "remaining_time": _SCALE_WORK_TIME,
     "remaining_time_percent": _SCALE_WORK_TIME,
+    "free_time": _SCALE_FREE_TIME,
+    "free_time_percent": _SCALE_FREE_TIME,
     # session_count, work_day_end — без цветовой шкалы
 }
 
@@ -44,6 +49,23 @@ def _color_for_percent(pct: float, recommended: float, minimum: float) -> str:
     if pct >= recommended:
         return theme.COLOR_GREEN
     if pct >= minimum:
+        return theme.COLOR_YELLOW
+    return theme.COLOR_RED
+
+
+def free_time_color(remaining: int, remaining_min: int) -> str:
+    """Цвет метрики «свободное время» по двум остаткам бюджета.
+
+    Шкала здесь не процентная, как у прочих метрик, а по знаку остатков:
+    - зелёный — рекомендуемая норма ещё достижима (остаток до неё положителен);
+    - жёлтый  — рекомендуемую уже не вытянуть, но минимальная ещё в запасе;
+    - красный — свободное время съедено и по минимальной норме (ушли в минус).
+
+    Публичная (без подчёркивания): её же использует мини-виджет свободного времени.
+    """
+    if remaining > 0:
+        return theme.COLOR_GREEN
+    if remaining_min > 0:
         return theme.COLOR_YELLOW
     return theme.COLOR_RED
 
@@ -80,6 +102,20 @@ def _recommended_remaining_percent(stats: dict) -> float | None:
     recommended = activity_norm * threshold / 100
     remaining = max(0, stats.get("recommended_remaining_seconds", 0))
     return remaining / recommended * 100
+
+
+def _free_time_percent(stats: dict) -> float | None:
+    """Остаток свободного времени в % от бюджета до рекомендуемой нормы.
+
+    Знаменатель — тот же бюджет, к которому относится и само значение метрики
+    (`free_remaining_seconds`), поэтому «30м (25%)» читается согласованно.
+    Может быть отрицательным — это перерасход, а не ошибка. None — если бюджета
+    нет вовсе (норма присутствия целиком уходит в требуемую активность).
+    """
+    budget = stats.get("free_budget_seconds", 0)
+    if budget <= 0:
+        return None
+    return stats.get("free_remaining_seconds", 0) / budget * 100
 
 
 class WidgetBody:
@@ -137,6 +173,13 @@ class WidgetBody:
         elif config.WIDGET_SHOW_REMAINING_TIME_PERCENT:
             self._metric_labels["remaining_time_percent"] = self._add_metric(
                 f"{METRIC_REMAINING_TIME_PERCENT_FULL}:",
+            )
+
+        if config.WIDGET_SHOW_FREE_TIME:
+            self._metric_labels["free_time"] = self._add_metric(f"{METRIC_FREE_TIME}:")
+        elif config.WIDGET_SHOW_FREE_TIME_PERCENT:
+            self._metric_labels["free_time_percent"] = self._add_metric(
+                f"{METRIC_FREE_TIME_PERCENT_FULL}:",
             )
 
         if config.WIDGET_SHOW_SESSION_COUNT:
@@ -241,6 +284,19 @@ class WidgetBody:
             labels["recommended_remaining_percent"]["value"].configure(
                 text=f"{pct:.1f}%" if pct is not None else "—",
             )
+        if "free_time" in labels:
+            # Со знаком: перерасход показываем как «-15м», а не подрезаем нулём.
+            text = format_duration_signed(stats.get("free_remaining_seconds", 0))
+            if config.WIDGET_SHOW_FREE_TIME_PERCENT:
+                pct = _free_time_percent(stats)
+                if pct is not None:
+                    text += f" ({pct:.1f}%)"
+            labels["free_time"]["value"].configure(text=text)
+        if "free_time_percent" in labels:
+            pct = _free_time_percent(stats)
+            labels["free_time_percent"]["value"].configure(
+                text=f"{pct:.1f}%" if pct is not None else "—",
+            )
         if "work_day_end" in labels:
             labels["work_day_end"]["value"].configure(text=stats.get("work_day_end") or "—")
 
@@ -267,6 +323,11 @@ class WidgetBody:
                 pct,
                 config.RECOMMENDED_WORK_TIME_THRESHOLD,
                 config.MIN_WORK_TIME_THRESHOLD,
+            )
+        if scale == _SCALE_FREE_TIME:
+            return free_time_color(
+                stats.get("free_remaining_seconds", 0),
+                stats.get("free_remaining_min_seconds", 0),
             )
         return None
 

@@ -46,6 +46,18 @@ def format_duration_short(seconds: int) -> str:
     return f"{hours}ч {minutes}м"
 
 
+def format_duration_signed(seconds: int) -> str:
+    """То же, но со знаком: «1ч 20м», «-15м» для отрицательных значений.
+
+    Нужна метрикам-остаткам, которые могут уйти в минус (свободное время).
+    На отрицательных `format_duration_short` врёт из-за floor-деления:
+    -900 дало бы «-1ч 45м» вместо «-15м».
+    """
+    if seconds < 0:
+        return f"-{format_duration_short(-seconds)}"
+    return format_duration_short(seconds)
+
+
 def format_date_key(dt: datetime.datetime | datetime.date) -> str:
     """Форматирует дату в ключ состояния: YYYY-MM-DD"""
     return dt.strftime(DATE_KEY_FORMAT)
