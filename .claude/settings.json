@@ -89,7 +89,20 @@
       "PowerShell(.venv\\\\Scripts\\\\python.exe -c \"from modules import theme; print\\(theme.COLOR_GREEN, theme.COLOR_YELLOW, theme.COLOR_RED, theme.COLOR_LIGHT_GRAY\\)\")",
       "PowerShell(Remove-Item C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\ft_draw.py -ErrorAction SilentlyContinue; foreach \\($t in @\\(\"test_activity_intervals\",\"test_stats_pending_idle\",\"test_free_time\"\\)\\) { Write-Output \"--- $t\"; .venv\\\\Scripts\\\\python.exe \"tests\\\\$t.py\" | Select-Object -Last 1 }; Write-Output \"--- import\"; .venv\\\\Scripts\\\\python.exe -c \"from bootstrap import setup_user_config; setup_user_config\\(\\); import modules.widget.widget, modules.settings_dialog; print\\('OK'\\)\"; git status --short)",
       "PowerShell(git tag -a v2026.08.3 -m \"Release 2026.08.3\")",
-      "PowerShell(git push --follow-tags)"
+      "PowerShell(git push --follow-tags)",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\alpha_test.py)",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe -c \"from bootstrap import setup_user_config; setup_user_config\\(\\); import modules.widget.widget, modules.settings_dialog; from modules.widget.mini.base import resting_opacity; import config; print\\('OK, WIDGET_OPACITY =', config.WIDGET_OPACITY, '-> resting', resting_opacity\\(\\)\\)\"; Select-String -Path \"$env:USERPROFILE\\\\active_time\\\\config.py\" -Pattern 'WIDGET_OPACITY' | ForEach-Object { $_.Line })",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\opacity_live.py)",
+      "PowerShell(foreach \\($t in @\\(\"test_activity_intervals\",\"test_stats_pending_idle\",\"test_free_time\",\"test_mini_opacity\"\\)\\) { Write-Output \"--- $t\"; .venv\\\\Scripts\\\\python.exe \"tests\\\\$t.py\" | Select-Object -Last 1 })",
+      "PowerShell(git restore README.md config.py constants.py modules/settings_dialog.py modules/widget/manager.py modules/widget/mini/base.py modules/widget/widget.py)",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe -c \"from bootstrap import setup_user_config; setup_user_config\\(\\); import modules.widget.widget, modules.settings_dialog; print\\('import OK'\\)\"; foreach \\($t in @\\(\"test_activity_intervals\",\"test_stats_pending_idle\",\"test_free_time\"\\)\\) { .venv\\\\Scripts\\\\python.exe \"tests\\\\$t.py\" | Select-Object -Last 1 }; Select-String -Path \"$env:USERPROFILE\\\\active_time\\\\config.py\" -Pattern 'WIDGET_OPACITY' | ForEach-Object { $_.Line })",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe C:\\\\Users\\\\aaubi\\\\AppData\\\\Local\\\\Temp\\\\bars_draw.py)",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe tests\\\\test_metric_bars.py)",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe tests\\\\test_metric_bars.py | Select-Object -Last 2; Write-Output \"--- остальные:\"; foreach \\($t in @\\(\"test_activity_intervals\",\"test_stats_pending_idle\",\"test_free_time\"\\)\\) { .venv\\\\Scripts\\\\python.exe \"tests\\\\$t.py\" | Select-Object -Last 1 })",
+      "PowerShell(git tag -a v2026.08.4 -m \"Release 2026.08.4\")",
+      "Bash(python -c ' *)",
+      "PowerShell(.venv\\\\Scripts\\\\python.exe -c \"from bootstrap import setup_user_config; setup_user_config\\(\\); import modules.widget.widget, modules.widget.tray; from version import __version__; print\\('import OK, version', __version__\\)\"; foreach \\($t in @\\(\"test_activity_intervals\",\"test_stats_pending_idle\",\"test_free_time\",\"test_metric_bars\"\\)\\) { Write-Output \"--- $t\"; .venv\\\\Scripts\\\\python.exe \"tests\\\\$t.py\" | Select-Object -Last 1 })",
+      "PowerShell(git add -A)"
     ],
     "additionalDirectories": [
       "C:\\Users\\aaubi\\active_time.backup_pre_json",

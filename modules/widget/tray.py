@@ -23,15 +23,34 @@ def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
     return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
 
 
+# Зоны кольца: (доля окружности, имя цвета в theme). Цвета — те же, что
+# обозначают зоны активности в виджетах: зелёная / жёлтая / красная.
+_ZONES = (
+    (0.50, "COLOR_GREEN"),
+    (0.25, "COLOR_YELLOW"),
+    (0.25, "COLOR_RED"),
+)
+
+
 def _make_image() -> Image.Image:
-    """Значок: зелёное кольцо (перекликается с виджетом активности)."""
-    size = 64
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    """Значок: кольцо в цветах зон активности (50% / 25% / 25%)."""
+    size, scale = 64, 4  # рисуем крупнее и уменьшаем — так края сглаживаются
+    big = size * scale
+    img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    color = _hex_to_rgb(theme.COLOR_GREEN) + (255,)
-    pad, width = 6, 10
-    draw.ellipse([pad, pad, size - pad, size - pad], outline=color, width=width)
-    return img
+    pad, width = 6 * scale, 10 * scale
+    bbox = [pad, pad, big - pad, big - pad]
+
+    # PIL считает градусы от 3 часов по часовой стрелке, поэтому 12 часов = -90.
+    start = -90.0
+    for fraction, color_name in _ZONES:
+        end = start + 360.0 * fraction
+        color = _hex_to_rgb(getattr(theme, color_name)) + (255,)
+        # Начинаем на полградуса раньше: иначе на стыках дуг видны щели.
+        draw.arc(bbox, start - 0.5, end, fill=color, width=width)
+        start = end
+
+    return img.resize((size, size), Image.LANCZOS)
 
 
 class TrayIcon:
