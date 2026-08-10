@@ -250,9 +250,11 @@ class ActivityWidget:
 
     def _tick(self):
         """Единый тикер виджета (шаг 500мс)"""
-        # 500мс — анимация мигания countdown'а (если активна)
+        # 500мс — анимация мигания countdown'а (если активна): в заголовке
+        # и в мини-виджетах, чтобы мигали в одну фазу.
         self._title_bar.tick_blink()
         self._apply_border_indicator()
+        self._manager.tick_blink()
 
         # 1с — countdown (в заголовке и в мини-виджетах, которым мало stats)
         if self._tick_count % 2 == 0:

@@ -58,7 +58,13 @@
       "Bash(python3 -c \"import constants; print\\(constants.WIDGET_TYPE_COUNTDOWN, constants.WIDGET_CAPTION_COUNTDOWN\\)\")",
       "Bash(python3 -c \"import tkinter; print\\('tk ok'\\)\")",
       "Bash(python3 /tmp/claude-1000/-home-andy-Projects-user-active-time/429b52f4-08a8-4fc6-ab60-ee0c22bb3216/scratchpad/test_countdown_state.py)",
-      "Bash(grep -n \"mini/\\\\` — мини-виджеты\" -A2 README.md)"
+      "Bash(grep -n \"mini/\\\\` — мини-виджеты\" -A2 README.md)",
+      "Bash(git -C /home/andy/Projects/user_active_time log --oneline -3)",
+      "Bash(python -m py_compile modules/widget/mini/countdown.py modules/widget/mini/base.py modules/widget/manager.py modules/widget/widget.py)",
+      "Bash(python -m pytest tests -q)",
+      "Bash(python3 -m py_compile modules/widget/mini/countdown.py modules/widget/mini/base.py modules/widget/manager.py modules/widget/widget.py)",
+      "Bash(python3 -m pytest tests -q)",
+      "Bash(python3 -)"
     ]
   }
 }

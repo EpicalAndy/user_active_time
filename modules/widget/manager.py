@@ -162,6 +162,14 @@ class WidgetManager:
             except Exception:
                 pass
 
+    def tick_blink(self):
+        """Раздаёт тик мигания (~500мс) — для виджетов с анимацией."""
+        for widget in self._widgets.values():
+            try:
+                widget.tick_blink()
+            except Exception:
+                pass
+
     # --- Внутреннее ---
 
     def _entries_for_type(self, type_key: str) -> list[dict]:
