@@ -13,15 +13,18 @@
 только отрисовывает.
 """
 
+import math
 import tkinter as tk
 
 import config
 from constants import FONT_FAMILY, WIDGET_CAPTION_TIMELINE
 from modules import theme
-from .ring import PAD, RING_WIDTH, SIZE, RingWidget
+from .ring import MIN_ARC_PX, PAD, RADIUS, RING_WIDTH, SIZE, RingWidget
 
-# Отрезок короче этой доли круга не рисуем — дуга всё равно выродится в точку.
-_MIN_EXTENT_DEGREES = 0.05
+# На сколько ячеек делится круг: по длине окружности, ячейка — минимальная
+# рисуемая дуга (см. MIN_ARC_PX). Мельче кольцо всё равно не покажет: при
+# рабочем дне в 9 часов одна ячейка — это примерно две с половиной минуты.
+_CELLS = max(1, int(2 * math.pi * RADIUS / MIN_ARC_PX))
 
 
 def _segment_color(kind: str) -> str | None:
@@ -31,6 +34,72 @@ def _segment_color(kind: str) -> str | None:
     if kind == "manual":
         return theme.COLOR_BLUE
     return None
+
+
+# Приоритет вида отрезка, когда в одну ячейку попало поровну разных: ручное
+# время дороже активности (его добавили руками, оно не должно теряться).
+_KIND_PRIORITY = {"manual": 2, "active": 1, "inactive": 0}
+
+
+def arcs(timeline: dict) -> list[tuple[float, float, str]]:
+    """Дуги поверх красного фона: [(start, extent, цвет)] в градусах Tk.
+
+    Рисуются не сами отрезки, а их ПОКРЫТИЕ по ячейкам кольца шириной
+    MIN_ARC_PX. Так надо, потому что отрезки мельче ячейки нарисовать нечем:
+    вырожденную дугу Tk чертит как полный круг (см. `ring.MIN_ARC_DEGREES`), и одна
+    секунда активности закрашивала бы зелёным весь таймлайн — простой пропадал
+    с диаграммы целиком. Отбрасывать мелочь тоже нельзя: при коротком таймауте
+    отрезков много, и круг наврал бы уже в пользу простоя.
+
+    Каждая ячейка достаётся тому виду, которого в ней больше по времени;
+    соседние ячейки одного цвета сливаются в одну дугу. Пустая ячейка остаётся
+    простоем, то есть фоном круга.
+    """
+    day_start = timeline["start_seconds"]
+    span = timeline["end_seconds"] - day_start
+    if span <= 0:
+        return []
+
+    cells: list[dict[str, float]] = [{} for _ in range(_CELLS)]
+    cell_seconds = span / _CELLS
+    for seg_start, seg_end, kind in timeline["segments"]:
+        start = max(seg_start - day_start, 0)
+        end = min(seg_end - day_start, span)
+        if end <= start:
+            continue
+        first = int(start / cell_seconds)
+        last = min(int((end - 1e-9) / cell_seconds), _CELLS - 1)
+        for index in range(first, last + 1):
+            cell_start = index * cell_seconds
+            covered = min(end, cell_start + cell_seconds) - max(start, cell_start)
+            if covered > 0:
+                cells[index][kind] = cells[index].get(kind, 0.0) + covered
+
+    colors = [_segment_color(_winner(cell)) for cell in cells]
+
+    out = []
+    index = 0
+    while index < _CELLS:
+        color = colors[index]
+        run = index
+        while run + 1 < _CELLS and colors[run + 1] == color:
+            run += 1
+        if color is not None:
+            extent = -360.0 * (run - index + 1) / _CELLS
+            out.append((
+                90 - 360.0 * index / _CELLS,
+                max(extent, -359.999),
+                color,
+            ))
+        index = run + 1
+    return out
+
+
+def _winner(cell: dict[str, float]) -> str:
+    """Вид, занявший в ячейке больше всего времени (при равенстве — приоритетный)."""
+    if not cell:
+        return "inactive"
+    return max(cell, key=lambda kind: (cell[kind], _KIND_PRIORITY.get(kind, 0)))
 
 
 class TimelineWidget(RingWidget):
@@ -98,23 +167,13 @@ class TimelineWidget(RingWidget):
     def _draw_segments(self, bbox: tuple, timeline: dict):
         """Круг = рабочее время: фон-простой, поверх — активность и ручное время."""
         c = self._canvas
-        day_start = timeline["start_seconds"]
-        span = timeline["end_seconds"] - day_start
 
         c.create_arc(
             *bbox, start=90, extent=-359.999, style=tk.ARC,
             outline=theme.COLOR_RED, width=RING_WIDTH,
         )
-        for seg_start, seg_end, kind in timeline["segments"]:
-            color = _segment_color(kind)
-            if color is None:
-                continue  # простой уже нарисован фоном круга
-            extent = -360.0 * (seg_end - seg_start) / span
-            if -extent < _MIN_EXTENT_DEGREES:
-                continue
+        for start, extent, color in arcs(timeline):
             c.create_arc(
-                *bbox,
-                start=90 - 360.0 * (seg_start - day_start) / span,
-                extent=max(extent, -359.999),
+                *bbox, start=start, extent=extent,
                 style=tk.ARC, outline=color, width=RING_WIDTH,
             )

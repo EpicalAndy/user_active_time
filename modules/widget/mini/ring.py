@@ -7,6 +7,7 @@
 и пороги цвета.
 """
 
+import math
 import tkinter as tk
 
 from constants import FONT_FAMILY
@@ -20,6 +21,17 @@ from .base import BaseMiniWidget
 SIZE = 120           # сторона канвы, px
 RING_WIDTH = 14      # толщина кольца, px
 PAD = 12             # отступ дуги от края канвы, px
+
+# Радиус средней линии кольца — из него считается минимальная рисуемая дуга.
+RADIUS = (SIZE - 2 * PAD) / 2
+
+# КОРОТКУЮ ДУГУ РИСОВАТЬ НЕЛЬЗЯ: она закрашивает всё кольцо целиком.
+# На Windows Tk чертит дугу через GDI Arc(), передавая начало и конец точками,
+# округлёнными до пикселя, а Arc() при совпавших концах рисует ВЕСЬ эллипс.
+# Замерено: дуга короче ~0.6 px даёт полный круг на любом радиусе. Порог берём
+# с запасом — 1.5 px (≈1.8° при R=48), такая дуга и так почти не видна.
+MIN_ARC_PX = 1.5
+MIN_ARC_DEGREES = math.degrees(MIN_ARC_PX / RADIUS)
 
 
 class RingWidget(BaseMiniWidget):
@@ -116,10 +128,13 @@ class RingWidget(BaseMiniWidget):
         if available and pct > 0:
             # Дуга прогресса: от 12ч (start=90) по часовой (extent < 0).
             extent = -359.999 if pct >= 100 else -360.0 * pct / 100.0
-            c.create_arc(
-                *bbox, start=90, extent=extent, style=tk.ARC,
-                outline=arc_color, width=RING_WIDTH,
-            )
+            # Доли процента дают дугу тоньше пикселя — она закрасила бы всё
+            # кольцо (см. MIN_ARC_DEGREES), поэтому просто не рисуем.
+            if -extent >= MIN_ARC_DEGREES:
+                c.create_arc(
+                    *bbox, start=90, extent=extent, style=tk.ARC,
+                    outline=arc_color, width=RING_WIDTH,
+                )
 
         center = SIZE / 2
         # Время («5ч 51м») длиннее процента — уменьшаем шрифт, чтобы влезло.
