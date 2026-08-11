@@ -26,9 +26,6 @@ _CLOSE_GLYPH = "✕"
 _CLOSE_FONT_SIZE = 11
 _CLOSE_INSET = 2      # отступ от края окна, px
 _HIDE_DELAY_MS = 60   # пауза перед тем, как прятать крестик после <Leave>
-# Смещение меню от точки клика, px: курсор должен оказаться у края меню,
-# а не на первом пункте (см. _popup_menu).
-_MENU_OFFSET = 3
 
 
 class BaseMiniWidget:
@@ -71,8 +68,6 @@ class BaseMiniWidget:
         self._build()
         self._position(x, y)
         self._bind_events()
-        # Строго после _bind_events: иначе на крестик навесится drag с общего
-        # обхода потомков и клик по нему превратится в перетаскивание.
         self._build_close_button()
         self._first_update()
 
@@ -128,36 +123,19 @@ class BaseMiniWidget:
     # --- События (drag + контекстное меню) ---
 
     def _bind_events(self):
-        """Вешает drag и ПКМ-меню на окно и все его дочерние виджеты."""
-        self._menu = tk.Menu(self.window, tearoff=0)
-        self._bind_menu_close(self._menu)
+        """Вешает drag и ПКМ-меню на окно виджета.
 
-        for w in self._all_widgets():
-            w.bind("<ButtonPress-1>", self._start_drag)
-            w.bind("<B1-Motion>", self._on_drag)
-            w.bind("<ButtonRelease-1>", self._end_drag)
-            w.bind("<Button-3>", self._popup_menu)
-
-    def _all_widgets(self) -> list[tk.Misc]:
-        """Окно + видимые потомки (рекурсивно) — чтобы события ловились везде.
-
-        Меню и его подменю в обход: формально они тоже потомки окна, но живут
-        своей жизнью. Если навесить на них общие обработчики, ПКМ по меню
-        пересоздаёт меню вместо выбора пункта (`bind` вторым вызовом ЗАМЕНЯЕТ
-        первый, так что затирается и закрытие по правой кнопке), клики по
-        пунктам заодно ловит drag, а наведение дёргает крестик закрытия.
+        Только на само окно, без обхода потомков: bindtags любого потомка
+        включает его toplevel, так что клик по канве или лейблу и так доходит
+        сюда. Продублировать те же биндинги на потомках — значит обработать
+        ОДНО событие дважды, а для меню это фатально (см. `_popup_menu`).
         """
-        result: list[tk.Misc] = [self.window]
+        self._menu = tk.Menu(self.window, tearoff=0)
 
-        def walk(parent: tk.Misc):
-            for child in parent.winfo_children():
-                if isinstance(child, tk.Menu):
-                    continue
-                result.append(child)
-                walk(child)
-
-        walk(self.window)
-        return result
+        self.window.bind("<ButtonPress-1>", self._start_drag)
+        self.window.bind("<B1-Motion>", self._on_drag)
+        self.window.bind("<ButtonRelease-1>", self._end_drag)
+        self.window.bind("<Button-3>", self._popup_menu)
 
     def _start_drag(self, event):
         self._drag_x = event.x_root - self.window.winfo_x()
@@ -176,30 +154,24 @@ class BaseMiniWidget:
     def _popup_menu(self, event):
         """Показывает контекстное меню под курсором.
 
-        Обвязка вокруг `tk_popup` — против того, что первый клик по пункту
-        пропадает, а меню закрывается:
+        Обработчик обязан отработать РОВНО один раз на клик, иначе выбор пункта
+        не срабатывает. На Windows `tk_popup` отдаёт меню системе
+        (TrackPopupMenu) и не возвращает управление, пока пользователь его не
+        закроет, а выбранный пункт Tk вызывает уже после возврата — отложенно,
+        по запомненному активному пункту. Второй проход того же события успевает
+        влезть в этот зазор: он снова показывает меню (визуально «закрылось и
+        тут же открылось») и по пути пересобирает его (`_rebuild_menu` чистит
+        пункты), после чего вызывать уже нечего — клик пропадает.
 
-        * окно мини-виджета — overrideredirect и фокус само не берёт, поэтому
-          первый клик по всплывшему меню Windows тратит на активацию
-          окна-владельца. `focus_force` делает его активным заранее;
-        * меню встаёт левым верхним углом ровно в точку клика, и курсор
-          оказывается на первом пункте — заголовке группы, который `disabled`.
-          Активным Tk такой пункт не делает, а клик без активного пункта у него
-          значит «закрыть, ничего не вызывая». Смещаем меню на пару пикселей,
-          чтобы курсор оказался у края.
-
-        Третье и главное лечится не здесь, а в `_all_widgets`: меню — потомок
-        окна, и общий обход вешал на него `_popup_menu` вместе с drag'ом.
+        Поэтому биндинг живёт только на самом окне (см. `_bind_events`).
+        Пока меню открыто, mainloop стоит внутри `tk_popup`, но таймеры `after`
+        обслуживаются — метрики виджета продолжают обновляться.
         """
         self._rebuild_menu()
+        # Окно overrideredirect само фокус не берёт: делаем его активным, чтобы
+        # системное меню не потратило первый клик на активацию окна-владельца.
         self.window.focus_force()
-        self._menu.tk_popup(event.x_root + _MENU_OFFSET, event.y_root + _MENU_OFFSET)
-        # Tk считает клик по меню осмысленным, только если знает, что курсор
-        # в меню (`Priv(window)`), а ставит он это по <Enter>. Меню всплывает
-        # прямо под неподвижным курсором, границы никто не пересекает и <Enter>
-        # может не прийти — тогда первый же клик уходит в ветку `MenuInvoke`
-        # «закрыть, ничего не вызвав». Сообщаем о входе явно.
-        self._menu.event_generate("<Enter>")
+        self._menu.tk_popup(event.x_root, event.y_root)
 
     def _rebuild_menu(self):
         """Пересобирает меню под текущие настройки виджета.
@@ -224,9 +196,6 @@ class BaseMiniWidget:
         self._menu_keep = fill(
             self._menu, self.type_key, self.opts, self._change_opt,
         )
-        for obj in self._menu_keep:
-            if isinstance(obj, tk.Menu):
-                self._bind_menu_close(obj)
         if self._menu.index(tk.END) is not None:
             self._menu.add_separator()
         self._menu.add_command(label=WIDGET_REMOVE, command=self._remove)
@@ -238,24 +207,6 @@ class BaseMiniWidget:
         сохраняет её и сам вернёт новые настройки через `apply_opts`.
         """
         self._on_opts_changed(self.widget_id, {key: value})
-
-    def _bind_menu_close(self, menu: tk.Menu):
-        """Закрытие меню правой кнопкой.
-
-        Tk отдаёт `MenuInvoke` на отпускание ЛЮБОЙ кнопки (`bind Menu
-        <ButtonRelease>` в menu.tcl), поэтому правый клик по меню не закрывал
-        бы его, а выполнял пункт под курсором — с настройками в меню это значит
-        «случайно переключил не то». Отпускание глушим совсем, а закрываем по
-        нажатию: нажатие, открывшее меню, пришло в окно виджета, и сюда не
-        попадает — ложных закрытий нет.
-        """
-        menu.bind("<ButtonRelease-3>", lambda _e: "break")
-        menu.bind("<Button-3>", self._close_menu)
-
-    def _close_menu(self, _event=None):
-        self._menu.unpost()
-        self._menu.grab_release()
-        return "break"
 
     def _remove(self):
         self._on_remove(self.widget_id)
@@ -280,15 +231,16 @@ class BaseMiniWidget:
             font=(FONT_FAMILY, _CLOSE_FONT_SIZE, "bold"), cursor="hand2",
             padx=0, pady=0, bd=0, highlightthickness=0,
         )
-        self._close_btn.bind("<Button-1>", lambda _e: self._remove())
+        # "break": иначе клик уйдёт дальше по bindtags в drag окна, а окна к
+        # тому моменту уже нет — _remove() удаляет виджет.
+        self._close_btn.bind("<Button-1>", lambda _e: (self._remove(), "break")[1])
         self._close_btn.bind("<Enter>", self._highlight_close)
         self._close_btn.bind("<Leave>", self._unhighlight_close)
 
-        # Наведение на любую часть виджета показывает крестик, уход — прячет.
-        # add="+", чтобы не снести уже навешенные drag/меню обработчики.
-        for w in self._all_widgets():
-            w.bind("<Enter>", self._show_close, add="+")
-            w.bind("<Leave>", self._hide_close_later, add="+")
+        # Наведение на любую часть виджета показывает крестик, уход — прячет:
+        # события потомков доходят до окна сами (см. _bind_events).
+        self.window.bind("<Enter>", self._show_close)
+        self.window.bind("<Leave>", self._hide_close_later)
 
     def _show_close(self, _event=None):
         # Цвета переназначаем при каждом показе: мини-виджеты не перекрашивают
