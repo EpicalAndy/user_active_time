@@ -3,8 +3,9 @@
 
 Общий каркас для минимальных виджетов, отображающих ОДНУ метрику: окно без
 рамки поверх остальных, перетаскивание с любого места, крестик закрытия,
-контекстное меню (ПКМ) с удалением, сохранение позиции. Конкретный тип
-реализует `_build()` (наполнение) и `update(stats)` (перерисовку по данным).
+контекстное меню (ПКМ) с настройками виджета и удалением, сохранение позиции.
+Конкретный тип реализует `_build()` (наполнение) и `update(stats)` (перерисовку
+по данным).
 
 Все мини-виджеты живут на общем `tk.Tk()` root основного виджета — отдельного
 mainloop у них нет, обновляются в такт метрикам конфигуратора (см. WidgetManager).
@@ -34,21 +35,29 @@ class BaseMiniWidget:
         self,
         root: tk.Tk,
         widget_id: str,
+        type_key: str,
         stats_provider: Callable[[], dict],
         on_remove: Callable[[str], None],
         on_position_changed: Callable[[str, int, int], None],
+        on_opts_changed: Callable[[str, dict], None],
         x: int,
         y: int,
         opts: dict,
     ):
         self.widget_id = widget_id
+        # Тип нужен только для меню настроек: по нему берётся схема опций.
+        self.type_key = type_key
         self.stats_provider = stats_provider
         self._on_remove = on_remove
         self._on_position_changed = on_position_changed
+        self._on_opts_changed = on_opts_changed
         self.opts = opts or {}
 
         self._drag_x = 0
         self._drag_y = 0
+        # Живёт, пока показано меню: tk-переменные пунктов и подменю (см.
+        # options_menu.fill) — без ссылки их унесёт сборщик мусора.
+        self._menu_keep: list = []
 
         self.window = tk.Toplevel(root)
         self.window.overrideredirect(True)
@@ -118,7 +127,7 @@ class BaseMiniWidget:
     def _bind_events(self):
         """Вешает drag и ПКМ-меню на окно и все его дочерние виджеты."""
         self._menu = tk.Menu(self.window, tearoff=0)
-        self._menu.add_command(label=WIDGET_REMOVE, command=self._remove)
+        self._bind_menu_close(self._menu)
 
         for w in self._all_widgets():
             w.bind("<ButtonPress-1>", self._start_drag)
@@ -153,7 +162,64 @@ class BaseMiniWidget:
         )
 
     def _popup_menu(self, event):
+        self._rebuild_menu()
         self._menu.tk_popup(event.x_root, event.y_root)
+
+    def _rebuild_menu(self):
+        """Пересобирает меню под текущие настройки виджета.
+
+        Именно на каждый показ, а не один раз при создании: те же настройки
+        правит и диалог управления, а после его правок жирный (активное
+        значение) должен остаться на месте.
+        """
+        # Импорт ленивый: options_menu тянет реестр типов, а реестр импортирует
+        # классы виджетов, которые наследуют этот модуль — на верхнем уровне
+        # получился бы цикл.
+        from .options_menu import fill
+
+        # Подменю прошлого показа: delete() снимает пункт-каскад, но окно
+        # самого подменю оставляет — без destroy они копились бы с каждым ПКМ.
+        for obj in self._menu_keep:
+            if isinstance(obj, tk.Menu):
+                obj.destroy()
+        self._menu_keep = []
+
+        self._menu.delete(0, tk.END)
+        self._menu_keep = fill(
+            self._menu, self.type_key, self.opts, self._change_opt,
+        )
+        for obj in self._menu_keep:
+            if isinstance(obj, tk.Menu):
+                self._bind_menu_close(obj)
+        if self._menu.index(tk.END) is not None:
+            self._menu.add_separator()
+        self._menu.add_command(label=WIDGET_REMOVE, command=self._remove)
+
+    def _change_opt(self, key: str, value):
+        """Пункт меню изменил настройку.
+
+        Наружу (менеджеру), а не в `self.opts`: он владеет записью виджета,
+        сохраняет её и сам вернёт новые настройки через `apply_opts`.
+        """
+        self._on_opts_changed(self.widget_id, {key: value})
+
+    def _bind_menu_close(self, menu: tk.Menu):
+        """Закрытие меню правой кнопкой.
+
+        Tk отдаёт `MenuInvoke` на отпускание ЛЮБОЙ кнопки (`bind Menu
+        <ButtonRelease>` в menu.tcl), поэтому правый клик по меню не закрывал
+        бы его, а выполнял пункт под курсором — с настройками в меню это значит
+        «случайно переключил не то». Отпускание глушим совсем, а закрываем по
+        нажатию: нажатие, открывшее меню, пришло в окно виджета, и сюда не
+        попадает — ложных закрытий нет.
+        """
+        menu.bind("<ButtonRelease-3>", lambda _e: "break")
+        menu.bind("<Button-3>", self._close_menu)
+
+    def _close_menu(self, _event=None):
+        self._menu.unpost()
+        self._menu.grab_release()
+        return "break"
 
     def _remove(self):
         self._on_remove(self.widget_id)

@@ -193,9 +193,11 @@ class WidgetManager:
             widget = cls(
                 self._root,
                 item["id"],
+                item["type"],
                 self._stats_provider,
                 self.disable,  # «Убрать виджет» из ПКМ = выключить (настройки живы)
                 self._on_position_changed,
+                self.update_opts,  # настройки из ПКМ-меню самого виджета
                 int(item.get("x", 0)),
                 int(item.get("y", 0)),
                 item.get("opts") or {},
