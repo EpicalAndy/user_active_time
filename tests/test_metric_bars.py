@@ -38,6 +38,7 @@ def read(key, stats=None):
         name: getattr(config, name) for name in (
             "RECOMMENDED_ACTIVITY_THRESHOLD", "MIN_ACTIVITY_THRESHOLD",
             "RECOMMENDED_WORK_TIME_THRESHOLD", "MIN_WORK_TIME_THRESHOLD",
+            "FREE_TIME_WARNING_PERCENT",
         )
     }
     try:
@@ -45,6 +46,7 @@ def read(key, stats=None):
         config.MIN_ACTIVITY_THRESHOLD = 70
         config.RECOMMENDED_WORK_TIME_THRESHOLD = 100
         config.MIN_WORK_TIME_THRESHOLD = 80
+        config.FREE_TIME_WARNING_PERCENT = 20  # → жёлтая зона с 24м от бюджета 2ч
         return bars._BARS[key]["read"](stats if stats is not None else STATS)
     finally:
         for name, value in saved.items():
@@ -116,11 +118,19 @@ def test_free_time_bar_shows_remaining_to_recommended():
     assert color == theme.COLOR_GREEN
 
 
+def test_free_time_bar_turns_yellow_near_the_end():
+    ending = {**STATS, "free_remaining_seconds": 900, "free_remaining_min_seconds": 3600}
+    pct, text, color = read("free_time", ending)
+    assert text == "0ч 15м"
+    assert color == theme.COLOR_YELLOW
+
+
 def test_free_time_bar_shows_overspend_with_sign():
+    """Перерасход — красный, хотя минимальная норма (полоса) ещё жива."""
     overspent = {**STATS, "free_remaining_seconds": -900, "free_remaining_min_seconds": 1800}
     pct, text, color = read("free_time", overspent)
     assert text == "-0ч 15м"
-    assert color == theme.COLOR_YELLOW
+    assert color == theme.COLOR_RED
 
 
 def test_bars_unavailable_without_norm():

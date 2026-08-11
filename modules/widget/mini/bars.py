@@ -79,9 +79,10 @@ def _free_time(stats: dict):
     remaining = stats.get("free_remaining_seconds", 0)
     remaining_min = stats.get("free_remaining_min_seconds", 0)
     # Шкала та же, что у кольца свободного времени: полная полоса = бюджет до
-    # минимальной нормы, а значение показывает остаток до рекомендуемой.
+    # минимальной нормы, а значение и цвет — по остатку до рекомендуемой.
     pct = remaining_min / budget_min * 100
-    return pct, format_duration_signed(remaining), free_time_color(remaining, remaining_min)
+    color = free_time_color(remaining, stats.get("free_budget_seconds", 0))
+    return pct, format_duration_signed(remaining), color
 
 
 # Порядок здесь = порядок полос в виджете.

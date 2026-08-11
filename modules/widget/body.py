@@ -53,21 +53,28 @@ def _color_for_percent(pct: float, recommended: float, minimum: float) -> str:
     return theme.COLOR_RED
 
 
-def free_time_color(remaining: int, remaining_min: int) -> str:
-    """Цвет метрики «свободное время» по двум остаткам бюджета.
+def free_time_color(remaining: int, budget: int) -> str:
+    """Цвет метрики «свободное время» по остатку бюджета до рекомендуемой нормы.
 
-    Шкала здесь не процентная, как у прочих метрик, а по знаку остатков:
-    - зелёный — рекомендуемая норма ещё достижима (остаток до неё положителен);
-    - жёлтый  — рекомендуемую уже не вытянуть, но минимальная ещё в запасе;
-    - красный — свободное время съедено и по минимальной норме (ушли в минус).
+    Шкала считается по тому же бюджету, который показывают цифры метрики
+    (`free_remaining_seconds` и процент от `free_budget_seconds`), — иначе цвет
+    расходится с числом рядом:
+    - зелёный — остатка больше порога предупреждения;
+    - жёлтый  — остаток не выше порога (`FREE_TIME_WARNING_PERCENT` % бюджета),
+      свободное время заканчивается;
+    - красный — остаток исчерпан (ноль или минус).
+
+    Что просажена ещё и минимальная норма, цвет не показывает: это несёт
+    геометрия кольца в мини-виджете (пустое кольцо + красный трек).
 
     Публичная (без подчёркивания): её же использует мини-виджет свободного времени.
     """
-    if remaining > 0:
-        return theme.COLOR_GREEN
-    if remaining_min > 0:
+    if remaining <= 0:
+        return theme.COLOR_RED
+    warning = config.FREE_TIME_WARNING_PERCENT
+    if warning > 0 and budget > 0 and remaining <= budget * warning / 100:
         return theme.COLOR_YELLOW
-    return theme.COLOR_RED
+    return theme.COLOR_GREEN
 
 
 def _work_time_percent(stats: dict) -> float | None:
@@ -327,7 +334,7 @@ class WidgetBody:
         if scale == _SCALE_FREE_TIME:
             return free_time_color(
                 stats.get("free_remaining_seconds", 0),
-                stats.get("free_remaining_min_seconds", 0),
+                stats.get("free_budget_seconds", 0),
             )
         return None
 

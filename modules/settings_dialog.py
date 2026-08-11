@@ -328,6 +328,22 @@ class SettingsDialog:
             textvariable=self._min_work_var, justify=tk.CENTER,
         ).grid(row=2, column=2, padx=(4, 0), pady=2)
 
+        # Строка «Свободное время» — отдельно под сеткой: у него нет своих
+        # рекомендуемого и минимального порогов (они наследуются от активности),
+        # поэтому третий столбец дал бы две пустые ячейки. Порог здесь один —
+        # граница жёлтой зоны «время заканчивается», в % от бюджета.
+        ttk.Separator(thr_grid, orient=tk.HORIZONTAL).grid(
+            row=3, column=0, columnspan=3, sticky=tk.EW, pady=(6, 4),
+        )
+        tk.Label(
+            thr_grid, text="Свободное время, предупреждение:", font=(FONT_FAMILY, 9),
+        ).grid(row=4, column=0, sticky=tk.W, pady=2)
+        self._free_time_warning_var = tk.IntVar(value=config.FREE_TIME_WARNING_PERCENT)
+        ttk.Spinbox(
+            thr_grid, from_=0, to=100, width=6,
+            textvariable=self._free_time_warning_var, justify=tk.CENTER,
+        ).grid(row=4, column=1, padx=(8, 4), pady=2)
+
         # --- Кнопки ---
         btn_frame = tk.Frame(self.dialog)
         btn_frame.pack(fill=tk.X, padx=10, pady=8)
@@ -372,6 +388,7 @@ class SettingsDialog:
             "min_activity_threshold": self._min_activity_var.get(),
             "recommended_work_time_threshold": self._recommended_work_var.get(),
             "min_work_time_threshold": self._min_work_var.get(),
+            "free_time_warning_percent": self._free_time_warning_var.get(),
         }
 
     def _write_config_file(self, values: dict):
@@ -428,6 +445,7 @@ class SettingsDialog:
             ("min_activity_threshold", "MIN_ACTIVITY_THRESHOLD"),
             ("recommended_work_time_threshold", "RECOMMENDED_WORK_TIME_THRESHOLD"),
             ("min_work_time_threshold", "MIN_WORK_TIME_THRESHOLD"),
+            ("free_time_warning_percent", "FREE_TIME_WARNING_PERCENT"),
         ):
             content = re.sub(
                 rf"^{attr}\s*=\s*.+$",
@@ -480,6 +498,7 @@ class SettingsDialog:
         config.MIN_ACTIVITY_THRESHOLD = values["min_activity_threshold"]
         config.RECOMMENDED_WORK_TIME_THRESHOLD = values["recommended_work_time_threshold"]
         config.MIN_WORK_TIME_THRESHOLD = values["min_work_time_threshold"]
+        config.FREE_TIME_WARNING_PERCENT = values["free_time_warning_percent"]
         for attr, val in values["metrics"].items():
             setattr(config, attr, val)
         for key, val in values["work_hours"].items():

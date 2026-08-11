@@ -159,24 +159,51 @@ def test_remaining_goes_negative_without_clamping():
 
 # --- Цветовое правило ---
 
-
-def test_color_green_while_recommended_reachable():
-    assert free_time_color(1800, 7200) == theme.COLOR_GREEN
-
-
-def test_color_yellow_between_thresholds():
-    """Рекомендуемую уже не вытянуть, минимальная ещё в запасе."""
-    assert free_time_color(-600, 2100) == theme.COLOR_YELLOW
+# Бюджет свободного времени до рекомендуемой нормы (2ч00м, см. шапку модуля).
+BUDGET = 2 * 3600
+WARNING_PCT = 20  # → жёлтая зона начинается с 24 минут остатка
 
 
-def test_color_red_in_minus_by_minimum():
-    assert free_time_color(-3600, -900) == theme.COLOR_RED
+def color(remaining, budget=BUDGET, warning=WARNING_PCT):
+    """Цвет при фиксированном пороге — тест не должен зависеть от конфига."""
+    saved = config.FREE_TIME_WARNING_PERCENT
+    try:
+        config.FREE_TIME_WARNING_PERCENT = warning
+        return free_time_color(remaining, budget)
+    finally:
+        config.FREE_TIME_WARNING_PERCENT = saved
 
 
-def test_color_boundary_zero_is_not_green():
-    """Ровно нулевой остаток — это уже не «есть свободное время»."""
-    assert free_time_color(0, 2700) == theme.COLOR_YELLOW
-    assert free_time_color(0, 0) == theme.COLOR_RED
+def test_color_green_above_warning():
+    assert color(3600) == theme.COLOR_GREEN
+
+
+def test_color_yellow_below_warning():
+    """Остаток ниже порога — свободное время заканчивается."""
+    assert color(15 * 60) == theme.COLOR_YELLOW
+
+
+def test_color_warning_boundary_is_yellow():
+    """Ровно на пороге — уже предупреждение, а не «всё хорошо»."""
+    assert color(24 * 60) == theme.COLOR_YELLOW
+    assert color(24 * 60 + 1) == theme.COLOR_GREEN
+
+
+def test_color_red_when_exhausted():
+    """Красный совпадает с нулём в центре кольца, а не с провалом минимальной."""
+    assert color(0) == theme.COLOR_RED
+    assert color(-900) == theme.COLOR_RED
+
+
+def test_color_zero_warning_disables_yellow_zone():
+    """Порог 0 — жёлтой зоны нет, как COUNTDOWN_WARNING_SECONDS = 0."""
+    assert color(60, warning=0) == theme.COLOR_GREEN
+    assert color(0, warning=0) == theme.COLOR_RED
+
+
+def test_color_green_without_budget():
+    """Без бюджета порог не от чего считать — жёлтой зоны нет."""
+    assert color(60, budget=0) == theme.COLOR_GREEN
 
 
 # --- Мини-виджет ---
@@ -214,11 +241,20 @@ def test_widget_track_turns_red_only_in_minus():
 
 
 def test_widget_arc_color_follows_scale():
+    """Цвет дуги — по остатку до рекомендуемой, т.е. по числу в центре кольца."""
     w = _widget()
-    green = {"free_remaining_seconds": 1800, "free_remaining_min_seconds": 7200}
-    yellow = {"free_remaining_seconds": -600, "free_remaining_min_seconds": 2100}
-    assert w._arc_color(45.0, green) == theme.COLOR_GREEN
-    assert w._arc_color(21.0, yellow) == theme.COLOR_YELLOW
+    saved = config.FREE_TIME_WARNING_PERCENT
+    try:
+        config.FREE_TIME_WARNING_PERCENT = WARNING_PCT
+        green = {"free_remaining_seconds": 3600, "free_budget_seconds": BUDGET}
+        yellow = {"free_remaining_seconds": 15 * 60, "free_budget_seconds": BUDGET}
+        red = {"free_remaining_seconds": -600, "free_budget_seconds": BUDGET}
+        assert w._arc_color(45.0, green) == theme.COLOR_GREEN
+        assert w._arc_color(21.0, yellow) == theme.COLOR_YELLOW
+        # Минимальная норма при этом ещё жива — её судьбу несёт трек, не цвет.
+        assert w._arc_color(15.0, red) == theme.COLOR_RED
+    finally:
+        config.FREE_TIME_WARNING_PERCENT = saved
 
 
 # --- Форматирование ---
