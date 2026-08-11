@@ -70,7 +70,10 @@
       "Bash(python3 -m py_compile modules/settings_dialog.py modules/widget/body.py modules/widget/mini/bars.py modules/widget/mini/freetime.py config.py)",
       "Bash(python3 /tmp/claude-1000/-home-andy-Projects-user-active-time/11b17979-fce9-4bf9-b476-4e665f3a87e2/scratchpad/run_tests.py tests/test_widget_menu.py)",
       "Bash(python3 -m py_compile modules/widget/mini/base.py modules/widget/mini/options_menu.py modules/widget/manager.py)",
-      "Bash(python3 /tmp/claude-1000/-home-andy-Projects-user-active-time/11b17979-fce9-4bf9-b476-4e665f3a87e2/scratchpad/run_tests.py tests/test_widget_menu.py tests/test_free_time.py tests/test_metric_bars.py tests/test_activity_intervals.py tests/test_stats_pending_idle.py)"
+      "Bash(python3 /tmp/claude-1000/-home-andy-Projects-user-active-time/11b17979-fce9-4bf9-b476-4e665f3a87e2/scratchpad/run_tests.py tests/test_widget_menu.py tests/test_free_time.py tests/test_metric_bars.py tests/test_activity_intervals.py tests/test_stats_pending_idle.py)",
+      "Bash(git tag *)",
+      "Bash(git rev-list *)",
+      "Bash(python3 -m py_compile modules/widget/mini/base.py)"
     ]
   }
 }
