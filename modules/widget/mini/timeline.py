@@ -11,6 +11,9 @@
 
 Данные приходят готовыми в `stats["timeline"]` (см. session_monitor) — виджет
 только отрисовывает.
+
+Нарезка ленты на ячейки (`cell_kinds`) и палитра (`segment_color`) публичные:
+ту же ленту, только горизонтальной полосой, рисует виджет «Метрики».
 """
 
 import math
@@ -27,13 +30,22 @@ from .ring import MIN_ARC_PX, PAD, RADIUS, RING_WIDTH, SIZE, RingWidget
 _CELLS = max(1, int(2 * math.pi * RADIUS / MIN_ARC_PX))
 
 
-def _segment_color(kind: str) -> str | None:
-    """Цвет отрезка таймлайна. None — рисовать не нужно (простой = фон круга)."""
+def segment_color(kind: str) -> str:
+    """Цвет вида отрезка ленты дня: активность, ручное время, простой.
+
+    Публичная: тем же палитром красится лента таймлайна в виджете «Метрики»,
+    где простой рисуется наравне с остальными, а не остаётся фоном.
+    """
     if kind == "active":
         return theme.COLOR_GREEN
     if kind == "manual":
         return theme.COLOR_BLUE
-    return None
+    return theme.COLOR_RED
+
+
+def _color_over_background(kind: str) -> str | None:
+    """Цвет дуги поверх фона кольца. None — простой, он и есть фон."""
+    return None if kind == "inactive" else segment_color(kind)
 
 
 # Приоритет вида отрезка, когда в одну ячейку попало поровну разных: ручное
@@ -41,53 +53,67 @@ def _segment_color(kind: str) -> str | None:
 _KIND_PRIORITY = {"manual": 2, "active": 1, "inactive": 0}
 
 
-def arcs(timeline: dict) -> list[tuple[float, float, str]]:
-    """Дуги поверх красного фона: [(start, extent, цвет)] в градусах Tk.
+def cell_kinds(timeline: dict, cells: int) -> list[str]:
+    """Вид ("active"/"manual"/"inactive"), занявший каждую ячейку ленты дня.
 
-    Рисуются не сами отрезки, а их ПОКРЫТИЕ по ячейкам кольца шириной
-    MIN_ARC_PX. Так надо, потому что отрезки мельче ячейки нарисовать нечем:
-    вырожденную дугу Tk чертит как полный круг (см. `ring.MIN_ARC_DEGREES`), и одна
-    секунда активности закрашивала бы зелёным весь таймлайн — простой пропадал
-    с диаграммы целиком. Отбрасывать мелочь тоже нельзя: при коротком таймауте
-    отрезков много, и круг наврал бы уже в пользу простоя.
+    Лента — отрезок [первый логин, сейчас], нарезанный на `cells` равных ячеек.
+    Считается не сам отрезок, а его ПОКРЫТИЕ по ячейкам: отрезок мельче ячейки
+    нарисовать нечем, а отбрасывать мелочь нельзя — при коротком таймауте
+    отрезков много, и картинка наврала бы в пользу простоя.
 
-    Каждая ячейка достаётся тому виду, которого в ней больше по времени;
-    соседние ячейки одного цвета сливаются в одну дугу. Пустая ячейка остаётся
-    простоем, то есть фоном круга.
+    Каждая ячейка достаётся тому виду, которого в ней больше по времени; пустая
+    остаётся простоем. Пустой список — дня ещё нет (нулевой span).
+
+    Публичная: по этим же ячейкам рисуется лента таймлайна в виджете «Метрики»,
+    только шириной в пиксель полосы, а не в дугу кольца.
     """
     day_start = timeline["start_seconds"]
     span = timeline["end_seconds"] - day_start
-    if span <= 0:
+    if span <= 0 or cells <= 0:
         return []
 
-    cells: list[dict[str, float]] = [{} for _ in range(_CELLS)]
-    cell_seconds = span / _CELLS
+    buckets: list[dict[str, float]] = [{} for _ in range(cells)]
+    cell_seconds = span / cells
     for seg_start, seg_end, kind in timeline["segments"]:
         start = max(seg_start - day_start, 0)
         end = min(seg_end - day_start, span)
         if end <= start:
             continue
         first = int(start / cell_seconds)
-        last = min(int((end - 1e-9) / cell_seconds), _CELLS - 1)
+        last = min(int((end - 1e-9) / cell_seconds), cells - 1)
         for index in range(first, last + 1):
             cell_start = index * cell_seconds
             covered = min(end, cell_start + cell_seconds) - max(start, cell_start)
             if covered > 0:
-                cells[index][kind] = cells[index].get(kind, 0.0) + covered
+                buckets[index][kind] = buckets[index].get(kind, 0.0) + covered
 
-    colors = [_segment_color(_winner(cell)) for cell in cells]
+    return [_winner(bucket) for bucket in buckets]
+
+
+def arcs(timeline: dict) -> list[tuple[float, float, str]]:
+    """Дуги поверх красного фона: [(start, extent, цвет)] в градусах Tk.
+
+    Ячейка кольца — MIN_ARC_PX: вырожденную дугу Tk чертит как полный круг
+    (см. `ring.MIN_ARC_DEGREES`), и одна секунда активности закрашивала бы
+    зелёным весь таймлайн — простой пропадал с диаграммы целиком.
+
+    Соседние ячейки одного цвета сливаются в одну дугу; простой не рисуется —
+    он и есть фон круга.
+    """
+    colors = [_color_over_background(kind) for kind in cell_kinds(timeline, _CELLS)]
+    total = len(colors)
 
     out = []
     index = 0
-    while index < _CELLS:
+    while index < total:
         color = colors[index]
         run = index
-        while run + 1 < _CELLS and colors[run + 1] == color:
+        while run + 1 < total and colors[run + 1] == color:
             run += 1
         if color is not None:
-            extent = -360.0 * (run - index + 1) / _CELLS
+            extent = -360.0 * (run - index + 1) / total
             out.append((
-                90 - 360.0 * index / _CELLS,
+                90 - 360.0 * index / total,
                 max(extent, -359.999),
                 color,
             ))

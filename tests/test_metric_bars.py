@@ -32,6 +32,30 @@ STATS = {
 }
 
 
+# Тот же день для полосы-таймлайна: логин в 9:00, сейчас 12:00 (рабочее время
+# 3ч), активность 9:00–10:30 и 11:00–11:30, ручное время 11:30–12:00.
+TIMELINE_STATS = {
+    **STATS,
+    "active_seconds": 7200,
+    "full_day_seconds": 10800,
+    "timeline": {
+        "start_seconds": 9 * 3600,
+        "end_seconds": 12 * 3600,
+        "segments": [
+            (9 * 3600, 10 * 3600 + 1800, "active"),
+            (10 * 3600 + 1800, 11 * 3600, "inactive"),
+            (11 * 3600, 11 * 3600 + 1800, "active"),
+            (11 * 3600 + 1800, 12 * 3600, "manual"),
+        ],
+    },
+}
+
+
+def at(share):
+    """Индекс ячейки ленты по доле дня (0.0 — логин, 1.0 — «сейчас»)."""
+    return int(bars._STRIP_CELLS * share)
+
+
 def read(key, stats=None):
     """Читает метрику при фиксированных порогах — тест не должен зависеть от конфига."""
     saved = {
@@ -57,7 +81,7 @@ def read(key, stats=None):
 
 
 def test_default_is_all_bars_in_fixed_order():
-    assert bars.selected_bars({}) == ["activity", "work_time", "free_time"]
+    assert bars.selected_bars({}) == ["activity", "work_time", "free_time", "timeline"]
 
 
 def test_order_ignores_order_of_selection():
@@ -133,6 +157,39 @@ def test_free_time_bar_shows_overspend_with_sign():
     assert color == theme.COLOR_RED
 
 
+def test_timeline_bar_paints_the_whole_day_as_a_strip():
+    """Полоса таймлайна — не заливка по проценту, а лента дня во всю ширину."""
+    _, _, strip = read("timeline", TIMELINE_STATS)
+    assert len(strip) == bars._STRIP_CELLS
+    # День: активность 50%, простой до 66.7%, активность до 83.3%, ручное — хвост.
+    assert strip[0] == theme.COLOR_GREEN
+    assert strip[at(0.60)] == theme.COLOR_RED
+    assert strip[at(0.75)] == theme.COLOR_GREEN
+    assert strip[-1] == theme.COLOR_BLUE
+
+
+def test_timeline_bar_value_is_share_of_work_time():
+    """Значение — то же число, что в центре кольца таймлайна: 2ч из 3ч."""
+    pct, text, _ = read("timeline", TIMELINE_STATS)
+    assert round(pct, 1) == 66.7
+    assert text == "66%"
+
+
+def test_timeline_bar_value_is_not_clamped():
+    """Ручное время честно поднимает активность выше рабочего времени."""
+    over = {**TIMELINE_STATS, "active_seconds": 12600}  # 3ч30м из 3ч
+    _, text, _ = read("timeline", over)
+    assert text == "116%"
+
+
+def test_timeline_bar_unavailable_without_a_day():
+    """Ленту рисовать не из чего: нет данных, нет логина, нет рабочего времени."""
+    assert read("timeline", {**TIMELINE_STATS, "timeline": None}) is None
+    assert read("timeline", {**TIMELINE_STATS, "full_day_seconds": 0}) is None
+    empty = {**TIMELINE_STATS["timeline"], "end_seconds": TIMELINE_STATS["timeline"]["start_seconds"]}
+    assert read("timeline", {**TIMELINE_STATS, "timeline": empty}) is None
+
+
 def test_bars_unavailable_without_norm():
     """Без нормы дня полосы нечем заполнять — виджет покажет прочерк."""
     assert read("work_time", {**STATS, "max_work_seconds": 0}) is None
@@ -167,7 +224,7 @@ def test_ink_readable_on_every_fill_of_both_themes():
         for name in theme.available_themes():
             theme.set_theme(name)
             for color in (theme.COLOR_GREEN, theme.COLOR_YELLOW, theme.COLOR_RED,
-                          theme.COLOR_LIGHT_GRAY):
+                          theme.COLOR_BLUE, theme.COLOR_LIGHT_GRAY):
                 ink = bars.ink_for(color)
                 assert abs(bars._luminance(ink) - bars._luminance(color)) > 0.3, (
                     f"{name}: {color} плохо читается чернилами {ink}"

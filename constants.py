@@ -210,6 +210,8 @@ METRIC_ACTIVITY_NORM = "Норма активности"
 METRIC_FIRST_LOGIN = "Начало рабочего дня"
 METRIC_LAST_LOGOUT = "Конец рабочего дня"
 METRIC_HIDE_OPTION = "Не отображать"
+# Полоса-лента дня в виджете «Метрики» — тот же таймлайн, что и на кольце.
+METRIC_TIMELINE = "Таймлайн"
 
 # === Константы Windows API ===
 

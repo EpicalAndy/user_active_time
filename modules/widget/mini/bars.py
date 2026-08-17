@@ -3,6 +3,10 @@
 
 Каждая метрика — горизонтальная полоса: заливка по проценту метрики, цвет по
 её собственной шкале порогов, поверх заливки название слева и значение справа.
+Особняком стоит «Таймлайн»: его полоса закрашена целиком лентой дня
+(активность/простой/ручное время), той же, что кольцо таймлайна, а процент
+уходит только в подпись — см. `_draw_strip`.
+
 Набор полос настраивается галочками (опция `metrics`), порядок фиксированный —
 он задан `_BARS`, а не порядком кликов, чтобы виджет не «перетасовывался».
 
@@ -17,6 +21,7 @@
 """
 
 import tkinter as tk
+from collections.abc import Callable
 
 import config
 from constants import (
@@ -24,6 +29,7 @@ from constants import (
     METRIC_ACTIVITY_PERCENT,
     METRIC_FREE_TIME,
     METRIC_FULL_DAY_TIME,
+    METRIC_TIMELINE,
     WIDGET_BARS_EMPTY,
     WIDGET_CAPTION_BARS,
 )
@@ -31,6 +37,7 @@ from modules import theme
 from utility import format_duration_signed, format_percent
 from ..body import _color_for_percent, free_time_color
 from .base import PERCENT_DECIMALS, BaseMiniWidget
+from .timeline import cell_kinds, segment_color
 
 # Геометрия. Ширина больше кольцевых виджетов: полосе нужно место под название
 # и значение одновременно.
@@ -48,6 +55,11 @@ _INK_DARK = "#1B2733"
 # Граница яркости, выше которой подложка считается светлой. 0.6 — по факту
 # заливок: жёлтая тёмной темы (#F39C12) светлая, зелёная (#27AE60) тёмная.
 _INK_THRESHOLD = 0.6
+
+# На сколько ячеек режется лента дня: ячейка — пиксель ширины полосы, мельче
+# полоса всё равно ничего не покажет (кольцо режется по своей мерке, см.
+# timeline._CELLS).
+_STRIP_CELLS = WIDTH - 2 * PAD_X
 
 
 # --- Метрики ---
@@ -87,11 +99,30 @@ def _free_time(stats: dict):
     return pct, format_duration_signed(remaining), color
 
 
+def _timeline(stats: dict):
+    """Лента дня вместо заливки: полоса — это отрезок [первый логин, сейчас].
+
+    Значение справа — доля активности от рабочего времени, то же число, что
+    стоит в центре кольца таймлайна. Не подрезается сотней: с добавленным
+    вручную временем активность честно может превысить рабочее время.
+    """
+    timeline = stats.get("timeline")
+    full_day = stats.get("full_day_seconds", 0)
+    if not timeline or full_day <= 0:
+        return None
+    strip = [segment_color(kind) for kind in cell_kinds(timeline, _STRIP_CELLS)]
+    if not strip:
+        return None  # логина ещё не было — ленту рисовать не из чего
+    pct = stats.get("active_seconds", 0) / full_day * 100
+    return pct, format_percent(pct, PERCENT_DECIMALS), strip
+
+
 # Порядок здесь = порядок полос в виджете.
 _BARS: dict[str, dict] = {
     "activity": {"label": METRIC_ACTIVITY_PERCENT, "read": _activity},
     "work_time": {"label": METRIC_FULL_DAY_TIME, "read": _work_time},
     "free_time": {"label": METRIC_FREE_TIME, "read": _free_time},
+    "timeline": {"label": METRIC_TIMELINE, "read": _timeline},
 }
 
 # Для реестра: варианты галочек и набор по умолчанию (все).
@@ -181,8 +212,8 @@ class MetricBarsWidget(BaseMiniWidget):
                 # Нерабочий день или нормы нет — серая полоса с прочерком.
                 self._draw_bar(y, meta["label"], "—", 0.0, theme.COLOR_GRAY)
             else:
-                pct, value_text, color = reading
-                self._draw_bar(y, meta["label"], value_text, pct, color)
+                pct, value_text, paint = reading
+                self._draw_bar(y, meta["label"], value_text, pct, paint)
             y += BAR_HEIGHT + BAR_GAP
 
     def _draw_placeholder(self, text: str):
@@ -192,11 +223,29 @@ class MetricBarsWidget(BaseMiniWidget):
             fill=theme.COLOR_MUTED, font=(FONT_FAMILY, FONT_SIZE),
         )
 
-    def _draw_bar(self, y: int, label: str, value: str, pct: float, color: str):
-        """Одна полоса: трек, заливка по проценту, название слева, значение справа."""
+    def _draw_bar(self, y: int, label: str, value: str, pct: float,
+                  paint: str | list[str]):
+        """Одна полоса: подложка, название слева, значение справа.
+
+        `paint` — либо цвет заливки (тогда её длина = процент метрики), либо
+        лента цветов по ячейкам (таймлайн): она красит полосу целиком, а
+        процент уходит только в подпись.
+        """
+        y1 = y + BAR_HEIGHT
+        if isinstance(paint, list):
+            background_at = self._draw_strip(y, y1, paint)
+        else:
+            background_at = self._draw_fill(y, y1, pct, paint)
+
+        text_y = y + BAR_HEIGHT / 2
+        self._draw_bar_text(PAD_X + TEXT_PAD, text_y, label, tk.W, background_at)
+        self._draw_bar_text(WIDTH - PAD_X - TEXT_PAD, text_y, value, tk.E, background_at)
+
+    def _draw_fill(self, y: int, y1: int, pct: float,
+                   color: str) -> Callable[[float], str]:
+        """Трек + заливка по проценту. Возвращает «что за подложка в точке x»."""
         c = self._canvas
         x0, x1 = PAD_X, WIDTH - PAD_X
-        y1 = y + BAR_HEIGHT
 
         c.create_rectangle(
             x0, y, x1, y1, fill=theme.COLOR_LIGHT_GRAY, outline="",
@@ -209,20 +258,46 @@ class MetricBarsWidget(BaseMiniWidget):
         if fill_end > x0:
             c.create_rectangle(x0, y, fill_end, y1, fill=color, outline="")
 
-        text_y = y + BAR_HEIGHT / 2
-        self._draw_bar_text(x0 + TEXT_PAD, text_y, label, tk.W, fill_end, color)
-        self._draw_bar_text(x1 - TEXT_PAD, text_y, value, tk.E, fill_end, color)
+        return lambda x: color if x <= fill_end else theme.COLOR_LIGHT_GRAY
+
+    def _draw_strip(self, y: int, y1: int,
+                    cells: list[str]) -> Callable[[float], str]:
+        """Лента дня во всю полосу. Возвращает «что за подложка в точке x».
+
+        Соседние ячейки одного цвета рисуются одним прямоугольником: их сотни,
+        а перерисовка идёт на каждом обновлении метрик.
+        """
+        c = self._canvas
+        x0 = PAD_X
+        step = (WIDTH - 2 * PAD_X) / len(cells)
+
+        index = 0
+        while index < len(cells):
+            run = index
+            while run + 1 < len(cells) and cells[run + 1] == cells[index]:
+                run += 1
+            c.create_rectangle(
+                x0 + index * step, y, x0 + (run + 1) * step, y1,
+                fill=cells[index], outline="",
+            )
+            index = run + 1
+
+        def background_at(x: float) -> str:
+            cell = int((x - x0) / step)
+            return cells[min(len(cells) - 1, max(0, cell))]
+
+        return background_at
 
     def _draw_bar_text(self, x: float, y: float, text: str, anchor: str,
-                       fill_end: float, fill_color: str):
+                       background_at: Callable[[float], str]):
         """Пишет текст цветом, читаемым на той подложке, где он оказался.
 
-        Подложка определяется по точке привязки: она либо ещё внутри заливки,
-        либо уже на треке. Текст, повисший ровно на границе, оценивается по
-        своему якорю — для названия это левый край, для значения правый.
+        Подложка берётся в точке привязки: у названия это левый край, у
+        значения — правый. Текст шире одной подложки оценивается по своему
+        якорю — этого хватает, потому что палитры контрастны к чернилам обеими
+        своими половинами (см. шапку модуля).
         """
-        background = fill_color if x <= fill_end else theme.COLOR_LIGHT_GRAY
         self._canvas.create_text(
             x, y, text=text, anchor=anchor,
-            fill=ink_for(background), font=(FONT_FAMILY, FONT_SIZE),
+            fill=ink_for(background_at(x)), font=(FONT_FAMILY, FONT_SIZE),
         )
