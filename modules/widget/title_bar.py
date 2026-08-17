@@ -13,6 +13,7 @@ import config
 from config import MAIN_FONT_SIZE
 from constants import FONT_FAMILY
 from modules import theme
+from utility import format_percent
 
 # Состояния countdown'а для внешней индикации (например, рамка виджета).
 _COUNTDOWN_NORMAL = "normal"
@@ -198,7 +199,7 @@ class TitleBar:
         """Обновляет тексты лейблов заголовка из stats."""
         if self._title_percent_label is not None:
             self._title_percent_label.configure(
-                text=f" {stats['activity_percent']:.1f}%",
+                text=f" {format_percent(stats['activity_percent'])}",
             )
         if self._title_remaining_label is not None:
             self._title_remaining_label.configure(

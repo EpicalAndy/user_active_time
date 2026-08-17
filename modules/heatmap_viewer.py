@@ -25,16 +25,26 @@ from modules import theme
 from modules.month_grid import MonthCalendarGrid
 from modules.period_report import _read_day_metrics, get_report_path, percent
 from modules.report_viewer import ReportViewer
-from utility import format_date_display, format_duration_short
+from utility import (
+    format_date_display,
+    format_duration_short,
+    format_percent,
+    truncate_percent,
+)
 
 
 def _cell_color(active_pct: float | None) -> str:
-    """Цвет ячейки по дневному % активности."""
+    """Цвет ячейки по дневному % активности.
+
+    Порог сверяется с усечённым процентом — тем самым числом, что показывает
+    тултип ячейки (см. utility.truncate_percent).
+    """
     if active_pct is None:
         return theme.COLOR_GRAY
-    if active_pct >= RECOMMENDED_ACTIVITY_THRESHOLD:
+    shown = truncate_percent(active_pct)
+    if shown >= RECOMMENDED_ACTIVITY_THRESHOLD:
         return theme.COLOR_GREEN
-    if active_pct >= MIN_ACTIVITY_THRESHOLD:
+    if shown >= MIN_ACTIVITY_THRESHOLD:
         return theme.COLOR_YELLOW
     return theme.COLOR_RED
 
@@ -65,7 +75,7 @@ class HeatmapViewer(MonthCalendarGrid):
         if metrics is None:
             return f"{format_date_display(date)}\n{HEATMAP_LEGEND_NO_DATA}"
         pct = percent(metrics["active_seconds"], metrics["activity_norm_seconds"])
-        pct_str = f"{pct:.1f}%" if pct is not None else "—"
+        pct_str = format_percent(pct) if pct is not None else "—"
         return (
             f"{format_date_display(date)}\n"
             f"{HEATMAP_TOOLTIP_ACTIVE}: {format_duration_short(metrics['active_seconds'])}\n"

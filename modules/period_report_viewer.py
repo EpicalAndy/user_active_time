@@ -32,7 +32,12 @@ from constants import (
 from modules import theme
 from modules.period_report import percent
 from modules.ui_utils import center_on_screen
-from utility import format_date_display, format_duration_short
+from utility import (
+    format_date_display,
+    format_duration_short,
+    format_percent,
+    truncate_percent,
+)
 
 # Теги Treeview для цветовой подсветки строк
 _TAG_HIGH = "activity_high"
@@ -42,12 +47,17 @@ _TAG_DAY_OFF = "day_off"
 
 
 def _activity_tag(active_pct: float | None) -> str:
-    """Тег строки по дневному % активности (None → нерабочий день)."""
+    """Тег строки по дневному % активности (None → нерабочий день).
+
+    Порог сверяется с усечённым процентом — тем же числом, что стоит в строке
+    (см. utility.truncate_percent).
+    """
     if active_pct is None:
         return _TAG_DAY_OFF
-    if active_pct >= RECOMMENDED_ACTIVITY_THRESHOLD:
+    shown = truncate_percent(active_pct)
+    if shown >= RECOMMENDED_ACTIVITY_THRESHOLD:
         return _TAG_HIGH
-    if active_pct >= MIN_ACTIVITY_THRESHOLD:
+    if shown >= MIN_ACTIVITY_THRESHOLD:
         return _TAG_MID
     return _TAG_LOW
 
@@ -74,7 +84,7 @@ def _patch_treeview_tag_colors():
 def _fmt_pct(value: float | None) -> str:
     if value is None:
         return PERIOD_REPORT_NO_NORM
-    return f"{value:.1f}%"
+    return format_percent(value)
 
 
 class PeriodReportViewer:

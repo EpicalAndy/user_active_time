@@ -12,9 +12,9 @@ import tkinter as tk
 
 from constants import FONT_FAMILY
 from modules import theme
-from utility import format_duration_short
+from utility import format_duration_short, format_percent
 from ..body import _color_for_percent
-from .base import BaseMiniWidget
+from .base import PERCENT_DECIMALS, BaseMiniWidget
 
 # Геометрия канвы и кольца. Публичные — их переиспользуют другие кольцевые
 # мини-виджеты (например, таймлайн), чтобы все кольца были одного размера.
@@ -61,7 +61,7 @@ class RingWidget(BaseMiniWidget):
     def _arc_color(self, pct: float, stats: dict) -> str:
         """Цвет дуги прогресса. По умолчанию — процентная шкала подкласса."""
         recommended, minimum = self._thresholds()
-        return _color_for_percent(pct, recommended, minimum)
+        return _color_for_percent(pct, recommended, minimum, PERCENT_DECIMALS)
 
     def _track_color(self, pct: float, stats: dict) -> str:
         """Цвет трека (незаполненной части кольца).
@@ -103,7 +103,7 @@ class RingWidget(BaseMiniWidget):
             return "—"
         if self.opts.get("center") == "time":
             return self._format_time(int(self._time_seconds(stats)))
-        return f"{pct:.0f}%"
+        return format_percent(pct, PERCENT_DECIMALS)
 
     def _format_time(self, seconds: int) -> str:
         """Текст режима «Время». Переопределяют те, чья метрика уходит в минус."""

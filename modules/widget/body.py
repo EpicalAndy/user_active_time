@@ -23,7 +23,13 @@ from constants import (
     METRIC_WORK_DAY_END_FULL,
 )
 from modules import theme
-from utility import format_duration_short, format_duration_signed
+from utility import (
+    PERCENT_DECIMALS,
+    format_duration_short,
+    format_duration_signed,
+    format_percent,
+    truncate_percent,
+)
 
 # Шкалы цветовой подсветки: какая метрика по какой шкале считается.
 _SCALE_ACTIVITY = "activity"
@@ -44,11 +50,21 @@ _METRIC_COLOR_SCALES: dict[str, str] = {
 }
 
 
-def _color_for_percent(pct: float, recommended: float, minimum: float) -> str:
-    """Зелёный/жёлтый/красный по двум порогам."""
-    if pct >= recommended:
+def _color_for_percent(
+    pct: float, recommended: float, minimum: float,
+    decimals: int = PERCENT_DECIMALS,
+) -> str:
+    """Зелёный/жёлтый/красный по двум порогам.
+
+    Порог сверяется с тем числом, которое видит пользователь (усечённым до
+    `decimals` знаков, см. truncate_percent), иначе цвет расходится с цифрой
+    рядом: 79.96% печатается как «80.0%», а порог 80 ещё не взят. Мини-виджеты
+    показывают процент без дробной части и передают decimals=0.
+    """
+    shown = truncate_percent(pct, decimals)
+    if shown >= recommended:
         return theme.COLOR_GREEN
-    if pct >= minimum:
+    if shown >= minimum:
         return theme.COLOR_YELLOW
     return theme.COLOR_RED
 
@@ -247,49 +263,49 @@ class WidgetBody:
             text = format_duration_short(stats["active_seconds"])
             # Парная склейка: если включён парный процент — дописываем в скобках.
             if config.WIDGET_SHOW_ACTIVITY_PERCENT:
-                text += f" ({stats['activity_percent']:.1f}%)"
+                text += f" ({format_percent(stats['activity_percent'])})"
             labels["active_time"]["value"].configure(text=text)
         if "session_count" in labels:
             labels["session_count"]["value"].configure(text=str(stats["session_count"]))
         if "activity_percent" in labels:
             labels["activity_percent"]["value"].configure(
-                text=f"{stats['activity_percent']:.1f}%",
+                text=format_percent(stats["activity_percent"]),
             )
         if "full_day_time" in labels:
             text = format_duration_short(stats["full_day_seconds"])
             if config.WIDGET_SHOW_FULL_DAY_TIME_PERCENT:
                 pct = _work_time_percent(stats)
                 if pct is not None:
-                    text += f" ({pct:.1f}%)"
+                    text += f" ({format_percent(pct)})"
             labels["full_day_time"]["value"].configure(text=text)
         if "full_day_time_percent" in labels:
             pct = _work_time_percent(stats)
             labels["full_day_time_percent"]["value"].configure(
-                text=f"{pct:.1f}%" if pct is not None else "—",
+                text=format_percent(pct) if pct is not None else "—",
             )
         if "remaining_time" in labels:
             text = format_duration_short(max(0, stats.get("remaining_work_seconds", 0)))
             if config.WIDGET_SHOW_REMAINING_TIME_PERCENT:
                 pct = _remaining_time_percent(stats)
                 if pct is not None:
-                    text += f" ({pct:.1f}%)"
+                    text += f" ({format_percent(pct)})"
             labels["remaining_time"]["value"].configure(text=text)
         if "remaining_time_percent" in labels:
             pct = _remaining_time_percent(stats)
             labels["remaining_time_percent"]["value"].configure(
-                text=f"{pct:.1f}%" if pct is not None else "—",
+                text=format_percent(pct) if pct is not None else "—",
             )
         if "recommended_remaining" in labels:
             text = format_duration_short(max(0, stats.get("recommended_remaining_seconds", 0)))
             if config.WIDGET_SHOW_RECOMMENDED_REMAINING_PERCENT:
                 pct = _recommended_remaining_percent(stats)
                 if pct is not None:
-                    text += f" ({pct:.1f}%)"
+                    text += f" ({format_percent(pct)})"
             labels["recommended_remaining"]["value"].configure(text=text)
         if "recommended_remaining_percent" in labels:
             pct = _recommended_remaining_percent(stats)
             labels["recommended_remaining_percent"]["value"].configure(
-                text=f"{pct:.1f}%" if pct is not None else "—",
+                text=format_percent(pct) if pct is not None else "—",
             )
         if "free_time" in labels:
             # Со знаком: перерасход показываем как «-15м», а не подрезаем нулём.
@@ -297,12 +313,12 @@ class WidgetBody:
             if config.WIDGET_SHOW_FREE_TIME_PERCENT:
                 pct = _free_time_percent(stats)
                 if pct is not None:
-                    text += f" ({pct:.1f}%)"
+                    text += f" ({format_percent(pct)})"
             labels["free_time"]["value"].configure(text=text)
         if "free_time_percent" in labels:
             pct = _free_time_percent(stats)
             labels["free_time_percent"]["value"].configure(
-                text=f"{pct:.1f}%" if pct is not None else "—",
+                text=format_percent(pct) if pct is not None else "—",
             )
         if "work_day_end" in labels:
             labels["work_day_end"]["value"].configure(text=stats.get("work_day_end") or "—")

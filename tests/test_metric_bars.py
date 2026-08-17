@@ -106,7 +106,7 @@ def test_activity_bar_reads_percent_and_scale():
 def test_work_time_bar_is_share_of_work_hours():
     pct, text, color = read("work_time")
     assert round(pct, 1) == 70.8  # 20400 / 28800
-    assert text == "71%"
+    assert text == "70%"  # дробь отбрасывается, а не округляется
     assert color == theme.COLOR_RED  # ниже MIN_WORK_TIME_THRESHOLD
 
 

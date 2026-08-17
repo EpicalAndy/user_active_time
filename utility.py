@@ -3,6 +3,7 @@
 """
 
 import datetime
+import math
 import os
 import sys
 
@@ -138,3 +139,31 @@ def calculate_activity_percent(active_seconds: int, norm_hours: float) -> float:
     if norm_seconds > 0:
         return (active_seconds / norm_seconds) * 100
     return 0.0
+
+
+# Сколько знаков после запятой у процента по умолчанию (метрики в окнах).
+# Мини-виджеты показывают процент без дробной части и передают decimals=0.
+PERCENT_DECIMALS = 1
+
+
+def truncate_percent(value: float, decimals: int = PERCENT_DECIMALS) -> float:
+    """Отбрасывает лишние разряды процента вниз — НЕ округляет.
+
+    Округление тянуло число вверх через порог, а цвет считался по настоящему
+    значению: 79.96% печаталось как «80.0%», но оставалось жёлтым, потому что
+    порог 80 ещё не взят. Поэтому показываемое число получается отбрасыванием
+    дроби, и цвет берётся по нему же (см. widget/body._color_for_percent).
+
+    round() перед floor() — против двоичного представления дробей: 4ч из 5ч
+    дают 79.99999999999999, и без него на экране было бы «79.9%».
+    """
+    scale = 10 ** decimals
+    return math.floor(round(value * scale, 6)) / scale
+
+
+def format_percent(value: float, decimals: int = PERCENT_DECIMALS) -> str:
+    """Процент для показа: «79.9%» — с отброшенной, а не округлённой дробью."""
+    pct = truncate_percent(value, decimals)
+    if pct == 0:
+        pct = 0.0  # крошечный минус не должен показываться как «-0.0%»
+    return f"{pct:.{decimals}f}%"

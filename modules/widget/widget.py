@@ -43,7 +43,7 @@ from .manager import WidgetManager
 from .notification import play_notification, play_tick
 from .title_bar import PROGRESS_GOAL, PROGRESS_MIN, PROGRESS_NONE, TitleBar
 from .toolbar import WidgetToolbar
-from utility import format_date_key, resource_path
+from utility import format_date_key, resource_path, truncate_percent
 from version import __version__
 
 # Фон окна (под телом и тулбаром) и тонкая линия-разделитель читаются
@@ -57,10 +57,15 @@ _WIDGET_POS_FILE = os.path.join(LOG_DIR, "widget_position.json")
 
 
 def _progress_level(activity_percent: float) -> str:
-    """Уровень прогресса по тем же порогам, что и подсветка метрик в теле."""
-    if activity_percent >= config.RECOMMENDED_ACTIVITY_THRESHOLD:
+    """Уровень прогресса по тем же порогам, что и подсветка метрик в теле.
+
+    Сравнение — по усечённому проценту, как и в теле: рамка меняет цвет ровно
+    тогда, когда порог берёт показанное в заголовке число.
+    """
+    shown = truncate_percent(activity_percent)
+    if shown >= config.RECOMMENDED_ACTIVITY_THRESHOLD:
         return PROGRESS_GOAL
-    if activity_percent >= config.MIN_ACTIVITY_THRESHOLD:
+    if shown >= config.MIN_ACTIVITY_THRESHOLD:
         return PROGRESS_MIN
     return PROGRESS_NONE
 

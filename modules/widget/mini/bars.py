@@ -28,9 +28,9 @@ from constants import (
     WIDGET_CAPTION_BARS,
 )
 from modules import theme
-from utility import format_duration_signed
+from utility import format_duration_signed, format_percent
 from ..body import _color_for_percent, free_time_color
-from .base import BaseMiniWidget
+from .base import PERCENT_DECIMALS, BaseMiniWidget
 
 # Геометрия. Ширина больше кольцевых виджетов: полосе нужно место под название
 # и значение одновременно.
@@ -57,8 +57,9 @@ def _activity(stats: dict):
     pct = stats.get("activity_percent")
     if pct is None:
         return None
-    return pct, f"{pct:.0f}%", _color_for_percent(
+    return pct, format_percent(pct, PERCENT_DECIMALS), _color_for_percent(
         pct, config.RECOMMENDED_ACTIVITY_THRESHOLD, config.MIN_ACTIVITY_THRESHOLD,
+        PERCENT_DECIMALS,
     )
 
 
@@ -67,8 +68,9 @@ def _work_time(stats: dict):
     if max_work <= 0:
         return None
     pct = stats.get("full_day_seconds", 0) / max_work * 100
-    return pct, f"{pct:.0f}%", _color_for_percent(
+    return pct, format_percent(pct, PERCENT_DECIMALS), _color_for_percent(
         pct, config.RECOMMENDED_WORK_TIME_THRESHOLD, config.MIN_WORK_TIME_THRESHOLD,
+        PERCENT_DECIMALS,
     )
 
 

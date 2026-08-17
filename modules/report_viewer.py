@@ -23,7 +23,7 @@ from constants import (
 )
 from modules import activity_intervals, theme
 from modules.ui_utils import center_on_screen
-from utility import calculate_activity_percent, format_duration
+from utility import calculate_activity_percent, format_duration, format_percent
 
 # Типы событий → активность
 _ACTIVE_EVENTS = {"LOGON", "UNLOCK", "INPUT_ACTIVE", "MONITOR_START"}
@@ -148,7 +148,7 @@ def _combine_time_percent(seconds, norm_seconds: int) -> str:
     if norm_seconds <= 0:
         return time_str
     pct = calculate_activity_percent(int(seconds), norm_seconds / 3600)
-    return f"{time_str} ({pct:.1f}%)"
+    return f"{time_str} ({format_percent(pct)})"
 
 
 def _build_intervals(events: list[tuple[datetime.datetime, str]]) -> list[tuple[float, float, str]]:
