@@ -25,12 +25,14 @@ from constants import (
     WIDGET_TYPE_BARS,
     WIDGET_TYPE_COUNTDOWN,
     WIDGET_TYPE_FREE_TIME_PIE,
+    WIDGET_TYPE_TIME_MARKS,
     WIDGET_TYPE_TIMELINE,
     WIDGET_TYPE_WORK_TIME_PIE,
 )
 from .bars import BAR_CHOICES, DEFAULT_BARS, MetricBarsWidget
 from .countdown import CountdownWidget
 from .freetime import FreeTimePieWidget
+from .marks import DEFAULT_MARKS, MARK_CHOICES, TimeMarksWidget
 from .pie import ActivityPieWidget
 from .timeline import TimelineWidget
 from .worktime import WorkTimePieWidget
@@ -57,6 +59,15 @@ _BARS_OPTION = {
     "label": WIDGET_OPT_METRICS_LABEL,
     "default": list(DEFAULT_BARS),
     "choices": BAR_CHOICES,
+}
+
+# Набор строк виджета отметок времени — те же галочки, что у полос.
+_MARKS_OPTION = {
+    "key": "marks",
+    "kind": OPTION_MULTI,
+    "label": WIDGET_OPT_METRICS_LABEL,
+    "default": list(DEFAULT_MARKS),
+    "choices": MARK_CHOICES,
 }
 
 # То же, но по умолчанию «Время»: у свободного времени осмысленный ответ —
@@ -88,6 +99,11 @@ WIDGET_TYPES: dict[str, dict] = {
         "label": WIDGET_TYPE_BARS,
         "class": MetricBarsWidget,
         "options": [_BARS_OPTION],
+    },
+    "time_marks": {
+        "label": WIDGET_TYPE_TIME_MARKS,
+        "class": TimeMarksWidget,
+        "options": [_MARKS_OPTION],
     },
     # Счётчик показывает одно — обратный отсчёт, настраивать нечего.
     "countdown": {

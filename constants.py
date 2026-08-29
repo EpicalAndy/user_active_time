@@ -57,6 +57,7 @@ WIDGET_TYPE_TIMELINE = "Таймлайн дня (диаграмма)"
 WIDGET_TYPE_COUNTDOWN = "Счётчик активности (круг)"
 WIDGET_TYPE_FREE_TIME_PIE = "Свободное время (кольцо)"
 WIDGET_TYPE_BARS = "Метрики (полосы)"
+WIDGET_TYPE_TIME_MARKS = "Отметки времени (список)"
 # Подписи под кольцами
 WIDGET_CAPTION_ACTIVITY = "Активность"
 WIDGET_CAPTION_WORK_TIME = "Рабочее время"
@@ -65,6 +66,8 @@ WIDGET_CAPTION_COUNTDOWN = "До неактивности"
 WIDGET_CAPTION_FREE_TIME = "Свободное время"
 WIDGET_CAPTION_BARS = "Метрики"
 WIDGET_BARS_EMPTY = "Метрики не выбраны"
+WIDGET_CAPTION_TIME_MARKS = "Отметки времени"
+WIDGET_MARKS_EMPTY = "Отметки не выбраны"
 # Контекстное меню отдельного виджета (ПКМ)
 WIDGET_REMOVE = "Убрать виджет"
 
@@ -204,9 +207,11 @@ METRIC_RECOMMENDED_REMAINING_PERCENT_FULL = "До рекомендуемой н�
 METRIC_FREE_TIME = "Свободное время"
 METRIC_FREE_TIME_FULL = "Свободное время"
 METRIC_FREE_TIME_PERCENT_FULL = "Свободное время (%)"
+METRIC_WORK_DAY_END = "Конец дня"
 METRIC_WORK_DAY_END_FULL = "Окончание рабочего дня"
 # Расчётный момент выхода на рекомендуемую норму активности: пока порог
 # не взят — прогноз «сейчас + остаток», после — фактическое время взятия.
+METRIC_RECOMMENDED_ETA = "Выход на норму"
 METRIC_RECOMMENDED_ETA_FULL = "Достижение нормы активности"
 METRIC_BREAK_TIME = "Перерыв"
 METRIC_ACTIVITY_NORM = "Норма активности"
