@@ -48,7 +48,10 @@ _METRIC_COLOR_SCALES: dict[str, str] = {
     "free_time": _SCALE_FREE_TIME,
     "free_time_percent": _SCALE_FREE_TIME,
     "recommended_eta": _SCALE_ACTIVITY,
-    # session_count, work_day_end — без цветовой шкалы
+    # Конец дня — величина из семьи рабочего времени, поэтому и шкала его:
+    # цвет говорит, насколько близко присутствие подошло к этой отметке.
+    "work_day_end": _SCALE_WORK_TIME,
+    # session_count — без цветовой шкалы
 }
 
 

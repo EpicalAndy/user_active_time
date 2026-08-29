@@ -211,7 +211,7 @@ METRIC_WORK_DAY_END = "Конец дня"
 METRIC_WORK_DAY_END_FULL = "Окончание рабочего дня"
 # Расчётный момент выхода на рекомендуемую норму активности: пока порог
 # не взят — прогноз «сейчас + остаток», после — фактическое время взятия.
-METRIC_RECOMMENDED_ETA = "Выход на норму"
+METRIC_RECOMMENDED_ETA = "До рекомендуемой активности"
 METRIC_RECOMMENDED_ETA_FULL = "Достижение нормы активности"
 METRIC_BREAK_TIME = "Перерыв"
 METRIC_ACTIVITY_NORM = "Норма активности"
