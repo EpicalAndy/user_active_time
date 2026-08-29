@@ -38,6 +38,20 @@ def _day_intervals(day_state: dict, live_open_session=None, extra_idle=()):
     return sessions, idle
 
 
+def _manual_intervals(day_state: dict, date) -> list:
+    """Ручные интервалы дня как (начало, конец) — только корректные пары."""
+    intervals = []
+    for pair in parse_manual_entries(day_state.get("log_entries", [])):
+        try:
+            start = datetime.datetime.combine(date, parse_time(pair["start"]).time())
+            end = datetime.datetime.combine(date, parse_time(pair["end"]).time())
+        except ValueError:
+            continue
+        if end > start:
+            intervals.append((start, end))
+    return intervals
+
+
 def recompute_active(day_state: dict, date, live_open_session=None, extra_idle=()) -> int:
     """Активное время дня = проекция от sessions/idle + ручное время + legacy-смещение."""
     sessions, idle = _day_intervals(day_state, live_open_session, extra_idle)
@@ -71,14 +85,8 @@ def build_timeline(
     raw = list(activity_intervals.day_segments(
         sessions, idle, config.INPUT_ACTIVITY_TIMEOUT, date,
     ))
-    for pair in parse_manual_entries(day_state.get("log_entries", [])):
-        try:
-            manual_start = datetime.datetime.combine(date, parse_time(pair["start"]).time())
-            manual_end = datetime.datetime.combine(date, parse_time(pair["end"]).time())
-        except ValueError:
-            continue
-        if manual_end > manual_start:
-            raw.append((manual_start, manual_end, "manual"))
+    for manual_start, manual_end in _manual_intervals(day_state, date):
+        raw.append((manual_start, manual_end, "manual"))
 
     day_start = datetime.datetime.combine(date, datetime.time.min)
     segments = []
@@ -97,3 +105,37 @@ def build_timeline(
         "end_seconds": int((span_end - day_start).total_seconds()),
         "segments": segments,
     }
+
+
+def active_reached_at(
+    day_state: dict, date, target_seconds: int, live_open_session=None, extra_idle=(),
+) -> datetime.datetime | None:
+    """Момент, когда накопленная за день активность впервые достигла цели.
+
+    Идём по слагаемым `recompute_active` в порядке времени: активные отрезки
+    суток плюс ручные интервалы, стартуя от legacy-смещения. Как только сумма
+    перекрывает цель — возвращаем точку внутри текущего отрезка.
+
+    None — цель за день не набрана, либо она была перекрыта ещё
+    legacy-смещением, у которого нет своей точки на часах.
+    """
+    if target_seconds <= 0:
+        return None
+
+    sessions, idle = _day_intervals(day_state, live_open_session, extra_idle)
+    spans = [
+        (seg_start, seg_end)
+        for seg_start, seg_end, kind in activity_intervals.day_segments(
+            sessions, idle, config.INPUT_ACTIVITY_TIMEOUT, date,
+        )
+        if kind == "active"
+    ]
+    spans += _manual_intervals(day_state, date)
+
+    accumulated = day_state.get("legacy_base_seconds", 0)
+    for span_start, span_end in sorted(spans):
+        length = (span_end - span_start).total_seconds()
+        if accumulated + length >= target_seconds:
+            return span_start + datetime.timedelta(seconds=target_seconds - accumulated)
+        accumulated += length
+    return None

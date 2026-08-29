@@ -136,7 +136,9 @@
       "Bash(PYTHONIOENCODING=utf-8 python sweep_day.py 240 \"/c/Users/aaubi/OneDrive/Desktop/sotaa_11.08.2026.json\")",
       "Bash(PYTHONIOENCODING=utf-8 python tests/test_timeline_arcs.py)",
       "Bash(python -m pytest tests -q)",
-      "Bash(git commit -m '@ *)"
+      "Bash(git commit -m '@ *)",
+      "Bash(git push *)",
+      "Bash(python \"C:/Users/aaubi/AppData/Local/Temp/claude/h--Projects-py-user-active-time/15674078-c54b-414b-a13c-8a49c7b581a3/scratchpad/render_bars.py\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\aaubi\\active_time.backup_pre_json",

@@ -205,6 +205,9 @@ METRIC_FREE_TIME = "Свободное время"
 METRIC_FREE_TIME_FULL = "Свободное время"
 METRIC_FREE_TIME_PERCENT_FULL = "Свободное время (%)"
 METRIC_WORK_DAY_END_FULL = "Окончание рабочего дня"
+# Расчётный момент выхода на рекомендуемую норму активности: пока порог
+# не взят — прогноз «сейчас + остаток», после — фактическое время взятия.
+METRIC_RECOMMENDED_ETA_FULL = "Достижение нормы активности"
 METRIC_BREAK_TIME = "Перерыв"
 METRIC_ACTIVITY_NORM = "Норма активности"
 METRIC_FIRST_LOGIN = "Начало рабочего дня"

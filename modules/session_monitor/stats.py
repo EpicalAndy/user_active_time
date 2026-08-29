@@ -19,7 +19,7 @@ from utility import (
     parse_time,
 )
 from . import session
-from .activity import build_timeline, recompute_active
+from .activity import active_reached_at, build_timeline, recompute_active
 from .state_store import ensure_v2, load_state
 
 
@@ -71,6 +71,10 @@ def get_current_stats() -> dict:
         # рабочее время), norm_hours — от чего считается 100% активности.
         norm_hours = get_activity_norm_hours(today_date)
         break_hours = get_break_hours(today_date)
+        activity_norm_seconds = int(norm_hours * 3600)
+        recommended_active_seconds = int(
+            activity_norm_seconds * config.RECOMMENDED_ACTIVITY_THRESHOLD / 100
+        )
 
         activity_percent = calculate_activity_percent(active_seconds, norm_hours)
 
@@ -91,12 +95,17 @@ def get_current_stats() -> dict:
                 extra_idle=extra_idle,
             )
 
-    activity_norm_seconds = int(norm_hours * 3600)
-    break_seconds = int(break_hours * 3600)
+        # Фактический момент взятия рекомендуемой нормы — считаем здесь, пока
+        # день под локом, и только когда порог действительно взят.
+        recommended_reached_at = None
+        if active_seconds >= recommended_active_seconds:
+            recommended_reached_at = active_reached_at(
+                day_state, today_date, recommended_active_seconds,
+                live_open_session=live_open_session,
+                extra_idle=extra_idle,
+            )
 
-    recommended_active_seconds = int(
-        activity_norm_seconds * config.RECOMMENDED_ACTIVITY_THRESHOLD / 100
-    )
+    break_seconds = int(break_hours * 3600)
 
     max_work_seconds = int(work_hours * 3600)
 
@@ -113,10 +122,37 @@ def get_current_stats() -> dict:
     # Расчётное время окончания дня = первый логин + норма (формат HH:MM).
     # Если за день ещё не было сессий — None.
     work_day_end = None
+    work_day_end_dt = None
     if first_login and max_work_seconds > 0:
         login_dt = datetime.datetime.combine(today_date, parse_time(first_login).time())
-        end_dt = login_dt + datetime.timedelta(seconds=max_work_seconds)
-        work_day_end = end_dt.strftime("%H:%M")
+        work_day_end_dt = login_dt + datetime.timedelta(seconds=max_work_seconds)
+        work_day_end = work_day_end_dt.strftime("%H:%M")
+
+    # Расчётное время выхода на рекомендуемую норму активности.
+    # Прогноз строится от допущения «с этой секунды простоев больше нет»:
+    # каждая минута простоя сдвигает его ровно на минуту вперёд, а докинутое
+    # вручную время — на столько же назад. Когда порог уже взят, показываем
+    # не прогноз, а фактический момент достижения.
+    recommended_eta = None
+    recommended_eta_reached = False
+    recommended_eta_late = None
+    eta_dt = None
+    if recommended_reached_at is not None:
+        eta_dt = recommended_reached_at
+        recommended_eta_reached = True
+    elif recommended_active_seconds > active_seconds:
+        eta_dt = now + datetime.timedelta(
+            seconds=recommended_active_seconds - active_seconds,
+        )
+    if eta_dt is not None:
+        recommended_eta = eta_dt.strftime("%H:%M")
+        if work_day_end_dt is not None:
+            # Сравниваем с точностью до минуты — по тем же числам, которые
+            # видит пользователь, иначе цвет разойдётся с цифрами на экране.
+            recommended_eta_late = (
+                eta_dt.replace(second=0, microsecond=0)
+                > work_day_end_dt.replace(second=0, microsecond=0)
+            )
 
     return {
         "is_working_day": True,
@@ -137,5 +173,10 @@ def get_current_stats() -> dict:
         "free_remaining_seconds": free_budget_seconds - spent_free_seconds,
         "free_remaining_min_seconds": free_budget_min_seconds - spent_free_seconds,
         "work_day_end": work_day_end,
+        # Строка HH:MM или None; *_reached — это факт, а не прогноз;
+        # *_late — прогноз вылезает за расчётный конец дня (None = шкалы нет).
+        "recommended_eta": recommended_eta,
+        "recommended_eta_reached": recommended_eta_reached,
+        "recommended_eta_late": recommended_eta_late,
         "timeline": timeline,
     }
