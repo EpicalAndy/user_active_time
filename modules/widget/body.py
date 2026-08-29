@@ -36,9 +36,6 @@ from utility import (
 _SCALE_ACTIVITY = "activity"
 _SCALE_WORK_TIME = "work_time"
 _SCALE_FREE_TIME = "free_time"
-# Прогноз выхода на норму меряется не процентом, а тем, укладывается ли он
-# в расчётный конец рабочего дня.
-_SCALE_ETA = "eta"
 _METRIC_COLOR_SCALES: dict[str, str] = {
     "active_time": _SCALE_ACTIVITY,
     "activity_percent": _SCALE_ACTIVITY,
@@ -50,7 +47,7 @@ _METRIC_COLOR_SCALES: dict[str, str] = {
     "remaining_time_percent": _SCALE_WORK_TIME,
     "free_time": _SCALE_FREE_TIME,
     "free_time_percent": _SCALE_FREE_TIME,
-    "recommended_eta": _SCALE_ETA,
+    "recommended_eta": _SCALE_ACTIVITY,
     # session_count, work_day_end — без цветовой шкалы
 }
 
@@ -332,10 +329,9 @@ class WidgetBody:
         if "work_day_end" in labels:
             labels["work_day_end"]["value"].configure(text=stats.get("work_day_end") or "—")
         if "recommended_eta" in labels:
-            eta = stats.get("recommended_eta")
-            # Галочка отличает факт (норма уже взята в это время) от прогноза.
-            text = "—" if not eta else (f"{eta} ✓" if stats.get("recommended_eta_reached") else eta)
-            labels["recommended_eta"]["value"].configure(text=text)
+            labels["recommended_eta"]["value"].configure(
+                text=stats.get("recommended_eta") or "—",
+            )
 
     def _apply_colors(self, stats: dict):
         """Цвет идёт только на текст значения; фон и лейбл нейтральны."""
@@ -361,13 +357,6 @@ class WidgetBody:
                 config.RECOMMENDED_WORK_TIME_THRESHOLD,
                 config.MIN_WORK_TIME_THRESHOLD,
             )
-        if scale == _SCALE_ETA:
-            # Зелёный — норма берётся до конца рабочего дня, красный — позже.
-            # None (нет логина, значит и конца дня) — нейтральный цвет.
-            late = stats.get("recommended_eta_late")
-            if late is None:
-                return None
-            return theme.COLOR_RED if late else theme.COLOR_GREEN
         if scale == _SCALE_FREE_TIME:
             return free_time_color(
                 stats.get("free_remaining_seconds", 0),

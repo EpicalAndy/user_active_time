@@ -122,37 +122,24 @@ def get_current_stats() -> dict:
     # Расчётное время окончания дня = первый логин + норма (формат HH:MM).
     # Если за день ещё не было сессий — None.
     work_day_end = None
-    work_day_end_dt = None
     if first_login and max_work_seconds > 0:
         login_dt = datetime.datetime.combine(today_date, parse_time(first_login).time())
-        work_day_end_dt = login_dt + datetime.timedelta(seconds=max_work_seconds)
-        work_day_end = work_day_end_dt.strftime("%H:%M")
+        end_dt = login_dt + datetime.timedelta(seconds=max_work_seconds)
+        work_day_end = end_dt.strftime("%H:%M")
 
     # Расчётное время выхода на рекомендуемую норму активности.
     # Прогноз строится от допущения «с этой секунды простоев больше нет»:
     # каждая минута простоя сдвигает его ровно на минуту вперёд, а докинутое
     # вручную время — на столько же назад. Когда порог уже взят, показываем
-    # не прогноз, а фактический момент достижения.
+    # не прогноз, а фактический момент достижения — он уже не меняется.
     recommended_eta = None
-    recommended_eta_reached = False
-    recommended_eta_late = None
-    eta_dt = None
     if recommended_reached_at is not None:
-        eta_dt = recommended_reached_at
-        recommended_eta_reached = True
+        recommended_eta = recommended_reached_at.strftime("%H:%M")
     elif recommended_active_seconds > active_seconds:
         eta_dt = now + datetime.timedelta(
             seconds=recommended_active_seconds - active_seconds,
         )
-    if eta_dt is not None:
         recommended_eta = eta_dt.strftime("%H:%M")
-        if work_day_end_dt is not None:
-            # Сравниваем с точностью до минуты — по тем же числам, которые
-            # видит пользователь, иначе цвет разойдётся с цифрами на экране.
-            recommended_eta_late = (
-                eta_dt.replace(second=0, microsecond=0)
-                > work_day_end_dt.replace(second=0, microsecond=0)
-            )
 
     return {
         "is_working_day": True,
@@ -173,10 +160,7 @@ def get_current_stats() -> dict:
         "free_remaining_seconds": free_budget_seconds - spent_free_seconds,
         "free_remaining_min_seconds": free_budget_min_seconds - spent_free_seconds,
         "work_day_end": work_day_end,
-        # Строка HH:MM или None; *_reached — это факт, а не прогноз;
-        # *_late — прогноз вылезает за расчётный конец дня (None = шкалы нет).
+        # Строка HH:MM или None — прогноз, а после взятия порога факт.
         "recommended_eta": recommended_eta,
-        "recommended_eta_reached": recommended_eta_reached,
-        "recommended_eta_late": recommended_eta_late,
         "timeline": timeline,
     }
