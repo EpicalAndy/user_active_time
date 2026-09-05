@@ -92,6 +92,14 @@ WIDGET_SHOW_TITLE_PERCENT = True
 WIDGET_SHOW_TITLE_REMAINING_TIME = False
 WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING = False
 
+# Виджет: недельная полоса активности (семь квадратиков по дням) под метриками
+WIDGET_SHOW_WEEK_ACTIVITY = True
+
+# Какую неделю показывает полоса:
+#   "calendar" — календарная, Пн–Вс текущей недели (дни после сегодня пустые);
+#   "rolling"  — скользящая, последние 7 дней, сегодня — крайний справа.
+WIDGET_WEEK_MODE = "calendar"
+
 # Виджет: интервал обновления данных (в секундах)
 WIDGET_UPDATE_INTERVAL = 60
 

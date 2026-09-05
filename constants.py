@@ -220,6 +220,24 @@ METRIC_LAST_LOGOUT = "Конец рабочего дня"
 METRIC_HIDE_OPTION = "Не отображать"
 # Полоса-лента дня в виджете «Метрики» — тот же таймлайн, что и на кольце.
 METRIC_TIMELINE = "Таймлайн"
+# Недельная полоса активности в теле виджета: семь квадратиков по дням.
+METRIC_WEEK_ACTIVITY = "Неделя"
+METRIC_WEEK_ACTIVITY_FULL = "Неделя активности"
+
+# === Недельная полоса ===
+
+WEEKDAY_SHORT_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+
+WEEK_MODE_LABEL = "Режим:"
+WEEK_MODE_CALENDAR_LABEL = "Календарная (Пн–Вс)"
+WEEK_MODE_ROLLING_LABEL = "Скользящая (7 дней по сегодня)"
+
+WEEK_TOOLTIP_ACTIVITY = "Активность"
+WEEK_TOOLTIP_WORK_TIME = "Рабочее время"
+WEEK_TOOLTIP_NO_DATA = "Нет данных"
+WEEK_TOOLTIP_DAY_OFF = "Нерабочий день"
+WEEK_TOOLTIP_FUTURE = "Ещё не наступил"
+WEEK_TOOLTIP_TODAY = "сегодня"
 
 # === Константы Windows API ===
 

@@ -26,11 +26,16 @@ from constants import (
     METRIC_REMAINING_TIME_PERCENT_FULL,
     METRIC_SESSION_COUNT_FULL,
     METRIC_RECOMMENDED_ETA_FULL,
+    METRIC_WEEK_ACTIVITY_FULL,
     METRIC_WORK_DAY_END_FULL,
     SETTINGS_CALENDAR_BUTTON,
+    WEEK_MODE_CALENDAR_LABEL,
+    WEEK_MODE_LABEL,
+    WEEK_MODE_ROLLING_LABEL,
 )
 from modules import theme
 from modules.ui_utils import center_on_parent
+from modules.week_activity import WEEK_MODE_CALENDAR, WEEK_MODE_ROLLING
 
 # Дни недели: ключ в WORK_HOURS_BY_DAY → отображаемое название
 _DAYS = [
@@ -63,11 +68,20 @@ _WIDGET_METRIC_OTHER_TOGGLES = [
     ("WIDGET_SHOW_WORK_DAY_END", METRIC_WORK_DAY_END_FULL),
     ("WIDGET_SHOW_RECOMMENDED_ETA", METRIC_RECOMMENDED_ETA_FULL),
 ]
+# Недельная полоса — своя группа: у неё, в отличие от прочих метрик, есть
+# ещё и режим (какую неделю показывать).
+_WIDGET_WEEK_TOGGLE = ("WIDGET_SHOW_WEEK_ACTIVITY", METRIC_WEEK_ACTIVITY_FULL)
+_WEEK_MODE_RADIO = [
+    (WEEK_MODE_CALENDAR, WEEK_MODE_CALENDAR_LABEL),
+    (WEEK_MODE_ROLLING, WEEK_MODE_ROLLING_LABEL),
+]
+
 # Полный плоский список — для collect_values, write/apply.
 _WIDGET_METRIC_TOGGLES = (
     _WIDGET_METRIC_TIME_TOGGLES
     + _WIDGET_METRIC_PERCENT_TOGGLES
     + _WIDGET_METRIC_OTHER_TOGGLES
+    + [_WIDGET_WEEK_TOGGLE]
 )
 
 # В заголовке можно выбрать только одну метрику или «Не отображать».
@@ -268,6 +282,26 @@ class SettingsDialog:
                 anchor=tk.W, padx=12, pady=2,
             )
 
+        # --- Неделя активности (галочка + режим) ---
+        week_frame = ttk.LabelFrame(tab_metrics, text=METRIC_WEEK_ACTIVITY_FULL)
+        week_frame.pack(fill=tk.X, **pad)
+
+        attr, label = _WIDGET_WEEK_TOGGLE
+        week_var = tk.BooleanVar(value=getattr(config, attr))
+        self._metric_vars[attr] = week_var
+        ttk.Checkbutton(week_frame, text="Показывать в виджете", variable=week_var).pack(
+            anchor=tk.W, padx=12, pady=2,
+        )
+
+        mode_row = tk.Frame(week_frame)
+        mode_row.pack(fill=tk.X, padx=12, pady=(0, 4))
+        tk.Label(mode_row, text=WEEK_MODE_LABEL, font=(FONT_FAMILY, 9)).pack(side=tk.LEFT)
+        self._week_mode_var = tk.StringVar(value=config.WIDGET_WEEK_MODE)
+        for value, mode_label in _WEEK_MODE_RADIO:
+            ttk.Radiobutton(
+                mode_row, text=mode_label, variable=self._week_mode_var, value=value,
+            ).pack(side=tk.LEFT, padx=(8, 0))
+
         # --- Заголовок (одна метрика одновременно) ---
         title_frame = ttk.LabelFrame(tab_metrics, text="Заголовок")
         title_frame.pack(fill=tk.X, **pad)
@@ -379,6 +413,7 @@ class SettingsDialog:
             "break_minutes": self._break_var.get(),
             "metrics": {**body_metrics, **title_metrics},
             "theme": self._theme_var.get(),
+            "week_mode": self._week_mode_var.get(),
             "input_activity_timeout": self._timeout_var.get(),
             "countdown_warning_seconds": self._warning_var.get(),
             "sound_notification": self._sound_var.get(),
@@ -438,6 +473,13 @@ class SettingsDialog:
         content = re.sub(
             r"^THEME\s*=\s*.+$",
             f'THEME = "{values["theme"]}"',
+            content, flags=re.MULTILINE,
+        )
+
+        # Режим недельной полосы — тоже строка
+        content = re.sub(
+            r"^WIDGET_WEEK_MODE\s*=\s*.+$",
+            f'WIDGET_WEEK_MODE = "{values["week_mode"]}"',
             content, flags=re.MULTILINE,
         )
 
@@ -501,6 +543,8 @@ class SettingsDialog:
         config.RECOMMENDED_WORK_TIME_THRESHOLD = values["recommended_work_time_threshold"]
         config.MIN_WORK_TIME_THRESHOLD = values["min_work_time_threshold"]
         config.FREE_TIME_WARNING_PERCENT = values["free_time_warning_percent"]
+        # Режим читается полосой на каждом обновлении — применится со следующим тиком.
+        config.WIDGET_WEEK_MODE = values["week_mode"]
         for attr, val in values["metrics"].items():
             setattr(config, attr, val)
         for key, val in values["work_hours"].items():

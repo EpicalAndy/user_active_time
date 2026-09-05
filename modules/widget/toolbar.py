@@ -27,6 +27,7 @@ from constants import (
     WIDGETS_MENU_LABEL,
 )
 from modules import theme
+from modules.ui_utils import attach_tooltip
 
 
 class WidgetToolbar:
@@ -104,7 +105,7 @@ class WidgetToolbar:
         btn.bind("<Button-1>", lambda e: command())
 
         self._attach_hover(btn)
-        self._attach_tooltip(btn, tooltip_text)
+        attach_tooltip(btn, tooltip_text)
         return btn
 
     def _add_dropdown(
@@ -141,7 +142,7 @@ class WidgetToolbar:
         btn.pack(side=side, fill=tk.Y)
         self._bind_menu(btn, items)
         self._attach_hover(btn)
-        self._attach_tooltip(btn, tooltip_text)
+        attach_tooltip(btn, tooltip_text)
         return btn
 
     def _bind_menu(
@@ -177,32 +178,6 @@ class WidgetToolbar:
     def _attach_hover(self, widget: tk.Label):
         widget.bind("<Enter>", lambda _e: widget.configure(background=theme.COLOR_HOVER), add="+")
         widget.bind("<Leave>", lambda _e: widget.configure(background=theme.COLOR_DARKER_BG), add="+")
-
-    def _attach_tooltip(self, widget: tk.Label, text: str):
-        tip_window: list[tk.Toplevel | None] = [None]
-
-        def on_enter(_e):
-            x = widget.winfo_rootx()
-            y = widget.winfo_rooty() + widget.winfo_height()
-            tw = tk.Toplevel(widget)
-            tw.wm_overrideredirect(True)
-            tw.wm_geometry(f"+{x}+{y}")
-            tw.attributes("-topmost", True)
-            tk.Label(
-                tw, text=text,
-                bg=theme.COLOR_TOOLTIP_BG, fg=theme.COLOR_TOOLTIP_FG,
-                font=(FONT_FAMILY, 9), padx=6, pady=2,
-                relief=tk.SOLID, borderwidth=1,
-            ).pack()
-            tip_window[0] = tw
-
-        def on_leave(_e):
-            if tip_window[0] is not None:
-                tip_window[0].destroy()
-                tip_window[0] = None
-
-        widget.bind("<Enter>", on_enter, add="+")
-        widget.bind("<Leave>", on_leave, add="+")
 
     def pack(self, **kwargs):
         self.frame.pack(**kwargs)

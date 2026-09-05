@@ -43,6 +43,7 @@ from .manager import WidgetManager
 from .notification import play_notification, play_tick
 from .title_bar import PROGRESS_GOAL, PROGRESS_MIN, PROGRESS_NONE, TitleBar
 from .toolbar import WidgetToolbar
+from .week_strip import WeekStrip
 from utility import format_date_key, resource_path, truncate_percent
 from version import __version__
 
@@ -79,6 +80,9 @@ def is_widget_enabled() -> bool:
         WIDGET_SHOW_FULL_DAY_TIME,
         WIDGET_SHOW_REMAINING_TIME,
         WIDGET_SHOW_RECOMMENDED_REMAINING,
+        # Недельной полосы достаточно, чтобы окно имело смысл: она показывает
+        # прошедшие дни, даже когда все дневные метрики выключены.
+        config.WIDGET_SHOW_WEEK_ACTIVITY,
     ])
 
 
@@ -137,8 +141,7 @@ class ActivityWidget:
         self._toolbar.pack(fill=tk.X)
         self._toolbar_separator = tk.Frame(self.window, bg=theme.COLOR_MUTED, height=1)
         self._toolbar_separator.pack(fill=tk.X)
-        self._body = WidgetBody(self.window)
-        self._body.pack(fill=tk.BOTH, expand=True)
+        self._build_body()
 
     def _setup_window(self):
         self.window.overrideredirect(True)
@@ -183,6 +186,10 @@ class ActivityWidget:
 
         # Тело и заголовок сами решают, как реагировать на нерабочий день.
         self._body.update(stats)
+        # Полоса обновляется до проверки на нерабочий день: тело в такой день
+        # сворачивается в плашку, а неделя остаётся на месте.
+        if self._week_strip is not None:
+            self._week_strip.update(stats)
         # Мини-виджеты рабочего стола — та же частота, тот же stats.
         self._manager.update(stats)
 
@@ -324,11 +331,11 @@ class ActivityWidget:
         if self._minimized:
             self._toolbar.pack(fill=tk.X)
             self._toolbar_separator.pack(fill=tk.X)
-            self._body.pack(fill=tk.BOTH, expand=True)
+            self._pack_body()
         else:
             self._toolbar.pack_forget()
             self._toolbar_separator.pack_forget()
-            self._body.pack_forget()
+            self._forget_body()
         self._minimized = not self._minimized
         self._resize_window()
 
@@ -429,27 +436,54 @@ class ActivityWidget:
         self._title_bar.destroy()
         self._toolbar.destroy()
         self._toolbar_separator.destroy()
-        self._body.destroy()
+        self._destroy_body()
         self._build_chrome()
         if self._minimized:
             self._toolbar.pack_forget()
             self._toolbar_separator.pack_forget()
-            self._body.pack_forget()
+            self._forget_body()
         self._update_metrics()
         self._resize_window()
 
     def _rebuild_body(self):
         """Пересоздаёт тело виджета после изменения настроек"""
         self._title_bar.rebuild_metric_labels()
-        self._body.destroy()
-        self._body = WidgetBody(self.window)
-        self._body.pack(fill=tk.BOTH, expand=True)
+        self._destroy_body()
+        self._build_body()
         if self._minimized:
             self._toolbar.pack_forget()
             self._toolbar_separator.pack_forget()
-            self._body.pack_forget()
+            self._forget_body()
         self._update_metrics()
         self._resize_window()
+
+    # --- Тело и недельная полоса ---
+    # Полоса — отдельный виджет рядом с телом, а не строка внутри него: тело
+    # в нерабочий день прячет все метрики, а неделя нужна и в такой день.
+    # Из-за этого тело и полоса всегда создаются, прячутся и уничтожаются
+    # вместе — этим и заняты четыре метода ниже.
+
+    def _build_body(self):
+        """Создаёт тело и (если включена) недельную полосу под ним."""
+        self._body = WidgetBody(self.window)
+        self._week_strip = WeekStrip(self.window) if config.WIDGET_SHOW_WEEK_ACTIVITY else None
+        self._pack_body()
+
+    def _pack_body(self):
+        self._body.pack(fill=tk.BOTH, expand=True)
+        if self._week_strip is not None:
+            self._week_strip.pack(fill=tk.X, pady=(0, 4))
+
+    def _forget_body(self):
+        self._body.pack_forget()
+        if self._week_strip is not None:
+            self._week_strip.pack_forget()
+
+    def _destroy_body(self):
+        self._body.destroy()
+        if self._week_strip is not None:
+            self._week_strip.destroy()
+            self._week_strip = None
 
     def _resize_window(self):
         """Пересчитывает размер окна под содержимое"""

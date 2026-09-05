@@ -19,15 +19,15 @@ import datetime
 import tkinter as tk
 
 from config import MAIN_FONT_SIZE
-from constants import FONT_FAMILY
+from constants import FONT_FAMILY, WEEKDAY_SHORT_NAMES
 from modules import theme
-from modules.ui_utils import center_on_screen
+from modules.ui_utils import attach_tooltip, center_on_screen
 
 _MONTH_NAMES = [
     "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
     "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
 ]
-_WEEKDAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+_WEEKDAY_NAMES = WEEKDAY_SHORT_NAMES
 
 
 class MonthCalendarGrid:
@@ -135,36 +135,9 @@ class MonthCalendarGrid:
 
         tooltip = self._cell_tooltip(date)
         if tooltip:
-            self._attach_tooltip(cell, tooltip)
+            attach_tooltip(cell, tooltip)
         if clickable:
             cell.bind("<Button-1>", lambda _e, d=date: self._on_cell_click(d))
-
-    def _attach_tooltip(self, widget: tk.Label, text: str):
-        tip: list[tk.Toplevel | None] = [None]
-
-        def on_enter(_e):
-            x = widget.winfo_rootx()
-            y = widget.winfo_rooty() + widget.winfo_height() + 2
-            tw = tk.Toplevel(widget)
-            tw.wm_overrideredirect(True)
-            tw.wm_geometry(f"+{x}+{y}")
-            tw.attributes("-topmost", True)
-            tk.Label(
-                tw, text=text,
-                bg=theme.COLOR_TOOLTIP_BG, fg=theme.COLOR_TOOLTIP_FG,
-                font=(FONT_FAMILY, 9), padx=6, pady=3,
-                justify=tk.LEFT,
-                relief=tk.SOLID, borderwidth=1,
-            ).pack()
-            tip[0] = tw
-
-        def on_leave(_e):
-            if tip[0] is not None:
-                tip[0].destroy()
-                tip[0] = None
-
-        widget.bind("<Enter>", on_enter)
-        widget.bind("<Leave>", on_leave)
 
     def _prev_month(self):
         if self.month == 1:
