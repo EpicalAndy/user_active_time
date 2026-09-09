@@ -56,6 +56,25 @@ _stop_event = threading.Event()
 _kb_hook_proc = None
 _mouse_hook_proc = None
 
+# --- Точка расширения: фильтр ввода (инструмент «Блокировка ввода») ---
+#
+# Вызывается ПЕРВЫМ делом в hook-колбэках; вернул True — событие проглатывается
+# и не уходит ни в систему, ни в учёт активности. Держится как callback, чтобы
+# слой учёта не зависел от modules/tools (тот же приём, что с log_event).
+# Обязан быть таким же дешёвым, как сам колбэк: Windows снимает хук, который
+# думает дольше ~300 мс.
+INPUT_KIND_KEYBOARD = 0
+INPUT_KIND_MOUSE = 1
+
+_input_filter = None
+
+# Пока блокировка активна, простой не копится: период считается активным,
+# но сами (проглоченные) нажатия на счётчик уже не влияют — см. _timer_thread_func.
+_input_lock_active: bool = False
+
+# Слушатели начала/конца сессии (LOCK/UNLOCK/LOGON/LOGOFF).
+_session_listeners: list = []
+
 
 def _mono_to_wall(mono: float) -> datetime.datetime:
     """Переводит monotonic-метку в wall-clock через якорь сессии (точность ~1с)."""
@@ -65,9 +84,12 @@ def _mono_to_wall(mono: float) -> datetime.datetime:
 def _keyboard_hook_callback(nCode, wParam, lParam):
     """Callback низкоуровневого хука клавиатуры"""
     global _last_input_mono, _last_input_source
-    if nCode >= 0 and _session_running and not _screen_locked:
-        _last_input_source = "клавиатура"
-        _last_input_mono = time.monotonic()
+    if nCode >= 0:
+        if _swallow(INPUT_KIND_KEYBOARD, wParam, lParam):
+            return 1
+        if _session_running and not _screen_locked:
+            _last_input_source = "клавиатура"
+            _last_input_mono = time.monotonic()
     return user32.CallNextHookEx(None, nCode, wParam, lParam)
 
 
@@ -78,11 +100,28 @@ def _mouse_hook_callback(nCode, wParam, lParam):
     чтобы изменения настройки применялись без перезапуска приложения.
     """
     global _last_input_mono, _last_input_source
-    if nCode >= 0 and _session_running and not _screen_locked:
-        if wParam != WM_MOUSEMOVE or config.TRACK_MOUSE_MOVE:
-            _last_input_source = "мышь"
-            _last_input_mono = time.monotonic()
+    if nCode >= 0:
+        if _swallow(INPUT_KIND_MOUSE, wParam, lParam):
+            return 1
+        if _session_running and not _screen_locked:
+            if wParam != WM_MOUSEMOVE or config.TRACK_MOUSE_MOVE:
+                _last_input_source = "мышь"
+                _last_input_mono = time.monotonic()
     return user32.CallNextHookEx(None, nCode, wParam, lParam)
+
+
+def _swallow(kind, wParam, lParam) -> bool:
+    """Спрашивает у фильтра, проглотить ли событие. Ошибка фильтра = не глотать.
+
+    Отказ «в сторону пропуска» намеренный: сломанный фильтр не должен оставить
+    пользователя без клавиатуры.
+    """
+    if _input_filter is None:
+        return False
+    try:
+        return _input_filter(kind, wParam, lParam)
+    except Exception:
+        return False
 
 
 def _hook_thread_func():
@@ -136,6 +175,14 @@ def _timer_thread_func():
 
     while not _stop_event.wait(timeout=1.0):
         if not _session_running or _screen_locked:
+            continue
+
+        # Блокировка ввода: период считается активным, поэтому просто двигаем
+        # начало открытого гэпа за «сейчас». Заблокированные нажатия сюда не
+        # доходят (их проглотил фильтр), так что счётчик держится не вводом,
+        # а самим фактом блокировки.
+        if _input_lock_active:
+            _observed_input_mono = time.monotonic()
             continue
 
         cur = _last_input_mono
@@ -193,6 +240,62 @@ def stop():
     _timer_thread = None
 
     print("[EVENTS] Мониторинг ввода остановлен")
+
+
+def set_input_filter(fn):
+    """Ставит (или снимает, если None) фильтр ввода. См. `_input_filter`."""
+    global _input_filter
+    _input_filter = fn
+
+
+def set_input_lock_active(active: bool):
+    """Сообщает учёту, что ввод заблокирован инструментом.
+
+    На входе в блокировку открытый гэп закрывается — простой, накопленный ДО
+    блокировки, остаётся простоем: заблокировав ввод, задним числом «отработать»
+    прошедшие полчаса нельзя. Дальше якорь ведёт таймер, поэтому сам
+    заблокированный период простоем не становится (см. `_timer_thread_func`).
+    """
+    global _input_lock_active, _observed_input_mono
+
+    if active:
+        _close_open_gap()
+    _observed_input_mono = time.monotonic()
+    _input_lock_active = active
+
+
+def _close_open_gap():
+    """Фиксирует открытый гэп простоя [начало, сейчас], если он достаточно длинный."""
+    if not _session_running or _screen_locked:
+        return
+    now_mono = time.monotonic()
+    if now_mono - _observed_input_mono < MIN_IDLE_GAP_SECONDS:
+        return
+    with _gaps_lock:
+        _closed_gaps.append(
+            (_mono_to_wall(_observed_input_mono), _mono_to_wall(now_mono))
+        )
+
+
+def is_input_lock_active() -> bool:
+    return _input_lock_active
+
+
+def add_session_listener(fn):
+    """Подписывает `fn(started: bool)` на начало/конец сессии (LOCK/UNLOCK).
+
+    Колбэк вызывается в потоке монитора — переадресация в поток Tk на стороне
+    подписчика.
+    """
+    _session_listeners.append(fn)
+
+
+def _notify_session_listeners(started: bool):
+    for fn in _session_listeners:
+        try:
+            fn(started)
+        except Exception as e:
+            print(f"[EVENTS] Ошибка слушателя сессии: {e}")
 
 
 def drain_idle_gaps() -> list[tuple[datetime.datetime, datetime.datetime]]:
@@ -256,6 +359,7 @@ def notify_session_start():
         _closed_gaps.clear()
 
     print("[EVENTS] Сессия началась → захват гэпов простоя сброшен")
+    _notify_session_listeners(True)
 
 
 def notify_session_end():
@@ -278,3 +382,4 @@ def notify_session_end():
     _session_running = False
 
     print("[EVENTS] Сессия завершена → мониторинг ввода приостановлен")
+    _notify_session_listeners(False)

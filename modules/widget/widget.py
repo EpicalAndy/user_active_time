@@ -36,6 +36,7 @@ from modules.manual_activity_dialog import ManualActivityDialog
 from modules.period_report import find_latest_past_report_date, get_report_path
 from modules.period_report_dialog import PeriodReportDialog
 from modules.session_monitor import checkpoint_session
+from modules import tools
 from modules.report_viewer import ReportViewer
 from modules.settings_dialog import SettingsDialog
 from .body import WidgetBody
@@ -103,6 +104,11 @@ class ActivityWidget:
         self._manager = WidgetManager(self.root, stats_provider)
         self._tray = None  # значок трея (создаётся ниже; None если трей недоступен)
 
+        # Инструменты (меню 🧰) — тоже до _build_chrome: тулбар берёт у них
+        # пункты меню. Живут дольше «хрома»: пересборка при смене темы их
+        # не трогает, иначе блокировка ввода снималась бы вместе с окном.
+        self._tools = tools.create_tools(self.root)
+
         self.window = tk.Toplevel(self.root)
         self._setup_window()
         self._build_chrome()
@@ -137,6 +143,7 @@ class ActivityWidget:
             on_today_report=self._open_today_report,
             on_last_report=self._open_last_report,
             on_open_widgets=self._open_widgets_dialog,
+            tool_items=tools.menu_items(self._tools),
         )
         self._toolbar.pack(fill=tk.X)
         self._toolbar_separator = tk.Frame(self.window, bg=theme.COLOR_MUTED, height=1)
@@ -414,6 +421,9 @@ class ActivityWidget:
         dialog.wait()
         if not dialog.saved:
             return
+        # Инструменты читают свои настройки при подключении — после сохранения
+        # им нужно перечитать их (например, изменённую комбинацию блокировки).
+        tools.refresh_tools(self._tools)
         if theme.current_theme() != theme_before:
             # Смена темы затрагивает всю «хромированную» часть — пересобираем
             # её целиком (тело тоже, поэтому отдельный _rebuild_body не нужен).
@@ -515,6 +525,7 @@ class ActivityWidget:
 
     def close(self):
         self._save_position()
+        tools.detach_tools(self._tools)
         if self._tray is not None:
             self._tray.stop()
         self.root.quit()

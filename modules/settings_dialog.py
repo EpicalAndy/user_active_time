@@ -4,7 +4,7 @@
 
 import re
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 from typing import Any
 
 import config
@@ -34,6 +34,8 @@ from constants import (
     WEEK_MODE_ROLLING_LABEL,
 )
 from modules import theme
+from modules.tools.registry import TOOL_CLASSES
+from modules.tools.spec import SETTING_BOOL, SETTING_INT, SETTING_TEXT
 from modules.ui_utils import center_on_parent
 from modules.week_activity import WEEK_MODE_CALENDAR, WEEK_MODE_ROLLING
 
@@ -121,8 +123,13 @@ class SettingsDialog:
 
         tab_general = tk.Frame(notebook)
         tab_metrics = tk.Frame(notebook)
+        tab_tools = tk.Frame(notebook)
         notebook.add(tab_general, text="Общие")
         notebook.add(tab_metrics, text="Метрики")
+        # Вкладка инструментов появляется, только если хоть у одного инструмента
+        # есть настраиваемые параметры.
+        if any(getattr(cls, "SETTINGS", None) for cls in TOOL_CLASSES):
+            notebook.add(tab_tools, text="Инструменты")
 
         # ===== Вкладка "Общие" =====
 
@@ -243,6 +250,21 @@ class SettingsDialog:
         ttk.Spinbox(timer_grid, from_=0, to=300, width=6, textvariable=self._warning_var).grid(
             row=1, column=1, padx=(8, 0), pady=2,
         )
+
+        # ===== Вкладка "Инструменты" =====
+        #
+        # Диалог не знает ни одного конкретного инструмента: и контролы, и
+        # запись в config.py идут по схеме `SETTINGS` из реестра инструментов.
+        self._tool_specs: list[dict] = []
+        self._tool_vars: dict[str, tk.Variable] = {}
+        for tool_class in TOOL_CLASSES:
+            settings = getattr(tool_class, "SETTINGS", None)
+            if not settings:
+                continue
+            frame = ttk.LabelFrame(tab_tools, text=tool_class.title)
+            frame.pack(fill=tk.X, **pad)
+            for spec in settings:
+                self._add_tool_setting(frame, spec)
 
         # ===== Вкладка "Метрики" =====
 
@@ -387,6 +409,65 @@ class SettingsDialog:
         ttk.Button(btn_frame, text="Отмена", command=self._cancel).pack(side=tk.RIGHT, padx=4)
         ttk.Button(btn_frame, text="OK", command=self._save).pack(side=tk.RIGHT, padx=4)
 
+    def _add_tool_setting(self, parent: tk.Misc, spec: dict):
+        """Создаёт контрол по схеме настройки инструмента (см. tools/registry.py)."""
+        key = spec["key"]
+        kind = spec.get("kind", SETTING_BOOL)
+        current = getattr(config, key)
+
+        if kind == SETTING_BOOL:
+            var: tk.Variable = tk.BooleanVar(value=current)
+            ttk.Checkbutton(parent, text=spec["label"], variable=var).pack(
+                anchor=tk.W, padx=12, pady=2,
+            )
+        else:
+            row = tk.Frame(parent)
+            row.pack(fill=tk.X, padx=8, pady=2)
+            tk.Label(row, text=spec["label"], font=(FONT_FAMILY, 9)).pack(side=tk.LEFT)
+
+            if kind == SETTING_INT:
+                var = tk.IntVar(value=current)
+                ttk.Spinbox(
+                    row, from_=spec.get("from", 0), to=spec.get("to", 100),
+                    increment=spec.get("step", 1), width=6,
+                    textvariable=var, justify=tk.CENTER,
+                ).pack(side=tk.LEFT, padx=(8, 0))
+            else:
+                var = tk.StringVar(value=current)
+                ttk.Entry(row, textvariable=var, width=spec.get("width", 20)).pack(
+                    side=tk.LEFT, padx=(8, 0),
+                )
+
+            if spec.get("hint"):
+                tk.Label(row, text=spec["hint"], font=(FONT_FAMILY, 8)).pack(
+                    side=tk.LEFT, padx=(8, 0),
+                )
+
+        self._tool_specs.append(spec)
+        self._tool_vars[key] = var
+
+    def _collect_tool_values(self) -> dict:
+        """Значения настроек инструментов; строки — без крайних пробелов."""
+        values = {}
+        for spec in self._tool_specs:
+            value = self._tool_vars[spec["key"]].get()
+            if spec.get("kind", SETTING_BOOL) == SETTING_TEXT:
+                value = value.strip()
+            values[spec["key"]] = value
+        return values
+
+    def _validate_tools(self, values: dict) -> bool:
+        """Показывает ошибку первой невалидной настройки. True — можно сохранять."""
+        for spec in self._tool_specs:
+            validate = spec.get("validate")
+            if validate is None:
+                continue
+            error = validate(values[spec["key"]])
+            if error is not None:
+                messagebox.showerror(*error, parent=self.dialog)
+                return False
+        return True
+
     # --- Сохранение ---
 
     def _open_schedule_calendar(self):
@@ -395,6 +476,12 @@ class SettingsDialog:
         ScheduleCalendar(self.dialog)
 
     def _save(self):
+        # Настройки инструментов проверяем до записи: например, конфиг с
+        # неразбираемой комбинацией оставил бы блокировку ввода без разблокировки.
+        tool_values = self._collect_tool_values()
+        if not self._validate_tools(tool_values):
+            return
+
         values = self._collect_values()
         self._write_config_file(values)
         self._apply_runtime(values)
@@ -426,6 +513,7 @@ class SettingsDialog:
             "recommended_work_time_threshold": self._recommended_work_var.get(),
             "min_work_time_threshold": self._min_work_var.get(),
             "free_time_warning_percent": self._free_time_warning_var.get(),
+            "tools": self._collect_tool_values(),
         }
 
     def _write_config_file(self, values: dict):
@@ -468,6 +556,21 @@ class SettingsDialog:
             f"TRACK_MOUSE_MOVE = {values['track_mouse_move']}",
             content, flags=re.MULTILINE,
         )
+
+        # Настройки инструментов — по схеме из реестра: строки пишутся
+        # в кавычках, числа и флаги как есть.
+        for spec in self._tool_specs:
+            key = spec["key"]
+            value = values["tools"][key]
+            if spec.get("kind", SETTING_BOOL) == SETTING_TEXT:
+                replacement = f'{key} = "{value}"'
+            else:
+                replacement = f"{key} = {value}"
+            content = re.sub(
+                "^" + key + r"\s*=\s*.+$",
+                replacement,
+                content, flags=re.MULTILINE,
+            )
 
         # Тема оформления (строковое значение — в кавычках)
         content = re.sub(
@@ -543,6 +646,11 @@ class SettingsDialog:
         config.RECOMMENDED_WORK_TIME_THRESHOLD = values["recommended_work_time_threshold"]
         config.MIN_WORK_TIME_THRESHOLD = values["min_work_time_threshold"]
         config.FREE_TIME_WARNING_PERCENT = values["free_time_warning_percent"]
+        # Настройки инструментов: значения кладём в config, а перечитать их
+        # инструменты просит сам виджет (ActivityWidget._open_settings →
+        # tools.refresh_tools) — остальное читается динамически по месту.
+        for key, value in values["tools"].items():
+            setattr(config, key, value)
         # Режим читается полосой на каждом обновлении — применится со следующим тиком.
         config.WIDGET_WEEK_MODE = values["week_mode"]
         for attr, val in values["metrics"].items():

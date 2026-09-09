@@ -23,7 +23,9 @@ from constants import (
     TOOLTIP_ADD_ACTIVE_TIME,
     TOOLTIP_HELP,
     TOOLTIP_OPEN_SETTINGS,
+    TOOLTIP_TOOLS,
     TOOLTIP_WIDGETS,
+    TOOLS_MENU_LABEL,
     WIDGETS_MENU_LABEL,
 )
 from modules import theme
@@ -48,6 +50,7 @@ class WidgetToolbar:
         on_today_report: Callable | None = None,
         on_last_report: Callable | None = None,
         on_open_widgets: Callable | None = None,
+        tool_items: list[tuple[str, Callable]] | None = None,
     ):
         self.frame = tk.Frame(parent, bg=theme.COLOR_DARKER_BG, pady=2)
 
@@ -57,6 +60,13 @@ class WidgetToolbar:
         # Слева: кнопка «Виджеты» — открывает диалог управления мини-виджетами.
         if on_open_widgets is not None:
             self._add_button(WIDGETS_MENU_LABEL, TOOLTIP_WIDGETS, on_open_widgets, side=tk.LEFT)
+
+        # Слева: «Инструменты» — пункты приходят из реестра modules/tools,
+        # тулбар не знает, что именно они делают.
+        if tool_items:
+            self._add_icon_dropdown(
+                TOOLS_MENU_LABEL, TOOLTIP_TOOLS, list(tool_items), side=tk.LEFT,
+            )
 
         # Справа: «Помощь», настройки и выпадающий список «Отчёты».
         # Пакуем справа-налево, чтобы сохранить визуальный порядок:

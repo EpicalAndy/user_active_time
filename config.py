@@ -37,6 +37,23 @@ TRACK_MOUSE_MOVE = False
 # Порог предупреждения о скором переходе в неактивность (секунды). 0 = отключено.
 COUNTDOWN_WARNING_SECONDS = 60
 
+# === Инструмент «Блокировка ввода» ===
+
+# Комбинация, которая блокирует и разблокирует ввод. Модификаторы: ctrl, alt,
+# shift, win — нужен хотя бы один, плюс обычная клавиша (буква, цифра, F1-F24).
+INPUT_LOCK_HOTKEY = "ctrl+alt+shift+U"
+
+# Снимать блокировку, когда Windows блокирует сессию (Win+L, уход в сон).
+# Иначе после разблокировки экрана ввод останется заблокированным.
+INPUT_LOCK_RELEASE_ON_SESSION_LOCK = True
+
+# Страховка «залочил и ушёл»: снять блокировку автоматически через N минут.
+# 0 = не снимать.
+INPUT_LOCK_MAX_MINUTES = 30
+
+# Показывать плашку «Ввод заблокирован» с напоминанием о комбинации.
+INPUT_LOCK_SHOW_OVERLAY = True
+
 # Пути
 LOG_DIR = os.path.join(os.path.expanduser("~"), "active_time")
 STATE_FILE = os.path.join(LOG_DIR, "state.json")

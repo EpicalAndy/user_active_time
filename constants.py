@@ -51,6 +51,29 @@ REPORT_MENU_PERIOD = "Отчёт за период"
 # === Меню «Виджеты» (мини-виджеты на рабочем столе) ===
 
 WIDGETS_MENU_LABEL = "🧩"
+
+# === Меню «Инструменты» ===
+
+TOOLS_MENU_LABEL = "🧰"
+TOOLTIP_TOOLS = "Инструменты"
+
+# Блокировка ввода
+TOOL_INPUT_LOCK_TITLE = "Блокировка ввода"      # имя инструмента (настройки)
+TOOL_INPUT_LOCK_LABEL = "Заблокировать ввод"   # пункт меню (действие)
+INPUT_LOCK_OVERLAY_TITLE = "Ввод заблокирован"
+INPUT_LOCK_OVERLAY_HINT = "Разблокировать: {hotkey}"
+INPUT_LOCK_OVERLAY_LEFT = "осталось {time}"
+INPUT_LOCK_HOTKEY_INVALID_TITLE = "Неверная комбинация"
+INPUT_LOCK_HOTKEY_INVALID_TEXT = (
+    "Не удалось разобрать комбинацию «{hotkey}».\n\n"
+    "Нужен хотя бы один модификатор (ctrl, alt, shift, win) и одна клавиша, "
+    "например: ctrl+alt+shift+U"
+)
+INPUT_LOCK_UNAVAILABLE_TITLE = "Блокировка недоступна"
+INPUT_LOCK_UNAVAILABLE_TEXT = (
+    "Мониторинг ввода отключён (таймаут неактивности = 0), "
+    "а блокировка работает через те же хуки клавиатуры и мыши."
+)
 WIDGET_TYPE_ACTIVITY_PIE = "Активность (кольцо)"
 WIDGET_TYPE_WORK_TIME_PIE = "Рабочее время (кольцо)"
 WIDGET_TYPE_TIMELINE = "Таймлайн дня (диаграмма)"
@@ -254,6 +277,27 @@ WH_KEYBOARD_LL = 13
 WH_MOUSE_LL = 14
 WM_MOUSEMOVE = 0x0200
 
+# Сообщения клавиатуры, приходящие в WH_KEYBOARD_LL.
+WM_KEYDOWN = 0x0100
+WM_KEYUP = 0x0101
+WM_SYSKEYDOWN = 0x0104
+WM_SYSKEYUP = 0x0105
+
+# Виртуальные коды модификаторов. Обобщённые (VK_CONTROL и т.п.) в хук не
+# приходят — там всегда конкретная сторона (VK_LCONTROL / VK_RCONTROL),
+# поэтому обе стороны сводятся к одному имени модификатора (см. tools/input_lock/hotkey.py).
+VK_SHIFT = 0x10
+VK_CONTROL = 0x11
+VK_MENU = 0x12          # Alt
+VK_LWIN = 0x5B
+VK_RWIN = 0x5C
+VK_LSHIFT = 0xA0
+VK_RSHIFT = 0xA1
+VK_LCONTROL = 0xA2
+VK_RCONTROL = 0xA3
+VK_LMENU = 0xA4
+VK_RMENU = 0xA5
+
 # === Типы, структуры и функции Windows API (ctypes) ===
 
 WNDPROC = ctypes.WINFUNCTYPE(
@@ -272,6 +316,23 @@ HOOKPROC = ctypes.WINFUNCTYPE(
     wintypes.WPARAM,     # wParam
     wintypes.LPARAM,     # lParam
 )
+
+
+class KBDLLHOOKSTRUCT(ctypes.Structure):
+    """Полезная нагрузка WH_KEYBOARD_LL: lParam указывает на неё.
+
+    Нужна только ради `vkCode` — какая именно клавиша нажата. Разыменование
+    делается прямо в hook-колбэке, поэтому дальше vkCode обрабатывается
+    сравнениями целых, без обращений к Windows API.
+    """
+
+    _fields_ = [
+        ("vkCode", wintypes.DWORD),
+        ("scanCode", wintypes.DWORD),
+        ("flags", wintypes.DWORD),
+        ("time", wintypes.DWORD),
+        ("dwExtraInfo", ctypes.c_void_p),
+    ]
 
 
 class WNDCLASSW(ctypes.Structure):
