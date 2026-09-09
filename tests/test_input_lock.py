@@ -208,34 +208,62 @@ def test_filter_blocks_mouse_only_while_locked():
 
 
 # --- Учёт времени во время блокировки ---
+#
+# Правило простое: блокировка не меняет в учёте ничего. Время идёт так же, как
+# если бы пользователь просто ничего не нажимал, — вплоть до ухода в простой.
+# Отличий два: проглоченные нажатия отсчёт не сбрасывают, а разблокировка
+# сбрасывает, потому что человек за клавиатурой к работе вернулся.
 
-def _running_session():
-    """Готовит events_monitor так, будто сессия идёт и ввод отслеживается."""
+def _idle_for(seconds: int):
+    """Сессия идёт, ввода не было `seconds` секунд."""
     events_monitor.notify_session_start()
     events_monitor._closed_gaps.clear()
+    events_monitor._last_input_mono = time.monotonic() - seconds
+    events_monitor._observed_input_mono = events_monitor._last_input_mono
 
 
-def test_lock_closes_the_idle_gap_accumulated_before_it():
-    """Заблокировав ввод, нельзя задним числом «отработать» уже накопленный простой."""
-    _running_session()
-    events_monitor._observed_input_mono = time.monotonic() - 30
-
-    events_monitor.set_input_lock_active(True)
-    gaps = events_monitor.peek_idle_gaps()
-    events_monitor.set_input_lock_active(False)
-
-    assert len(gaps) == 1
-    assert 29 <= (gaps[0][1] - gaps[0][0]).total_seconds() <= 31
+def _blocked_keypress():
+    """Прогоняет нажатие через настоящий hook-колбэк при заблокированном вводе."""
+    payload = KBDLLHOOKSTRUCT(vkCode=VK_A, scanCode=0, flags=0, time=0, dwExtraInfo=None)
+    lparam = ctypes.cast(ctypes.pointer(payload), ctypes.c_void_p).value
+    events_monitor.set_input_filter(blocker.input_filter)
+    try:
+        return events_monitor._keyboard_hook_callback(0, WM_KEYDOWN, lparam)
+    finally:
+        events_monitor.set_input_filter(None)
 
 
-def test_release_does_not_turn_locked_period_into_idle():
-    """Заблокированный период считается активным — новых гэпов при снятии нет."""
-    _running_session()
-    events_monitor.set_input_lock_active(True)
-    events_monitor._observed_input_mono = time.monotonic() - 30  # как будто держали блокировку
-    events_monitor.set_input_lock_active(False)
+def test_blocked_keypress_does_not_reset_the_idle_countdown():
+    """Отсчёт до простоя идёт, как будто пользователь просто ничего не нажимает."""
+    _setup_blocker(locked=True)
+    _idle_for(60)
+    before = events_monitor.get_countdown_remaining()
 
-    assert events_monitor.peek_idle_gaps() == []
+    swallowed = _blocked_keypress()
+
+    assert swallowed == 1
+    assert events_monitor.get_countdown_remaining() == before
+
+
+def test_unlock_counts_as_activity():
+    """Разблокировал — вернулся к работе: отсчёт стартует заново."""
+    _idle_for(60)
+    assert events_monitor.get_countdown_remaining() < config.INPUT_ACTIVITY_TIMEOUT
+
+    events_monitor.note_input("клавиатура")
+
+    assert events_monitor.get_countdown_remaining() == config.INPUT_ACTIVITY_TIMEOUT
+
+
+def test_note_input_is_ignored_without_a_session():
+    """На заблокированном экране ввода быть не может — выдумывать его нельзя."""
+    _idle_for(60)
+    events_monitor.notify_session_end()
+    marker = events_monitor._last_input_mono
+
+    events_monitor.note_input("клавиатура")
+
+    assert events_monitor._last_input_mono == marker
 
 
 # --- Схема настроек (вкладка «Инструменты») ---

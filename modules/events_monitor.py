@@ -61,16 +61,15 @@ _mouse_hook_proc = None
 # Вызывается ПЕРВЫМ делом в hook-колбэках; вернул True — событие проглатывается
 # и не уходит ни в систему, ни в учёт активности. Держится как callback, чтобы
 # слой учёта не зависел от modules/tools (тот же приём, что с log_event).
+#
+# Больше про блокировку ввода учёт не знает ничего: проглоченное нажатие для
+# него просто не случилось, а дальше время идёт как при обычном бездействии.
 # Обязан быть таким же дешёвым, как сам колбэк: Windows снимает хук, который
 # думает дольше ~300 мс.
 INPUT_KIND_KEYBOARD = 0
 INPUT_KIND_MOUSE = 1
 
 _input_filter = None
-
-# Пока блокировка активна, простой не копится: период считается активным,
-# но сами (проглоченные) нажатия на счётчик уже не влияют — см. _timer_thread_func.
-_input_lock_active: bool = False
 
 # Слушатели начала/конца сессии (LOCK/UNLOCK/LOGON/LOGOFF).
 _session_listeners: list = []
@@ -177,14 +176,6 @@ def _timer_thread_func():
         if not _session_running or _screen_locked:
             continue
 
-        # Блокировка ввода: период считается активным, поэтому просто двигаем
-        # начало открытого гэпа за «сейчас». Заблокированные нажатия сюда не
-        # доходят (их проглотил фильтр), так что счётчик держится не вводом,
-        # а самим фактом блокировки.
-        if _input_lock_active:
-            _observed_input_mono = time.monotonic()
-            continue
-
         cur = _last_input_mono
         if cur > _observed_input_mono:
             gap = cur - _observed_input_mono
@@ -248,37 +239,18 @@ def set_input_filter(fn):
     _input_filter = fn
 
 
-def set_input_lock_active(active: bool):
-    """Сообщает учёту, что ввод заблокирован инструментом.
+def note_input(source: str):
+    """Отмечает ввод, которого хук не увидел, — как будто он только что был.
 
-    На входе в блокировку открытый гэп закрывается — простой, накопленный ДО
-    блокировки, остаётся простоем: заблокировав ввод, задним числом «отработать»
-    прошедшие полчаса нельзя. Дальше якорь ведёт таймер, поэтому сам
-    заблокированный период простоем не становится (см. `_timer_thread_func`).
+    Нужна тому, кто проглатывает события фильтром: проглоченное нажатие в учёт
+    не попадает, но само действие пользователя иногда вводом является. Так
+    отмечается разблокировка ввода — момент, когда человек вернулся к работе.
     """
-    global _input_lock_active, _observed_input_mono
-
-    if active:
-        _close_open_gap()
-    _observed_input_mono = time.monotonic()
-    _input_lock_active = active
-
-
-def _close_open_gap():
-    """Фиксирует открытый гэп простоя [начало, сейчас], если он достаточно длинный."""
+    global _last_input_mono, _last_input_source
     if not _session_running or _screen_locked:
         return
-    now_mono = time.monotonic()
-    if now_mono - _observed_input_mono < MIN_IDLE_GAP_SECONDS:
-        return
-    with _gaps_lock:
-        _closed_gaps.append(
-            (_mono_to_wall(_observed_input_mono), _mono_to_wall(now_mono))
-        )
-
-
-def is_input_lock_active() -> bool:
-    return _input_lock_active
+    _last_input_source = source
+    _last_input_mono = time.monotonic()
 
 
 def add_session_listener(fn):
