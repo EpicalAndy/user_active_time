@@ -84,7 +84,12 @@ class InputLockTool:
         {
             "key": "INPUT_LOCK_SHOW_OVERLAY",
             "kind": SETTING_BOOL,
-            "label": "Показывать плашку с напоминанием о комбинации",
+            "label": "Показывать плашку «Ввод заблокирован»",
+        },
+        {
+            "key": "INPUT_LOCK_SHOW_HOTKEY_HINT",
+            "kind": SETTING_BOOL,
+            "label": "Показывать на плашке комбинацию разблокировки",
         },
     ]
 
@@ -153,7 +158,9 @@ class InputLockTool:
         self._deadline = time.monotonic() + minutes * 60 if minutes > 0 else None
 
         if config.INPUT_LOCK_SHOW_OVERLAY:
-            self._overlay.show(hotkey.label)
+            self._overlay.show(
+                hotkey.label if config.INPUT_LOCK_SHOW_HOTKEY_HINT else None,
+            )
         self._schedule_tick()
 
         print(f"[LOCK] Ввод заблокирован (разблокировка: {hotkey.label})")

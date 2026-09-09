@@ -6,6 +6,9 @@
 маленькое окно поверх всех, по центру сверху, плюс остаток времени до
 автоснятия, если оно включено.
 
+Подсказка с комбинацией отключается отдельно от самой плашки (`hotkey_label`
+= None): факт блокировки показать бывает нужно, а выход из неё — не всегда.
+
 Все методы вызываются только из потока Tk.
 """
 
@@ -43,7 +46,7 @@ class LockOverlay:
         self._hint_label: tk.Label | None = None
         self._left_label: tk.Label | None = None
 
-    def show(self, hotkey_label: str):
+    def show(self, hotkey_label: str | None):
         if self._window is not None:
             return
 
@@ -63,12 +66,13 @@ class LockOverlay:
             font=(FONT_FAMILY, MAIN_FONT_SIZE + 2, "bold"),
         ).pack()
 
-        self._hint_label = tk.Label(
-            frame, text=INPUT_LOCK_OVERLAY_HINT.format(hotkey=hotkey_label),
-            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_YELLOW,
-            font=(FONT_FAMILY, MAIN_FONT_SIZE),
-        )
-        self._hint_label.pack(pady=(4, 0))
+        if hotkey_label is not None:
+            self._hint_label = tk.Label(
+                frame, text=INPUT_LOCK_OVERLAY_HINT.format(hotkey=hotkey_label),
+                bg=theme.COLOR_DARK_BG, fg=theme.COLOR_YELLOW,
+                font=(FONT_FAMILY, MAIN_FONT_SIZE),
+            )
+            self._hint_label.pack(pady=(4, 0))
 
         self._left_label = tk.Label(
             frame, text="",

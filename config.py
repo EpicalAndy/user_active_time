@@ -51,8 +51,13 @@ INPUT_LOCK_RELEASE_ON_SESSION_LOCK = True
 # 0 = не снимать.
 INPUT_LOCK_MAX_MINUTES = 30
 
-# Показывать плашку «Ввод заблокирован» с напоминанием о комбинации.
+# Показывать плашку «Ввод заблокирован».
 INPUT_LOCK_SHOW_OVERLAY = True
+
+# Показывать на плашке саму комбинацию разблокировки. Выключается отдельно от
+# плашки: сообщить «ввод заблокирован» бывает нужно, а подсказывать выход — нет.
+# Страховкой в этом случае остаётся INPUT_LOCK_MAX_MINUTES.
+INPUT_LOCK_SHOW_HOTKEY_HINT = True
 
 # Пути
 LOG_DIR = os.path.join(os.path.expanduser("~"), "active_time")
