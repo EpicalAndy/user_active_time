@@ -24,10 +24,15 @@ from constants import (
     ABOUT_DESCRIPTION,
     ABOUT_TITLE,
     APP_NAME,
+    DEV_GUIDE_PATH,
+    DOC_NOT_FOUND_TEXT,
     GITHUB_URL,
+    HELP_MENU_DEV_GUIDE,
+    HELP_MENU_README,
     REPORT_NO_DATA_TITLE,
     REPORT_NO_PAST_TEXT,
     REPORT_NO_TODAY_TEXT,
+    USER_GUIDE_PATH,
 )
 from modules import theme
 from modules.events_monitor import get_countdown_remaining
@@ -135,7 +140,8 @@ class ActivityWidget:
             on_open_reports=lambda: os.startfile(LOG_DIR),
             on_view_report=self._view_report,
             on_open_settings=self._open_settings,
-            on_open_readme=self._open_readme,
+            on_open_readme=self._open_user_guide,
+            on_open_dev_guide=self._open_dev_guide,
             on_open_github=lambda: webbrowser.open(GITHUB_URL),
             on_open_about=self._open_about,
             on_period_report=self._open_period_report,
@@ -381,14 +387,22 @@ class ActivityWidget:
         """Открывает окно тепловой карты активности"""
         HeatmapViewer(self.window)
 
-    def _open_readme(self):
-        """Открывает локальный README проекта в приложении по умолчанию."""
-        path = resource_path("README.md")
+    def _open_user_guide(self):
+        """Открывает руководство пользователя в браузере по умолчанию."""
+        self._open_doc(USER_GUIDE_PATH, HELP_MENU_README)
+
+    def _open_dev_guide(self):
+        """Открывает техническую документацию в браузере по умолчанию."""
+        self._open_doc(DEV_GUIDE_PATH, HELP_MENU_DEV_GUIDE)
+
+    def _open_doc(self, relative: str, title: str):
+        """Открывает HTML-документ из поставки приложения (docs/)."""
+        path = resource_path(relative)
         if os.path.exists(path):
             os.startfile(path)
         else:
             messagebox.showwarning(
-                "Помощь", f"Файл README не найден:\n{path}",
+                title, DOC_NOT_FOUND_TEXT.format(path=path), parent=self.window,
             )
 
     def _open_about(self):

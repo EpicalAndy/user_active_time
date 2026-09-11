@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>user_active_time — техническая документация</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --border: #d1d9e0;
+    --code-bg: #f6f8fa; --accent: #0969da; --note-bg: #f1f8ff; --note-border: #54aeff;
+    --green: #1a7f37; --yellow: #9a6700; --red: #cf222e; --gray: #8b949e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --border: #30363d;
+      --code-bg: #161b22; --accent: #58a6ff; --note-bg: #0f1f33; --note-border: #1f6feb;
+      --green: #3fb950; --yellow: #d29922; --red: #f85149; --gray: #6e7681;
+    }
+  }
+  html { color-scheme: light dark; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.55 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 20px 80px; }
+  h1 { font-size: 2em; margin: 0 0 .2em; }
+  h1 + p.subtitle { color: var(--muted); margin-top: 0; }
+  h2 { font-size: 1.5em; margin-top: 2.2em; padding-bottom: .3em; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.2em; margin-top: 1.8em; }
+  h4 { font-size: 1.05em; margin-top: 1.4em; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, kbd { font-family: ui-monospace, "Cascadia Code", Consolas, "Courier New", monospace; font-size: .92em; }
+  code { background: var(--code-bg); padding: .1em .35em; border-radius: 4px; }
+  pre { background: var(--code-bg); padding: 12px 16px; border-radius: 6px; overflow-x: auto; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  kbd { background: var(--code-bg); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: .05em .4em; }
+  table { border-collapse: collapse; margin: 1em 0; width: 100%; }
+  th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); }
+  td:first-child code { white-space: nowrap; }
+  aside.note { background: var(--note-bg); border-left: 4px solid var(--note-border); padding: 10px 16px; margin: 1.2em 0; border-radius: 0 6px 6px 0; }
+  aside.note > :first-child { margin-top: 0; }
+  aside.note > :last-child { margin-bottom: 0; }
+  nav.toc { background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px 20px; margin: 1.5em 0; }
+  nav.toc ol { margin: 0; padding-left: 1.4em; columns: 2; column-gap: 2em; }
+  nav.toc li { break-inside: avoid; }
+  @media (max-width: 640px) { nav.toc ol { columns: 1; } }
+  ul.tight li { margin: .15em 0; }
+  ul.files li { margin: .25em 0; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 2em 0; }
+  footer { color: var(--muted); font-size: .9em; margin-top: 3em; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>user_active_time</h1>
+<p class="subtitle">Техническая документация · как устроено внутри</p>
+
+<p>Этот документ — про внутреннее устройство: потоки, модель данных, форматы файлов, конфиг, реестры расширений, сборку и релизы. Что программа показывает и как ей пользоваться — в <a href="user_guide.html">руководстве пользователя</a>. Версия — в <code>version.py</code> (<code>__version__</code>), схема описана в разделе <a href="#versioning">Версионирование</a>.</p>
+
+<nav class="toc">
+<ol>
+  <li><a href="#install">Окружение и запуск</a></li>
+  <li><a href="#architecture">Архитектура и потоки</a></li>
+  <li><a href="#model">Модель активного времени</a></li>
+  <li><a href="#files">Файлы данных и схемы</a></li>
+  <li><a href="#sessions">Мониторинг сессий</a></li>
+  <li><a href="#input">Мониторинг ввода</a></li>
+  <li><a href="#config">Конфигурация</a></li>
+  <li><a href="#theme">Темы оформления</a></li>
+  <li><a href="#widget">Виджет и метрики</a></li>
+  <li><a href="#mini">Мини-виджеты</a></li>
+  <li><a href="#tools">Инструменты</a></li>
+  <li><a href="#reports">Отчёты</a></li>
+  <li><a href="#docs">Документация</a></li>
+  <li><a href="#versioning">Версионирование и релиз</a></li>
+  <li><a href="#build">Сборка</a></li>
+  <li><a href="#layout">Структура проекта</a></li>
+  <li><a href="#tests">Тесты</a></li>
+</ol>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="install">Окружение и запуск</h2>
+
+<p>Ядро (мониторинг сессий и ввода, виджет, отчёты) работает на стандартной библиотеке + <code>ctypes</code>. Внешние пакеты нужны только для значка в трее — <code>pystray</code> и <code>Pillow</code> (<code>requirements.txt</code>). Без них приложение работает, но значка нет: кнопка «свернуть в трей» откатывается к сворачиванию до заголовка, а в консоль выводится подсказка с командой установки для нужного интерпретатора.</p>
+
+<p>Рекомендуемый способ — отдельное виртуальное окружение проекта, чтобы приложение всегда запускалось своим интерпретатором со своими зависимостями:</p>
+<pre><code>py -3.12 -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python main.py          # или start.bat</code></pre>
+
+<p>Тесты — <code>pytest</code>, все в папке <code>tests/</code>: <code>python -m pytest tests</code>. Tkinter в тестах не поднимается: тестируется чистая логика (интервалы, раскладки, схемы, разбор комбинаций).</p>
+
+<!-- ============================================================ -->
+<h2 id="architecture">Архитектура и потоки</h2>
+
+<p><code>main.py</code> подключает пользовательский конфиг (<code>bootstrap.setup_user_config()</code> — до любых импортов, читающих <code>config</code>), затем запускает монитор сессий в daemon-потоке <code>SessionMonitor</code>, а в главном потоке — Tkinter-виджет. Если все опции отображения виджета выключены (<code>is_widget_enabled()</code>), монитор крутится в главном потоке без UI.</p>
+
+<table>
+  <tr><th>Поток</th><th>Что делает</th></tr>
+  <tr><td>главный (Tk)</td><td>виджет-конфигуратор, мини-виджеты, диалоги, окна отчётов; читает статистику через <code>get_current_stats</code></td></tr>
+  <tr><td><code>SessionMonitor</code></td><td>скрытое окно + цикл сообщений Windows: WTS-уведомления о LOGON/LOGOFF/LOCK/UNLOCK (<code>win_events.py</code>)</td></tr>
+  <tr><td>hook-поток</td><td>low-level хуки клавиатуры и мыши с собственным циклом сообщений (<code>events_monitor.py</code>); колбэки максимально лёгкие</td></tr>
+  <tr><td>timer-поток ввода</td><td>машина состояний простоя: замыкает гэпы, пишет события, считает обратный отсчёт</td></tr>
+  <tr><td>checkpoint</td><td>фоновый таймер промежуточного сохранения (<code>checkpoint.py</code>)</td></tr>
+</table>
+
+<p>Ключевые приёмы:</p>
+<ul class="tight">
+  <li><b>колбэки вместо импортов</b> — <code>events_monitor</code> получает <code>log_event</code> колбэком, чтобы не было кольца импортов;</li>
+  <li>хуки только присваивают <code>time.monotonic()</code> и вызывают <code>CallNextHookEx</code>; весь I/O — в timer-потоке. Атомарность присваиваний float/str между потоками обеспечивает GIL;</li>
+  <li>остановка потоков через <code>threading.Event</code> / <code>request_stop()</code>;</li>
+  <li>состояние дня защищено <code>state_lock</code>, которым владеет <code>session.py</code>.</li>
+</ul>
+
+<p>Пакет <code>modules/session_monitor/</code> собран слоями снизу вверх, импорты строго в одну сторону; внешние потребители импортируют всё из фасада <code>modules.session_monitor</code>, не зная раскладки:</p>
+<pre><code>state_store   — state.json и схема записи дня (v2), сериализация интервалов
+journal       — строки лога дня: сборка и разбор (чистый текст, без I/O)
+activity      — пересчёт активного времени и таймлайна из сырых интервалов
+day_report    — мост day_state ↔ дневной JSON-отчёт (запись и чтение прошедших дней)
+session       — владелец рантайма (session_start_time, state_lock) и жизненный цикл:
+                start/end/checkpoint/recover, log_event
+checkpoint    — фоновый таймер промежуточного сохранения
+stats         — get_current_stats для виджета
+manual_time   — ручное добавление/удаление активного времени
+win_events    — WTS-подписка, скрытое окно, цикл сообщений, main()</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="model">Модель активного времени</h2>
+
+<h3>События</h3>
+<p>В лог дня пишутся события: <code>LOGON</code>, <code>LOGOFF</code>, <code>LOCK</code>, <code>UNLOCK</code>, <code>IDLE</code> (зафиксированный период простоя), <code>MANUAL_ADD_START</code>/<code>MANUAL_ADD_END</code> (ручные диапазоны), <code>SESSION_RECOVERED</code> (сессия дотянута после сбоя).</p>
+
+<h3>Схема v2: сырые интервалы</h3>
+<p>Программа записывает не «активно/неактивно», посчитанное по таймауту, а <b>сырые интервалы</b>: периоды включённой сессии <code>sessions</code> (<code>[start, end]</code>) и гэпы простоя ввода <code>idle</code> (<code>[from, to]</code>, без вычета таймаута). Активное время — <b>проекция</b> от них с <i>текущим</i> <code>INPUT_ACTIVITY_TIMEOUT</code>, вычисляемая в момент чтения/записи. Поэтому изменение таймаута пересчитывает весь день, включая прошедшую часть. Старые записи (v1) читаются как раньше: <code>ensure_v2</code> сохраняет накопленное <code>active_seconds</code> как <code>legacy_base_seconds</code> (за вычетом ручного времени, которое пересчитывается из лога заново).</p>
+
+<p>Ядро — <code>modules/activity_intervals.py</code>, чистые функции без I/O:</p>
+<pre><code>неактивность гэпа   = [from + timeout, to]      (None, если гэп короче таймаута)
+активное за день    = Σ длительность сессий − Σ неактивность
+                      (пересечения обрезаются границами суток [00:00, следующая полночь))</code></pre>
+<p>Таймаут — разовая «фора», сдвигающая начало гэпа, поэтому переход через полночь обрабатывается корректно. Пересчёт точен для таймаутов ≥ <code>MIN_IDLE_GAP_SECONDS</code>. Тот же код раскладывает таймлайн дня для круга и полосы «Таймлайн».</p>
+
+<h3 id="norms">Две нормы</h3>
+<p>Единая точка расчёта — <code>utility.py</code>: <code>get_work_hours(date)</code> (присутствие: <code>WORK_HOURS_BY_DAY</code> с переопределениями из календаря <code>work_calendar.py</code>), <code>get_break_hours(date)</code>, <code>get_activity_norm_hours(date)</code> = рабочие часы − перерыв, не ниже нуля; в нерабочий день перерыв не вычитается. Присутствие красится по <code>RECOMMENDED_WORK_TIME_THRESHOLD</code>/<code>MIN_WORK_TIME_THRESHOLD</code>, активность — по <code>RECOMMENDED_ACTIVITY_THRESHOLD</code>/<code>MIN_ACTIVITY_THRESHOLD</code>.</p>
+
+<h3>Свободное время</h3>
+<pre><code>бюджет_rec  = присутствие − норма_активности × RECOMMENDED_ACTIVITY_THRESHOLD / 100
+бюджет_min  = присутствие − норма_активности × MIN_ACTIVITY_THRESHOLD / 100
+потрачено   = full_day_seconds − active_seconds
+остаток     = бюджет_rec − потрачено        (не подрезается нулём, показывается со знаком)</code></pre>
+<p>Цвет — по остатку до рекомендуемой нормы (зелёный / жёлтый при остатке ≤ <code>FREE_TIME_WARNING_PERCENT</code>% бюджета / красный при ≤ 0). Кольцо «Свободное время» за 100% берёт <code>бюджет_min</code>, чтобы пустеть непрерывно; при остатке ниже минимальной нормы красным становится трек.</p>
+
+<h3>Достижение нормы активности</h3>
+<p>Прогноз = <code>now + (норма_активности × порог − active_seconds)</code>; после взятия порога — фактический момент, вычисленный по тем же интервалам дня, и дальше не меняется. <code>None</code> → «—» (нерабочий день или нулевая норма). Тесты — <code>tests/test_recommended_eta.py</code>.</p>
+
+<h3>Усечение процентов</h3>
+<p><code>utility.truncate_percent</code>: дробная часть отбрасывается, и с порогами сравнивается то же показанное число — иначе округление вверх давало «80%» жёлтым. Правило действует везде: тело и заголовок виджета, мини-виджеты, тепловая карта, отчёт за период (<code>tests/test_percent_display.py</code>).</p>
+
+<!-- ============================================================ -->
+<h2 id="files">Файлы данных и схемы</h2>
+<p>Всё в <code>LOG_DIR</code> = <code>~/active_time/</code>.</p>
+
+<h3><code>state.json</code></h3>
+<p>Словарь «ключ-дата <code>YYYY-MM-DD</code> → запись дня». Хранит только сегодня и будущие дни: прошедшие вычищает <code>cleanup_old_days</code> после записи отчёта (кроме случая кросс-полуночной незавершённой сессии), и источником истины для них становится дневной отчёт. Запись атомарная — через <code>.tmp</code> + <code>os.replace</code>.</p>
+<pre><code>{
+  "2026-09-11": {
+    "active_seconds": 0,        "session_count": 0,
+    "first_login": null,        "last_logout": null,
+    "sessions": [{"start": "YYYY-MM-DD HH:MM:SS", "end": "..."}],
+    "idle":     [{"from":  "YYYY-MM-DD HH:MM:SS", "to":  "..."}],
+    "legacy_base_seconds": 0,   "log_entries": ["..."]
+  }
+}</code></pre>
+<p>Открытая сессия персистится на каждом checkpoint (<code>CHECKPOINT_INTERVAL</code>); при следующем запуске незакрытые из-за сбоя сессии дотягиваются — в лог добавляется <code>SESSION_RECOVERED</code>. При жёстком сбое теряется не более одного интервала checkpoint.</p>
+
+<h3>Дневной отчёт <code>&lt;username&gt;_dd.mm.yyyy.json</code></h3>
+<p>Формирует <code>modules/report.py</code> (<code>REPORT_JSON_VERSION = 2</code>):</p>
+<table>
+  <tr><th>Поле</th><th>Значение</th></tr>
+  <tr><td><code>version</code></td><td>схема, сейчас 2</td></tr>
+  <tr><td><code>username</code>, <code>date</code></td><td>пользователь, дата ISO <code>YYYY-MM-DD</code></td></tr>
+  <tr><td><code>first_login</code>, <code>last_logout</code></td><td>границы рабочего дня</td></tr>
+  <tr><td><code>active_seconds</code></td><td>активное время (проекция на момент записи)</td></tr>
+  <tr><td><code>max_work_seconds</code></td><td>норма присутствия (рабочие часы)</td></tr>
+  <tr><td><code>break_seconds</code></td><td>перерыв</td></tr>
+  <tr><td><code>activity_norm_seconds</code></td><td><code>max(0, max_work_seconds − break_seconds)</code>; в отчётах до появления перерыва поля нет — читается как полное рабочее время, исторические проценты не «переезжают»</td></tr>
+  <tr><td><code>total_work_seconds</code></td><td>от первого входа до последнего выхода</td></tr>
+  <tr><td><code>session_count</code></td><td>число сессий</td></tr>
+  <tr><td><code>sessions</code>, <code>idle</code></td><td>сырые интервалы — источник истины для пересчёта</td></tr>
+  <tr><td><code>log</code></td><td>строки лога событий</td></tr>
+</table>
+<p>Ручные диапазоны на сегодня и будущее пишутся в <code>state.json</code>; на прошедшие даты — прямо в отчёт (он же создаётся, если активности за день не было). Читают отчёты все окна отчётов, тепловая карта и недельная полоса.</p>
+
+<h3><code>widgets.json</code></h3>
+<p>Плоский список записей мини-виджетов: <code>{"id", "type", "x", "y", "opts", "enabled"}</code>. Выключенный виджет не рисуется, но запись с настройками и позицией остаётся (<code>widget_store.py</code>, <code>manager.py</code>).</p>
+
+<h3><code>work_calendar.json</code></h3>
+<p><code>{"YYYY-MM-DD": {"hours": float|null, "note": str}}</code>. <code>hours</code>: ключа нет или <code>null</code> — действует расписание; <code>0</code> — выходной; <code>&gt; 0</code> — переопределённый лимит. Модуль <code>work_calendar.py</code> держит кэш в памяти и зависит только от <code>config</code>.</p>
+
+<h3><code>config.py</code></h3>
+<p>Пользовательская копия конфига — см. <a href="#config">Конфигурация</a>. Ещё в <code>LOG_DIR</code> лежит сгенерированный WAV звукового уведомления (<code>widget/notification.py</code>).</p>
+
+<!-- ============================================================ -->
+<h2 id="sessions">Мониторинг сессий</h2>
+<p>Скрытое окно + <code>WTSRegisterSessionNotification</code> — единственный способ узнать о LOCK/UNLOCK/LOGON/LOGOFF без прав администратора. <code>win_events.py</code> регистрирует класс окна (<code>WNDCLASSW</code>, <code>WNDPROC</code> из <code>constants.py</code>), крутит цикл сообщений и транслирует <code>WM_WTSSESSION_CHANGE</code> в операции жизненного цикла из <code>session.py</code>: <code>start_session</code> / <code>end_session</code> / <code>log_event</code>. Остановка — <code>request_stop()</code> посылает <code>WM_QUIT</code>.</p>
+
+<!-- ============================================================ -->
+<h2 id="input">Мониторинг ввода</h2>
+<p><code>modules/events_monitor.py</code> ставит <code>WH_KEYBOARD_LL</code> и <code>WH_MOUSE_LL</code> в собственном потоке. Колбэк хука только запоминает <code>time.monotonic()</code> и источник (движение мыши учитывается по <code>config.TRACK_MOUSE_MOVE</code>, читается динамически — применяется на лету) и передаёт событие дальше.</p>
+
+<p>Timer-поток раз в секунду сравнивает момент последнего учтённого ввода с текущим: пауза ≥ <code>MIN_IDLE_GAP_SECONDS</code> (5 с, <code>constants.py</code>) по возвращении пользователя замыкается в сырой гэп <code>[from, to]</code> и регистрируется как событие <code>IDLE</code>. Конвертация monotonic → wall-clock идёт через якорь, зафиксированный на старте сессии. При блокировке экрана ввод игнорируется, открытый гэп финализируется. На подсчёт количества сессий это не влияет.</p>
+
+<aside class="note">
+<p><b>Закрытый гэп виден сразу.</b> В <code>state.json</code> гэп попадает только на ближайшем checkpoint. Живая статистика (<code>stats.get_current_stats</code>) читает <code>state.json</code>, поэтому дополнительно подмешивает гэпы, которые уже закрылись, но ещё не сохранены — <code>events_monitor.peek_idle_gaps()</code>. Без этого простой, только что закончившийся, на минуту исчезал бы из процента активности и с круга «Таймлайн дня» (<code>tests/test_stats_pending_idle.py</code>).</p>
+</aside>
+
+<p>Обратный отсчёт для заголовка и мини-виджета «Счётчик активности» считается здесь же по текущему таймауту — это про «сейчас», а не про запекание истории. <code>INPUT_ACTIVITY_TIMEOUT = 0</code> отключает установку хуков при старте — поэтому переключение 0 ↔ ненулевое требует перезапуска, а изменение ненулевого значения нет.</p>
+
+<!-- ============================================================ -->
+<h2 id="config">Конфигурация</h2>
+
+<h3>Шаблон и пользовательская копия</h3>
+<p>Проектный <code>config.py</code> — <b>шаблон с дефолтами</b>, приложение его не модифицирует. При каждом старте <code>bootstrap.py</code> пересобирает <code>~/active_time/config.py</code>: структура, комментарии и набор параметров — из шаблона, значения присваиваний верхнего уровня — из существующей пользовательской копии (разбор через <code>ast</code>). Так новые параметры появляются в рабочем конфиге автоматически, а настроенные значения сохраняются. Побочный эффект: ручные комментарии и переменные, которых нет в шаблоне, при пересборке теряются — пользовательский конфиг рассчитан на управление через диалог настроек. Пользовательская копия подключается как модуль <code>config</code> через <code>sys.path</code>.</p>
+
+<aside class="note">
+<p><b>Конвенция hot-reload.</b> Значения, изменяемые через диалог настроек, читаются в коде как <code>config.X</code> (через <code>import config</code>), а не <code>from config import X</code> — иначе имя биндится при импорте модуля и обновления через <code>SettingsDialog._apply_runtime</code> не применяются до перезапуска. Диалог пишет в <code>config.X</code> напрямую и в файл. Та же конвенция у тем: <code>theme.COLOR_X</code>.</p>
+</aside>
+
+<h3>Параметры</h3>
+<p>Значения по умолчанию — в скобках. В диалоге ⚙ есть всё, кроме отмеченных «только вручную».</p>
+
+<h4>Нормы</h4>
+<table>
+  <tr><th>Параметр</th><th>Описание</th></tr>
+  <tr><td><code>DEFAULT_WORK_HOURS</code></td><td>рабочие часы по умолчанию (8); только вручную</td></tr>
+  <tr><td><code>WORK_HOURS_BY_DAY</code></td><td>рабочие часы по дням недели: <code>None</code> = <code>DEFAULT_WORK_HOURS</code>, <code>0</code> = нерабочий день; дробные значения поддерживаются. Задают <b>присутствие</b></td></tr>
+  <tr><td><code>BREAK_MINUTES</code></td><td>перерыв (30): входит в рабочие часы, вычитается из нормы активности; в нерабочий день не вычитается</td></tr>
+  <tr><td><code>RECOMMENDED_ACTIVITY_THRESHOLD</code></td><td>рекомендуемый порог активности, % от нормы активности (80)</td></tr>
+  <tr><td><code>MIN_ACTIVITY_THRESHOLD</code></td><td>минимальный порог активности, % (70)</td></tr>
+  <tr><td><code>RECOMMENDED_WORK_TIME_THRESHOLD</code></td><td>рекомендуемый порог присутствия, % от рабочих часов (100)</td></tr>
+  <tr><td><code>MIN_WORK_TIME_THRESHOLD</code></td><td>минимальный порог присутствия, % (80)</td></tr>
+  <tr><td><code>FREE_TIME_WARNING_PERCENT</code></td><td>порог предупреждения по свободному времени, % от бюджета (20); <code>0</code> = жёлтой зоны нет</td></tr>
+</table>
+
+<h4>Мониторинг ввода и сигналы</h4>
+<table>
+  <tr><th>Параметр</th><th>Описание</th></tr>
+  <tr><td><code>INPUT_ACTIVITY_TIMEOUT</code></td><td>таймаут неактивности, секунды (300); <code>0</code> = мониторинг ввода отключён (переключение требует перезапуска)</td></tr>
+  <tr><td><code>TRACK_MOUSE_MOVE</code></td><td>считать движение мыши за активность (False); клики и скролл — всегда</td></tr>
+  <tr><td><code>COUNTDOWN_WARNING_SECONDS</code></td><td>порог предупреждения счётчика, секунды (60); <code>0</code> = отключено</td></tr>
+  <tr><td><code>SOUND_NOTIFICATION</code></td><td>звук при достижении рекомендуемого порога (False)</td></tr>
+  <tr><td><code>COUNTDOWN_TICK_SOUND</code></td><td>тиканье в предупредительной фазе отсчёта (False)</td></tr>
+  <tr><td><code>STOP_COUNTDOWN_AT_RECOMMENDED</code></td><td>скрывать обратный отсчёт после достижения нормы (False)</td></tr>
+  <tr><td><code>WIDGET_PROGRESS_HIGHLIGHT</code></td><td>подсветка рамки виджета по прогрессу активности (True)</td></tr>
+</table>
+
+<h4>Инструмент «Блокировка ввода»</h4>
+<table>
+  <tr><th>Параметр</th><th>Описание</th></tr>
+  <tr><td><code>INPUT_LOCK_HOTKEY</code></td><td>комбинация блокировки/разблокировки (<code>"ctrl+alt+shift+U"</code>): хотя бы один модификатор <code>ctrl</code>/<code>alt</code>/<code>shift</code>/<code>win</code> плюс буква, цифра или <code>F1</code>–<code>F24</code></td></tr>
+  <tr><td><code>INPUT_LOCK_RELEASE_ON_SESSION_LOCK</code></td><td>снимать блокировку при блокировке сессии Windows (True)</td></tr>
+  <tr><td><code>INPUT_LOCK_MAX_MINUTES</code></td><td>автоснятие через N минут (30); <code>0</code> = не снимать</td></tr>
+  <tr><td><code>INPUT_LOCK_SHOW_OVERLAY</code></td><td>показывать плашку «Ввод заблокирован» (True)</td></tr>
+  <tr><td><code>INPUT_LOCK_SHOW_HOTKEY_HINT</code></td><td>показывать на плашке комбинацию (True); выключается независимо от плашки</td></tr>
+</table>
+
+<h4>Виджет</h4>
+<table>
+  <tr><th>Параметр</th><th>Описание</th></tr>
+  <tr><td><code>WIDGET_SHOW_ACTIVE_TIME</code></td><td>активное время (True)</td></tr>
+  <tr><td><code>WIDGET_SHOW_SESSION_COUNT</code></td><td>количество сессий (False)</td></tr>
+  <tr><td><code>WIDGET_SHOW_ACTIVITY_PERCENT</code></td><td>процент активности (True)</td></tr>
+  <tr><td><code>WIDGET_SHOW_FULL_DAY_TIME</code> / <code>_PERCENT</code></td><td>рабочее время и парный процент (False / False)</td></tr>
+  <tr><td><code>WIDGET_SHOW_REMAINING_TIME</code> / <code>_PERCENT</code></td><td>«осталось до конца дня» и процент (True / False)</td></tr>
+  <tr><td><code>WIDGET_SHOW_RECOMMENDED_REMAINING</code> / <code>_PERCENT</code></td><td>«до рекомендуемой нормы» и процент (False / False)</td></tr>
+  <tr><td><code>WIDGET_SHOW_FREE_TIME</code> / <code>_PERCENT</code></td><td>свободное время (остаток со знаком) и парный процент (False / False); при обоих включённых склеиваются в одну строку</td></tr>
+  <tr><td><code>WIDGET_SHOW_WORK_DAY_END</code></td><td>окончание рабочего дня: первый вход + рабочие часы (False)</td></tr>
+  <tr><td><code>WIDGET_SHOW_RECOMMENDED_ETA</code></td><td>достижение нормы активности (False)</td></tr>
+  <tr><td><code>WIDGET_SHOW_WEEK_ACTIVITY</code></td><td>недельная полоса под метриками (True)</td></tr>
+  <tr><td><code>WIDGET_WEEK_MODE</code></td><td><code>"calendar"</code> (Пн–Вс текущей недели) или <code>"rolling"</code> (последние 7 дней)</td></tr>
+  <tr><td><code>WIDGET_SHOW_TITLE_PERCENT</code>, <code>WIDGET_SHOW_TITLE_REMAINING_TIME</code>, <code>WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING</code></td><td>метрика в заголовке; взаимоисключающие (True / False / False)</td></tr>
+  <tr><td><code>WIDGET_UPDATE_INTERVAL</code></td><td>интервал обновления виджета, секунды (60); только вручную</td></tr>
+  <tr><td><code>THEME</code></td><td><code>"dark"</code> / <code>"light"</code></td></tr>
+  <tr><td><code>MAIN_FONT_SIZE</code></td><td>базовый размер шрифта (10); только вручную</td></tr>
+</table>
+<p>Если все опции метрик выключены, тело пустое; окно всё равно создаётся, пока включена недельная полоса или метрика заголовка.</p>
+
+<h4>Хранение и служебные</h4>
+<table>
+  <tr><th>Параметр</th><th>Описание</th></tr>
+  <tr><td><code>CHECKPOINT_INTERVAL</code></td><td>интервал промежуточного сохранения сессии, секунды (60); <code>0</code> = отключено; только вручную</td></tr>
+  <tr><td><code>LOG_DIR</code>, <code>STATE_FILE</code>, <code>CALENDAR_FILE</code></td><td>пути к папке данных, <code>state.json</code>, <code>work_calendar.json</code>. <code>LOG_DIR</code> продублирован в <code>bootstrap.py</code> намеренно: bootstrap решает, откуда грузить config, поэтому импортировать его ещё нельзя</td></tr>
+  <tr><td><code>USERNAME</code></td><td>имя для файлов отчётов (<code>%USERNAME%</code>)</td></tr>
+  <tr><td><code>DATE_KEY_FORMAT</code>, <code>TIME_FORMAT</code>, <code>TIMESTAMP_FORMAT</code>, <code>DATE_DISPLAY_FORMAT</code></td><td>форматы дат: ключ дня <code>%Y-%m-%d</code>, время, метка времени, отображение <code>%d.%m.%Y</code></td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="theme">Темы оформления</h2>
+<p>Все цветовые параметры обеих палитр — в <code>modules/theme.py</code>. Палитры описывают одни и те же роли (фон, текст, статусные зелёный/жёлтый/красный, подсказки), поэтому новая тема или правка цвета — в одном месте. Модули читают цвета динамически как <code>theme.COLOR_*</code>, поэтому окна, открытые после переключения (<code>set_theme()</code> из диалога), рисуются в новой палитре. Постоянный виджет уже созданными tk-виджетами сам не перекрашивается — после смены темы он пересобирает свою «хромированную» часть (<code>ActivityWidget._apply_theme</code>). Цвет текста на полосах мини-виджета «Метрики» выбирается по яркости подложки: палитры инвертированы, и фиксированный белый/чёрный читался бы только в одной теме.</p>
+
+<!-- ============================================================ -->
+<h2 id="widget">Виджет и метрики</h2>
+<p>Пакет <code>modules/widget/</code>: <code>widget.py</code> — конфигуратор (<code>ActivityWidget</code>), <code>title_bar.py</code> — заголовок с кнопками, drag и счётчиком, <code>toolbar.py</code> — панель, <code>body.py</code> — метрики, <code>week_strip.py</code> — недельная полоса, <code>tray.py</code> — значок (<code>pystray</code>), <code>notification.py</code> — звук. Виджет обновляется раз в <code>WIDGET_UPDATE_INTERVAL</code>, счётчик — раз в секунду. Позиция окна сохраняется между запусками.</p>
+
+<p><b>Цветовые шкалы</b> — каждая метрика красится по своей: активность (<code>RECOMMENDED_ACTIVITY_THRESHOLD</code>/<code>MIN_ACTIVITY_THRESHOLD</code>, процент от нормы активности), рабочее время (<code>RECOMMENDED_WORK_TIME_THRESHOLD</code>/<code>MIN_WORK_TIME_THRESHOLD</code>, <code>full_day_time / max_work</code>), свободное время (<code>FREE_TIME_WARNING_PERCENT</code>). Рамка: зелёный при рекомендуемой норме перекрывает красный алерт счётчика, красный перекрывает жёлтый минимального порога; при выключенном <code>WIDGET_PROGRESS_HIGHLIGHT</code> остаются только красные алерты, а зелёным при норме — только заголовок.</p>
+
+<p><b>Недельная полоса</b>: раскладка дат и источники данных — <code>modules/week_activity.py</code> (без tkinter). Прошлые дни — из дневных JSON-отчётов, сегодняшняя клетка — из живой статистики (отчёт отстаёт на checkpoint). Файлы перечитываются на каждом обновлении. Виды клеток: данные есть / рабочий день без отчёта / нерабочий / будущий (<code>tests/test_week_activity.py</code>).</p>
+
+<p>Панель инструментов не знает, что делают пункты меню «Инструменты» — они приходят из реестра <code>modules/tools</code>. Меню «Помощь» открывает документы из <code>docs/</code> через <code>utility.resource_path</code> (см. <a href="#docs">Документация</a>).</p>
+
+<!-- ============================================================ -->
+<h2 id="mini">Мини-виджеты</h2>
+<p><code>modules/widget/mini/</code>: <code>base.py</code> — базовое окно (поверх всех, без рамки, перетаскивание с любого места, крестик по наведению, ПКМ-меню), <code>ring.py</code> — кольцо-прогресс с общей геометрией и минимальной рисуемой дугой, типы: <code>pie.py</code> (активность), <code>worktime.py</code>, <code>freetime.py</code>, <code>timeline.py</code>, <code>bars.py</code>, <code>marks.py</code>, <code>countdown.py</code>. <code>manager.py</code> — создание/удаление/восстановление/persist, <code>widgets_dialog.py</code> — окно управления, <code>options_menu.py</code> — пункты ПКМ-меню по схеме реестра.</p>
+
+<h3>Реестр типов</h3>
+<p><code>mini/registry.py</code> — единый источник для UI (подпись, схема настроек) и для спавна по строковому типу. Новый тип — одна запись; его настройки описываются декларативно в <code>options</code>, и диалог управления рендерит контролы по схеме, не зная о конкретных типах:</p>
+<pre><code>{"key": str, "label": str, "default": value, "choices": [(value, label), ...], "kind": ...}
+kind: OPTION_CHOICE (по умолчанию) — радиокнопки, значение — строка;
+      OPTION_MULTI — набор галочек, значение — список ключей в порядке choices</code></pre>
+<p>Общая опция <code>center</code> («Процент»/«Время») — у всех кольцевых типов. ПКМ-меню строится по той же схеме, активное значение выделено жирным; правая кнопка внутри меню намеренно не выбирает пункт (<code>tests/test_widget_menu.py</code>).</p>
+
+<h3>Таймлайн: раскладка по ячейкам</h3>
+<p>Кольцо шириной 120 px показывает около 300 точек на рабочий день, поэтому круг рисуется не отрезок за отрезком, а по ячейкам: отрезок «первый вход → сейчас» делится на равные ячейки (~2,5 мин), каждая достаётся тому, чего в ней больше (при равенстве — ручному времени). Короткие отрезки округляются до ячейки. Полоса «Таймлайн» в «Метриках» режется так же, только на ячейки шириной в пиксель. Разбивка — из тех же <code>sessions</code>/<code>idle</code> с текущим таймаутом, сумма зелёного совпадает с «Активным временем» без ручных диапазонов; ручное время за пределами отрезка на круг не попадает (<code>tests/test_timeline_arcs.py</code>).</p>
+
+<h3>Полосы и отметки</h3>
+<p>«Метрики (полосы)»: заливка подрезается 0–100%, цвет — своя шкала полосы, порядок фиксированный, высота по числу полос (<code>tests/test_metric_bars.py</code>). «Отметки времени» — отдельный тип, потому что у момента нет процента; отметка стоит на месте, меняется только цвет (<code>tests/test_time_marks.py</code>).</p>
+
+<!-- ============================================================ -->
+<h2 id="tools">Инструменты</h2>
+<p>Пакет <code>modules/tools/</code>. Расширяется реестром, а не загрузкой плагинов: полноценная система плагинов была бы инфраструктурой ради одной фичи, а PyInstaller плохо дружит с динамической загрузкой модулей. <code>registry.py</code> — <code>TOOL_CLASSES</code> и формат схемы настроек, <code>spec.py</code> — виды контролов (вынесены отдельно, чтобы не было кольца импортов), <code>__init__.py</code> — фасад (создание, пункты меню, обновление настроек, остановка). Инструменты живут в окне-конфигураторе — доступны только когда виджет включён.</p>
+
+<p>От класса инструмента нужно: <code>key</code>, <code>title</code> (заголовок группы в настройках), <code>label</code> (пункт меню), <code>SETTINGS</code>, <code>__init__(root)</code>, <code>attach()</code>, <code>refresh()</code> (перечитать настройки после диалога), <code>detach()</code>, <code>menu_items()</code>.</p>
+
+<pre><code>SETTINGS = [
+  {"key": "имя параметра в config.py", "label": "подпись", "kind": SETTING_BOOL | SETTING_INT | SETTING_TEXT,
+   "from"/"to"/"step" (для INT), "width" (для TEXT), "hint": "серая подсказка",
+   "validate": fn(value) -> (title, text) | None},
+]</code></pre>
+<p>Диалог настроек рендерит вкладку «Инструменты», пишет <code>config.py</code> и применяет значения, не зная конкретных инструментов; вкладка не показывается, если ни у одного инструмента нет настроек. Невалидное значение не сохраняется — диалог остаётся открытым с ошибкой.</p>
+
+<h3>Блокировка ввода</h3>
+<p><code>tools/input_lock/</code>: <code>hotkey.py</code> — разбор комбинации и распознавание нажатия (чистая логика без Windows), <code>blocker.py</code> — фильтр в hook-потоке (проглотить событие или пропустить), <code>overlay.py</code> — плашка, <code>controller.py</code> — жизненный цикл: блокировка/снятие, таймер автоснятия, реакция на события сессии.</p>
+
+<p>Отдельных хуков не ставится: приложение уже держит LL-хуки для учёта активности, и блокировка — тот же хук, который вместо <code>CallNextHookEx</code> возвращает 1. Учёт времени под блокировкой:</p>
+<ul class="tight">
+  <li>отсчёт до простоя не замирает — время идёт как при обычном бездействии;</li>
+  <li>проглоченные нажатия отсчёт не сбрасывают: фильтр стоит до учёта;</li>
+  <li>разблокировка комбинацией засчитывается как ввод (нажал человек); автоснятие по таймеру и снятие при блокировке сессии — нет.</li>
+</ul>
+<p><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Del</kbd> и <kbd>Win</kbd>+<kbd>L</kbd> не перехватываются — обходится только драйвером, а приложение принципиально без прав администратора. Комбинация без модификатора отобрала бы клавишу у всех приложений, поэтому валидатор её отклоняет. При аварийном завершении процесса хуки снимаются вместе с ним. Тесты — <code>tests/test_input_lock.py</code>.</p>
+
+<!-- ============================================================ -->
+<h2 id="reports">Отчёты</h2>
+<ul>
+  <li><code>modules/report.py</code> — формирование дневного JSON; <code>session_monitor/day_report.py</code> — запись из <code>day_state</code> и чтение прошедших дней обратно.</li>
+  <li><code>modules/report_viewer.py</code> — окно дневного отчёта: сводка + график по часам. Для v2 график строится из <code>sessions</code>/<code>idle</code> с текущим таймаутом; v1 — по событиям лога.</li>
+  <li><code>modules/period_report.py</code> — агрегация за период из дневных JSON (без UI), <code>period_report_dialog.py</code> / <code>period_report_viewer.py</code> — диалог и окно. Дни без отчётов пропускаются.</li>
+  <li><code>modules/month_grid.py</code> — базовый месячный календарь (навигация, сетка, тултипы, подсветка сегодня); наследники переопределяют семантику ячейки: <code>heatmap_viewer.py</code> (цвет по проценту активности) и <code>schedule_calendar.py</code> (календарь рабочего времени, клик → <code>day_schedule_dialog.py</code>).</li>
+  <li><code>modules/calendar_popup.py</code> — модальный пикер даты для диалогов; <code>manual_activity_dialog.py</code> — ручные диапазоны.</li>
+  <li>«Отчёт за сегодня» перед открытием вызывает <code>checkpoint_session()</code>, чтобы файл отражал сессию до текущего момента; «Последний дневной отчёт» — <code>find_latest_past_report_date</code>.</li>
+</ul>
+<p>Миграция старых TXT-отчётов — <code>scripts/migrate_reports_to_json.py</code> (<code>scripts/migrate_reports_to_json.md</code>).</p>
+
+<!-- ============================================================ -->
+<h2 id="docs">Документация</h2>
+<p>Два документа в <code>docs/</code>, оба HTML — Markdown по умолчанию не открывается почти ни у кого, а браузер есть у всех:</p>
+<ul class="tight">
+  <li><code>docs/user_guide.html</code> — руководство пользователя: только то, что видно в интерфейсе, без имён параметров и модулей;</li>
+  <li><code>docs/developer_guide.html</code> — этот документ.</li>
+</ul>
+<p>Файлы самодостаточные (стили внутри, тёмная тема по <code>prefers-color-scheme</code>), чтобы один файл можно было переслать. Папка поставляется со сборкой (<code>main.spec</code>) и открывается из меню ❓: «Помощь» → руководство, «Техническая документация» → этот файл; путь берётся через <code>utility.resource_path</code>, который в сборке смотрит в <code>sys._MEIPASS</code>. <code>README.md</code> в корне — короткая страница для GitHub со ссылками сюда.</p>
+<aside class="note">
+<p>Документация — часть изменения, а не follow-up: любая доработка обновляет оба документа в той части, которой касается (поведение — в руководстве, устройство — здесь), в том же коммите.</p>
+</aside>
+
+<!-- ============================================================ -->
+<h2 id="versioning">Версионирование и релиз</h2>
+<p>Версия живёт в <code>version.py</code> (<code>__version__</code>) — единственное место, где её нужно менять. Схема — CalVer <code>ГОД.МЕСЯЦ.НОМЕР</code>:</p>
+<pre><code>2026.08.1   первый релиз августа 2026
+2026.08.2   следующий релиз того же месяца
+2026.10.1   в сентябре релизов не было — это нормально</code></pre>
+<ul class="tight">
+  <li><b>ГОД</b> — четыре цифры, <b>МЕСЯЦ</b> — две с ведущим нулём (чтобы версии сортировались как строки);</li>
+  <li><b>НОМЕР</b> — порядковый номер релиза внутри месяца, сбрасывается на 1 в начале каждого месяца. Считает релизы, а не фичи: любой выложенный билд увеличивает его на единицу — правило механическое, две сборки не получат одну версию.</li>
+</ul>
+<p>SemVer не используется намеренно: внешних потребителей API нет, ломать совместимость не для кого, а «насколько свежая у меня сборка» — вопрос по делу. Версия видна в ❓ → «О программе» и в подсказке трея; в заголовке виджета её нет — он компактный и мигает при простое. Сравнивать версии через <code>version.version_tuple()</code>, а не как строки: при номере ≥ 10 строки врут (<code>"2026.08.10" &lt; "2026.08.9"</code>).</p>
+
+<h3>Выпуск релиза</h3>
+<pre><code>git add .                                        # решаешь, что входит в релиз
+python scripts/release.py "week activity strip"  # бамп + коммит + аннотированный тег
+git push --follow-tags                           # или сразу флагом --push</code></pre>
+<p><code>scripts/release.py</code> считает следующий номер (тот же месяц — <code>+1</code>, новый — сброс на 1), переписывает <code>__version__</code>, коммитит <b>то, что лежит в индексе</b>, плюс <code>version.py</code>, и ставит аннотированный тег <code>v&lt;версия&gt;</code>. Перед записью проверяет, что версию не бампнули руками и такого тега нет; <code>--dry-run</code> показывает план. Подробности — <code>scripts/release.md</code>. Руками то же самое: поменять <code>__version__</code>, закоммитить, <code>git tag -a v2026.09.1 -m "Release 2026.09.1"</code>, <code>git push --follow-tags</code> (обычный <code>git push</code> теги не забирает; <code>git config --global push.followTags true</code>). Тег — шаг, который терялся чаще всего: у релизов 2026.08.6–2026.08.10 тегов не было, ради этого скрипт и появился. Тесты — <code>tests/test_release_version.py</code>.</p>
+
+<!-- ============================================================ -->
+<h2 id="build">Сборка</h2>
+<p>PyInstaller по <code>main.spec</code>: <code>datas</code> кладёт папку <code>docs/</code> рядом с исполняемым файлом, <code>hiddenimports=['pystray._win32']</code> — потому что <code>pystray</code> грузит бэкенд лениво и PyInstaller его не видит. Сборка в режиме <code>COLLECT</code> (папка <code>dist/main/</code>), консоль включена. Ресурсы в рантайме ищутся через <code>utility.resource_path</code>: от <code>sys._MEIPASS</code> в сборке, от корня проекта при обычном запуске.</p>
+<pre><code>.venv\Scripts\python -m PyInstaller main.spec</code></pre>
+
+<!-- ============================================================ -->
+<h2 id="layout">Структура проекта</h2>
+<ul class="files">
+  <li><code>main.py</code> — точка входа</li>
+  <li><code>version.py</code> — <code>__version__</code> и <code>version_tuple()</code></li>
+  <li><code>bootstrap.py</code> — пересборка пользовательского <code>config.py</code> из шаблона и подключение его через <code>sys.path</code></li>
+  <li><code>config.py</code> — <b>шаблон настроек</b> (не модифицируется приложением)</li>
+  <li><code>constants.py</code> — константы Windows API, ctypes-типы (<code>WNDPROC</code>, <code>HOOKPROC</code>), привязки функций, шрифты, тексты UI, <code>MIN_IDLE_GAP_SECONDS</code>, <code>REPORT_JSON_VERSION</code></li>
+  <li><code>utility.py</code> — форматирование дат/времени, <code>resource_path</code>, <code>truncate_percent</code>, расчёт норм дня (<code>get_work_hours</code>, <code>get_break_hours</code>, <code>get_activity_norm_hours</code>)</li>
+  <li><code>modules/session_monitor/</code> — монитор сессий (слои — в разделе <a href="#architecture">Архитектура</a>)</li>
+  <li><code>modules/events_monitor.py</code> — мониторинг ввода через LL-хуки, захват сырых гэпов</li>
+  <li><code>modules/activity_intervals.py</code> — чистое ядро активного времени из интервалов</li>
+  <li><code>modules/work_calendar.py</code> — календарь-исключения (<code>work_calendar.json</code>)</li>
+  <li><code>modules/theme.py</code> — палитры тем и переключение</li>
+  <li><code>modules/report.py</code>, <code>report_viewer.py</code>, <code>period_report.py</code>, <code>period_report_dialog.py</code>, <code>period_report_viewer.py</code>, <code>heatmap_viewer.py</code>, <code>month_grid.py</code>, <code>schedule_calendar.py</code>, <code>day_schedule_dialog.py</code>, <code>calendar_popup.py</code>, <code>manual_activity_dialog.py</code>, <code>settings_dialog.py</code>, <code>ui_utils.py</code> — отчёты и диалоги</li>
+  <li><code>modules/week_activity.py</code> — раскладка недельной полосы (данные, без tkinter)</li>
+  <li><code>modules/widget/</code> — конфигуратор: <code>widget.py</code>, <code>title_bar.py</code>, <code>toolbar.py</code>, <code>body.py</code>, <code>week_strip.py</code>, <code>manager.py</code>, <code>widgets_dialog.py</code>, <code>widget_store.py</code>, <code>tray.py</code>, <code>notification.py</code>; <code>mini/</code> — мини-виджеты и их реестр</li>
+  <li><code>modules/tools/</code> — инструменты: <code>registry.py</code>, <code>spec.py</code>, <code>input_lock/</code></li>
+  <li><code>docs/</code> — <code>user_guide.html</code>, <code>developer_guide.html</code></li>
+  <li><code>scripts/</code> — <code>release.py</code> (+ <code>release.md</code>), <code>migrate_reports_to_json.py</code> (+ <code>.md</code>)</li>
+  <li><code>tests/</code> — см. ниже</li>
+  <li><code>requirements.txt</code>, <code>start.bat</code>, <code>main.spec</code></li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="tests">Тесты</h2>
+<table>
+  <tr><th>Файл</th><th>Что проверяет</th></tr>
+  <tr><td><code>test_activity_intervals.py</code></td><td>ядро вычисления активного времени из интервалов</td></tr>
+  <tr><td><code>test_stats_pending_idle.py</code></td><td>живая статистика: закрытый гэп виден до checkpoint'а</td></tr>
+  <tr><td><code>test_percent_display.py</code></td><td>усечение процентов: число и цвет сходятся</td></tr>
+  <tr><td><code>test_free_time.py</code></td><td>свободное время: бюджеты, шкала, мини-виджет</td></tr>
+  <tr><td><code>test_recommended_eta.py</code></td><td>достижение нормы: прогноз, сдвиг от простоя и ручного времени, фиксация факта</td></tr>
+  <tr><td><code>test_metric_bars.py</code></td><td>виджет-полосы: набор метрик, шкалы, читаемость текста</td></tr>
+  <tr><td><code>test_time_marks.py</code></td><td>отметки времени: чтение, цвет, чистка настроек</td></tr>
+  <tr><td><code>test_widget_menu.py</code></td><td>ПКМ-меню мини-виджета: состав пунктов и отметка активных значений</td></tr>
+  <tr><td><code>test_timeline_arcs.py</code></td><td>раскладка таймлайна: ячейки, сохранность простоя, отсутствие вырожденных дуг</td></tr>
+  <tr><td><code>test_week_activity.py</code></td><td>недельная полоса: даты обоих режимов, источники данных, виды клеток</td></tr>
+  <tr><td><code>test_input_lock.py</code></td><td>блокировка ввода: разбор комбинации, распознавание, решения фильтра, учёт времени, полнота схемы настроек</td></tr>
+  <tr><td><code>test_release_version.py</code></td><td>расчёт следующей версии: инкремент внутри месяца, сброс на стыке</td></tr>
+</table>
+
+<footer>
+<hr>
+<p>user_active_time · техническая документация. Руководство пользователя — <a href="user_guide.html">user_guide.html</a>.</p>
+</footer>
+
+</main>
+</body>
+</html>

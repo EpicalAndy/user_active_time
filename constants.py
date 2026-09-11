@@ -29,9 +29,14 @@ DEFAULT_MANUAL_ACTIVITY_DESCRIPTION = "Добавлено пользовател
 
 HELP_MENU_LABEL = "❓"
 HELP_MENU_README = "Помощь"
+HELP_MENU_DEV_GUIDE = "Техническая документация"
 HELP_MENU_GITHUB = "github"
 HELP_MENU_ABOUT = "О программе"
-# «Помощь» открывает локальный README.md (поставляется со сборкой — см. main.spec).
+# «Помощь» и «Техническая документация» открывают HTML из docs/ (папка
+# поставляется со сборкой — см. main.spec).
+USER_GUIDE_PATH = "docs/user_guide.html"
+DEV_GUIDE_PATH = "docs/developer_guide.html"
+DOC_NOT_FOUND_TEXT = "Файл документации не найден:\n{path}"
 GITHUB_URL = "https://github.com/EpicalAndy/user_active_time"
 
 # Окно «О программе»: версия подставляется из version.__version__.
