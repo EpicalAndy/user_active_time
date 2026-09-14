@@ -24,6 +24,7 @@ from constants import (
     METRIC_WORK_DAY_END_FULL,
 )
 from modules import theme
+from .day_timeline import DayTimelineRow
 from utility import (
     PERCENT_DECIMALS,
     format_duration_short,
@@ -168,6 +169,9 @@ class WidgetBody:
         )
 
         self._metric_labels: dict[str, dict] = {}
+        # Таймлайн дня — строка тела, но не «лейбл + значение», а полоса:
+        # живёт отдельно от _metric_labels и рисует себя сама.
+        self._timeline: DayTimelineRow | None = None
         self._build_metrics()
 
     def _build_metrics(self):
@@ -218,6 +222,10 @@ class WidgetBody:
             self._metric_labels["recommended_eta"] = self._add_metric(
                 f"{METRIC_RECOMMENDED_ETA_FULL}:",
             )
+        # Последней строкой: лента дня подводит итог цифрам над ней.
+        if config.WIDGET_SHOW_DAY_TIMELINE:
+            self._timeline = DayTimelineRow(self.frame)
+            self._timeline.pack(fill=tk.X, pady=2)
 
     def _add_metric(self, label_text: str) -> dict:
         frame = tk.Frame(self.frame, bg=theme.COLOR_DARK_BG)
@@ -251,6 +259,8 @@ class WidgetBody:
 
         self._update_values(stats)
         self._apply_colors(stats)
+        if self._timeline is not None:
+            self._timeline.update(stats)
 
     def is_working_day(self) -> bool:
         return self._is_working_day
@@ -371,6 +381,8 @@ class WidgetBody:
         self._is_working_day = False
         for widgets in self._metric_labels.values():
             widgets["frame"].pack_forget()
+        if self._timeline is not None:
+            self._timeline.pack_forget()
         # В нерабочем дне метрики скрыты, поэтому единственный сигнал — серый фон тела.
         self.frame.configure(bg=theme.COLOR_GRAY)
         self._day_off_label.configure(bg=theme.COLOR_GRAY)
@@ -383,3 +395,5 @@ class WidgetBody:
         self.frame.configure(bg=theme.COLOR_DARK_BG)
         for widgets in self._metric_labels.values():
             widgets["frame"].pack(fill=tk.X, pady=2)
+        if self._timeline is not None:
+            self._timeline.pack(fill=tk.X, pady=2)

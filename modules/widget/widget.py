@@ -86,6 +86,7 @@ def is_widget_enabled() -> bool:
         WIDGET_SHOW_FULL_DAY_TIME,
         WIDGET_SHOW_REMAINING_TIME,
         WIDGET_SHOW_RECOMMENDED_REMAINING,
+        config.WIDGET_SHOW_DAY_TIMELINE,
         # Недельной полосы достаточно, чтобы окно имело смысл: она показывает
         # прошедшие дни, даже когда все дневные метрики выключены.
         config.WIDGET_SHOW_WEEK_ACTIVITY,

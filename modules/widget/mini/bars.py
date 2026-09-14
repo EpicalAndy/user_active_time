@@ -37,7 +37,7 @@ from modules import theme
 from utility import format_duration_signed, format_percent
 from ..body import _color_for_percent, free_time_color
 from .base import PERCENT_DECIMALS, BaseMiniWidget
-from .timeline import cell_kinds, segment_color
+from ..timeline_cells import cell_kinds, segment_color
 
 # Геометрия. Ширина больше кольцевых виджетов: полосе нужно место под название
 # и значение одновременно.
@@ -58,7 +58,7 @@ _INK_THRESHOLD = 0.6
 
 # На сколько ячеек режется лента дня: ячейка — пиксель ширины полосы, мельче
 # полоса всё равно ничего не покажет (кольцо режется по своей мерке, см.
-# timeline._CELLS).
+# mini.timeline._CELLS).
 _STRIP_CELLS = WIDTH - 2 * PAD_X
 
 
