@@ -94,10 +94,10 @@ class WeekStrip:
         week = build_week(datetime.date.today(), config.WIDGET_WEEK_MODE, stats)
         for i, (cell, data) in enumerate(zip(self._cells, week)):
             cell.configure(
-                bg=_cell_color(data),
-                highlightbackground=_border_color(data),
+                bg=cell_color(data),
+                highlightbackground=border_color(data),
             )
-            self._tooltips[i] = _tooltip_text(data)
+            self._tooltips[i] = tooltip_text(data)
 
     def pack(self, **kwargs):
         self.frame.pack(**kwargs)
@@ -110,9 +110,10 @@ class WeekStrip:
 
 
 # --- Вид клетки ---
+# Публичные: теми же правилами красит свои клетки мини-виджет «Тепловая карта».
 
 
-def _cell_color(data: dict) -> str:
+def cell_color(data: dict) -> str:
     """Заливка: цвет активности, серый «нет данных», приглушённый выходной."""
     kind = data["kind"]
     if kind == KIND_FUTURE:
@@ -131,7 +132,7 @@ def _cell_color(data: dict) -> str:
     )
 
 
-def _border_color(data: dict) -> str:
+def border_color(data: dict) -> str:
     """Рамка: выделяет сегодня, обводит клетки без заливки, иначе невидима."""
     if data["is_today"]:
         return theme.COLOR_LIGHT_FG
@@ -140,7 +141,7 @@ def _border_color(data: dict) -> str:
     return theme.COLOR_DARK_BG
 
 
-def _tooltip_text(data: dict) -> str:
+def tooltip_text(data: dict) -> str:
     """Подсказка: дата и достижения дня — активность и рабочее время в %."""
     date = data["date"]
     header = f"{WEEKDAY_SHORT_NAMES[date.weekday()]}, {format_date_display(date)}"

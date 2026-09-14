@@ -1,9 +1,11 @@
 """
-Данные недельной полосы активности.
+Данные недельной полосы активности (и любой другой сетки дней).
 
 Отвечает на один вопрос: «какие семь дней показывать и что известно про
 каждый». Отрисовка — в modules/widget/week_strip.py, здесь только tkinter-
 независимые вычисления (так их можно проверить тестами без окна).
+Раскладка одного дня (`build_days`) общая: ею же красит клетки мини-виджет
+«Тепловая карта», у которого дней не семь, а до месяца.
 
 Два режима недели (config.WIDGET_WEEK_MODE):
     calendar — календарная, Пн–Вс текущей недели; дни после сегодня ещё
@@ -69,16 +71,27 @@ def build_week(
     `read_metrics` вынесен параметром ради тестов: подменив его, можно
     разложить неделю без файлов на диске.
     """
-    return [
-        _build_cell(date, today, mode, today_stats, read_metrics)
-        for date in week_dates(today, mode)
-    ]
+    return build_days(week_dates(today, mode), today, today_stats, read_metrics)
+
+
+def build_days(
+    dates: list[datetime.date],
+    today: datetime.date,
+    today_stats: dict | None = None,
+    read_metrics=_read_day_metrics,
+) -> list[dict]:
+    """Клетки для произвольного списка дат — по одной на дату, в том же порядке.
+
+    Та же раскладка, что у недели: сегодня — из живых stats, прошлое — из
+    отчётов, будущее — пустая клетка. Публичная: по ней же строится сетка
+    мини-виджета «Тепловая карта».
+    """
+    return [_build_cell(date, today, today_stats, read_metrics) for date in dates]
 
 
 def _build_cell(
     date: datetime.date,
     today: datetime.date,
-    mode: str,
     today_stats: dict | None,
     read_metrics,
 ) -> dict:

@@ -86,6 +86,7 @@ WIDGET_TYPE_COUNTDOWN = "Счётчик активности (круг)"
 WIDGET_TYPE_FREE_TIME_PIE = "Свободное время (кольцо)"
 WIDGET_TYPE_BARS = "Метрики (полосы)"
 WIDGET_TYPE_TIME_MARKS = "Отметки времени (список)"
+WIDGET_TYPE_HEATMAP = "Тепловая карта (сетка)"
 # Подписи под кольцами
 WIDGET_CAPTION_ACTIVITY = "Активность"
 WIDGET_CAPTION_WORK_TIME = "Рабочее время"
@@ -95,6 +96,7 @@ WIDGET_CAPTION_FREE_TIME = "Свободное время"
 WIDGET_CAPTION_BARS = "Метрики"
 WIDGET_BARS_EMPTY = "Метрики не выбраны"
 WIDGET_CAPTION_TIME_MARKS = "Отметки времени"
+WIDGET_CAPTION_HEATMAP = "Тепловая карта"
 WIDGET_MARKS_EMPTY = "Отметки не выбраны"
 # Контекстное меню отдельного виджета (ПКМ)
 WIDGET_REMOVE = "Убрать виджет"
@@ -108,6 +110,13 @@ WIDGET_OPT_METRICS_LABEL = "Показывать"
 WIDGET_OPT_CENTER_LABEL = "В центре"
 WIDGET_OPT_CENTER_PERCENT = "Процент"
 WIDGET_OPT_CENTER_TIME = "Время"
+# Настройки тепловой карты: сколько дней и от чего отсчитывать.
+WIDGET_OPT_PERIOD_LABEL = "Период"
+WIDGET_OPT_PERIOD_WEEK = "Неделя"
+WIDGET_OPT_PERIOD_MONTH = "Месяц"
+WIDGET_OPT_RANGE_LABEL = "Отсчёт"
+WIDGET_OPT_RANGE_CALENDAR = "Календарный"
+WIDGET_OPT_RANGE_ROLLING = "Скользящий (по сегодня)"
 
 # === Системный трей ===
 
