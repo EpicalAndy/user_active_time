@@ -21,4 +21,4 @@ start.bat
 
 Внешние пакеты (`pystray`, `Pillow`) нужны только для значка в трее — без них всё остальное работает. Данные пишутся в `C:\Users\<пользователь>\active_time\`.
 
-Версия — в `version.py` и в меню ❓ → «О программе». Релиз: `python scripts/release.py "описание"` (см. [`scripts/release.md`](scripts/release.md)).
+Версия — в `version.py` и в меню ❓ → «О программе», что нового по версиям — в [`CHANGELOG.md`](CHANGELOG.md). Релиз: `python scripts/release.py "описание"` (см. [`scripts/release.md`](scripts/release.md)).

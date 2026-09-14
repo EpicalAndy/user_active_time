@@ -1,9 +1,11 @@
 """
-Тесты расчёта следующей версии (scripts/release.py).
+Тесты расчёта следующей версии и закрытия чейнджлога (scripts/release.py).
 
-Проверяется единственное правило CalVer, на котором ошибается рука: номер
-считается внутри месяца и сбрасывается на 1, когда месяц сменился. Работа с
-git сюда не входит — она проверяется запуском скрипта, а не тестом.
+Проверяется правило CalVer, на котором ошибается рука (номер считается внутри
+месяца и сбрасывается на 1, когда месяц сменился), и перенос раздела
+«Не выпущено» CHANGELOG.md под номер версии: заголовок меняется, строки
+остаются, пустой раздел релиз не проходит. Работа с git сюда не входит — она
+проверяется запуском скрипта, а не тестом.
 
 Запуск: `python -m pytest tests/test_release_version.py`
 или как скрипт: `python tests/test_release_version.py`.
@@ -17,7 +19,12 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
 sys.path.insert(0, os.path.join(_ROOT, "scripts"))
 
-from release import ReleaseError, next_version  # noqa: E402
+from release import (  # noqa: E402
+    UNRELEASED_HEADING,
+    ReleaseError,
+    next_version,
+    release_changelog,
+)
 
 
 def test_same_month_increments_number():
@@ -58,6 +65,55 @@ def test_broken_version_is_rejected():
         except ReleaseError:
             continue
         raise AssertionError(f"версия «{broken}» должна была быть отвергнута")
+
+
+# --- Чейнджлог ---
+
+_CHANGELOG = (
+    "# Чейнджлог\n\n"
+    f"{UNRELEASED_HEADING}\n\n"
+    "- Добавлена метрика «Таймлайн дня».\n"
+    "- Починен тултип.\n\n"
+    "## 2026.09.3 — 2026-09-11\n\n"
+    "- Руководства в HTML.\n"
+)
+
+
+def test_unreleased_section_becomes_version_heading():
+    """Заголовок раздела меняется на версию с датой, строки и соседи остаются."""
+    out = release_changelog(_CHANGELOG, "2026.09.4", datetime.date(2026, 9, 14))
+    assert UNRELEASED_HEADING not in out
+    assert "## 2026.09.4 — 2026-09-14\n\n- Добавлена метрика «Таймлайн дня».\n- Починен тултип.\n" in out
+    assert "## 2026.09.3 — 2026-09-11\n\n- Руководства в HTML.\n" in out
+    assert out.startswith("# Чейнджлог\n\n")
+
+
+def test_empty_unreleased_section_is_rejected():
+    """Пустой раздел — остановка: релиз без описания и есть то, от чего спасает чейнджлог."""
+    empty = f"# Чейнджлог\n\n{UNRELEASED_HEADING}\n\n\n## 2026.09.3 — 2026-09-11\n\n- x\n"
+    try:
+        release_changelog(empty, "2026.09.4", datetime.date(2026, 9, 14))
+    except ReleaseError:
+        return
+    raise AssertionError("пустой раздел «Не выпущено» должен был быть отвергнут")
+
+
+def test_empty_unreleased_section_at_end_of_file_is_rejected():
+    """Раздел последний в файле и пустой — то же самое."""
+    try:
+        release_changelog(f"# Чейнджлог\n\n{UNRELEASED_HEADING}\n", "2026.09.4", datetime.date(2026, 9, 14))
+    except ReleaseError:
+        return
+    raise AssertionError("пустой раздел «Не выпущено» должен был быть отвергнут")
+
+
+def test_missing_unreleased_section_is_rejected():
+    """Раздела нет вовсе — файл ведут не по договорённости, молча выпускать нельзя."""
+    try:
+        release_changelog("# Чейнджлог\n\n## 2026.09.3 — 2026-09-11\n\n- x\n", "2026.09.4", datetime.date(2026, 9, 14))
+    except ReleaseError:
+        return
+    raise AssertionError("отсутствие раздела «Не выпущено» должно было быть отвергнуто")
 
 
 def _run():

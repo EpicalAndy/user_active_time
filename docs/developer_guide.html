@@ -391,11 +391,14 @@ kind: OPTION_CHOICE (по умолчанию) — радиокнопки, зна
 </ul>
 <p>SemVer не используется намеренно: внешних потребителей API нет, ломать совместимость не для кого, а «насколько свежая у меня сборка» — вопрос по делу. Версия видна в ❓ → «О программе» и в подсказке трея; в заголовке виджета её нет — он компактный и мигает при простое. Сравнивать версии через <code>version.version_tuple()</code>, а не как строки: при номере ≥ 10 строки врут (<code>"2026.08.10" &lt; "2026.08.9"</code>).</p>
 
+<h3>Чейнджлог</h3>
+<p><code>CHANGELOG.md</code> в корне — что нового в каждой версии, коротко и по-человечески; номер CalVer сам по себе этого не говорит. Ведётся по ходу работы: каждая законченная доработка (обычно — отдельный коммит) добавляет строку <code>- ...</code> под заголовок <code>## Не выпущено</code>. Закрывать раздел версией руками не нужно — это делает скрипт релиза, и пустой раздел он не выпускает. История до 2026.09.4 восстановлена по релизным коммитам.</p>
+
 <h3>Выпуск релиза</h3>
 <pre><code>git add .                                        # решаешь, что входит в релиз
 python scripts/release.py "week activity strip"  # бамп + коммит + аннотированный тег
 git push --follow-tags                           # или сразу флагом --push</code></pre>
-<p><code>scripts/release.py</code> считает следующий номер (тот же месяц — <code>+1</code>, новый — сброс на 1), переписывает <code>__version__</code>, коммитит <b>то, что лежит в индексе</b>, плюс <code>version.py</code>, и ставит аннотированный тег <code>v&lt;версия&gt;</code>. Перед записью проверяет, что версию не бампнули руками и такого тега нет; <code>--dry-run</code> показывает план. Подробности — <code>scripts/release.md</code>. Руками то же самое: поменять <code>__version__</code>, закоммитить, <code>git tag -a v2026.09.1 -m "Release 2026.09.1"</code>, <code>git push --follow-tags</code> (обычный <code>git push</code> теги не забирает; <code>git config --global push.followTags true</code>). Тег — шаг, который терялся чаще всего: у релизов 2026.08.6–2026.08.10 тегов не было, ради этого скрипт и появился. Тесты — <code>tests/test_release_version.py</code>.</p>
+<p><code>scripts/release.py</code> считает следующий номер (тот же месяц — <code>+1</code>, новый — сброс на 1), переписывает <code>__version__</code>, в <code>CHANGELOG.md</code> переименовывает раздел «Не выпущено» в «&lt;версия&gt; — &lt;дата&gt;», коммитит <b>то, что лежит в индексе</b>, плюс <code>version.py</code> и <code>CHANGELOG.md</code>, и ставит аннотированный тег <code>v&lt;версия&gt;</code>. Перед записью проверяет, что версию не бампнули руками, такого тега нет и раздел «Не выпущено» не пуст (кроме <code>--version-only</code>); <code>--dry-run</code> показывает план. Подробности — <code>scripts/release.md</code>. Руками то же самое: поменять <code>__version__</code>, закоммитить, <code>git tag -a v2026.09.1 -m "Release 2026.09.1"</code>, <code>git push --follow-tags</code> (обычный <code>git push</code> теги не забирает; <code>git config --global push.followTags true</code>). Тег — шаг, который терялся чаще всего: у релизов 2026.08.6–2026.08.10 тегов не было, ради этого скрипт и появился. Тесты — <code>tests/test_release_version.py</code>.</p>
 
 <!-- ============================================================ -->
 <h2 id="build">Сборка</h2>
@@ -406,7 +409,7 @@ git push --follow-tags                           # или сразу флаго�
 <h2 id="layout">Структура проекта</h2>
 <ul class="files">
   <li><code>main.py</code> — точка входа</li>
-  <li><code>version.py</code> — <code>__version__</code> и <code>version_tuple()</code></li>
+  <li><code>version.py</code> — <code>__version__</code> и <code>version_tuple()</code>; <code>CHANGELOG.md</code> — что нового по версиям</li>
   <li><code>bootstrap.py</code> — пересборка пользовательского <code>config.py</code> из шаблона и подключение его через <code>sys.path</code></li>
   <li><code>config.py</code> — <b>шаблон настроек</b> (не модифицируется приложением)</li>
   <li><code>constants.py</code> — константы Windows API, ctypes-типы (<code>WNDPROC</code>, <code>HOOKPROC</code>), привязки функций, шрифты, тексты UI, <code>MIN_IDLE_GAP_SECONDS</code>, <code>REPORT_JSON_VERSION</code></li>
@@ -442,7 +445,7 @@ git push --follow-tags                           # или сразу флаго�
   <tr><td><code>test_timeline_arcs.py</code></td><td>раскладка таймлайна: ячейки, сохранность простоя, отсутствие вырожденных дуг</td></tr>
   <tr><td><code>test_week_activity.py</code></td><td>недельная полоса: даты обоих режимов, источники данных, виды клеток</td></tr>
   <tr><td><code>test_input_lock.py</code></td><td>блокировка ввода: разбор комбинации, распознавание, решения фильтра, учёт времени, полнота схемы настроек</td></tr>
-  <tr><td><code>test_release_version.py</code></td><td>расчёт следующей версии: инкремент внутри месяца, сброс на стыке</td></tr>
+  <tr><td><code>test_release_version.py</code></td><td>расчёт следующей версии: инкремент внутри месяца, сброс на стыке; закрытие раздела «Не выпущено» чейнджлога</td></tr>
 </table>
 
 <footer>

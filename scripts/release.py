@@ -11,13 +11,19 @@
 Что делает, останавливаясь на первой же проблеме:
     1. считает следующую версию по CalVer (см. version.py) от текущей и сегодняшней даты;
     2. переписывает `__version__` в version.py;
-    3. коммитит то, что лежит в индексе, плюс version.py;
-    4. ставит аннотированный тег `v<версия>`;
-    5. по флагу `--push` отправляет коммит вместе с тегом.
+    3. в CHANGELOG.md переименовывает раздел «Не выпущено» в «<версия> — <дата>»;
+    4. коммитит то, что лежит в индексе, плюс version.py и CHANGELOG.md;
+    5. ставит аннотированный тег `v<версия>`;
+    6. по флагу `--push` отправляет коммит вместе с тегом.
 
-Скрипт сам ничего не добавляет в индекс, кроме version.py: что войдёт в релиз,
-решает `git add` до запуска. Так релизный коммит не утащит случайный файл,
-который валялся рядом в рабочем дереве.
+Скрипт сам ничего не добавляет в индекс, кроме version.py и CHANGELOG.md: что
+войдёт в релиз, решает `git add` до запуска. Так релизный коммит не утащит
+случайный файл, который валялся рядом в рабочем дереве.
+
+Чейнджлог — вторая половина ритуала, которая проседает руками так же, как тег:
+строки под «Не выпущено» пишутся по ходу работы, а закрыть раздел версией при
+релизе забывается. Поэтому пустой раздел скрипт не выпускает (кроме
+--version-only: релиз из одного бампа описывать нечем).
 
 Тег — половина смысла этого скрипта. Из первых одиннадцати релизов проекта
 пять (08.6–08.10) остались без тегов: руками проседает именно этот шаг, а не
@@ -37,7 +43,11 @@ import sys
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _VERSION_FILE = os.path.join(_PROJECT_ROOT, "version.py")
+_CHANGELOG_FILE = os.path.join(_PROJECT_ROOT, "CHANGELOG.md")
 _ENCODING = "utf-8"
+
+# Заголовок раздела с невыпущенными изменениями в CHANGELOG.md.
+UNRELEASED_HEADING = "## Не выпущено"
 
 # Присваивание версии в version.py и её формат ГОД.МЕСЯЦ.НОМЕР.
 # Пробелы вокруг «=» — именно [ \t], а не \s: \s включает перевод строки, и
@@ -92,6 +102,51 @@ def _write_version(version: str):
         f.write(text)
 
 
+# --- Чейнджлог ---
+
+
+def release_changelog(text: str, version: str, today: datetime.date) -> str:
+    """Закрывает раздел «Не выпущено» версией: заголовок становится «## <версия> — <дата>».
+
+    Раздел — от своего заголовка до следующего `## ` (или конца файла). Пустой
+    раздел (нет ни одной непустой строки) — ошибка: релиз без описания это как
+    раз то, от чего чейнджлог должен спасать. Отсутствие раздела — тоже ошибка:
+    значит, файл вели не по договорённости, и молча выпустить его нельзя.
+    """
+    heading_re = re.compile(
+        r"^" + re.escape(UNRELEASED_HEADING) + r"[ \t]*$", re.MULTILINE,
+    )
+    match = heading_re.search(text)
+    if match is None:
+        raise ReleaseError(
+            f"в CHANGELOG.md нет раздела «{UNRELEASED_HEADING}» — нечего выпускать.\n"
+            "Добавь его и опиши изменения строками «- ...».",
+        )
+    body_start = match.end()
+    next_heading = re.compile(r"^## ", re.MULTILINE).search(text, body_start)
+    body_end = next_heading.start() if next_heading else len(text)
+    if not text[body_start:body_end].strip():
+        raise ReleaseError(
+            f"раздел «{UNRELEASED_HEADING}» в CHANGELOG.md пуст.\n"
+            "Опиши, что вошло в релиз, строками «- ...» — или запусти с "
+            "--version-only, если релиз состоит из одного бампа версии.",
+        )
+    new_heading = f"## {version} — {today.isoformat()}"
+    return text[:match.start()] + new_heading + text[match.end():]
+
+
+def _read_changelog() -> str:
+    if not os.path.exists(_CHANGELOG_FILE):
+        raise ReleaseError(f"нет файла {_CHANGELOG_FILE} — чейнджлог ведётся с версии 2026.09.4")
+    with open(_CHANGELOG_FILE, "r", encoding=_ENCODING) as f:
+        return f.read()
+
+
+def _write_changelog(text: str):
+    with open(_CHANGELOG_FILE, "w", encoding=_ENCODING) as f:
+        f.write(text)
+
+
 # --- Git ---
 
 
@@ -139,16 +194,21 @@ def _check_ready(tag: str, version_only: bool):
         )
 
 
-def _rollback(previous: str, was_staged: bool):
-    """Возвращает version.py в исходное состояние после неудачного коммита.
+def _rollback(previous: str, was_staged: bool, changelog: str | None, changelog_staged: bool):
+    """Возвращает version.py и CHANGELOG.md в исходное состояние после неудачного коммита.
 
-    Из индекса файл убирается, только если его туда положил скрипт: правку
+    Из индекса файлы убираются, только если их туда положил скрипт: правку
     version.py могли застейджить и намеренно (например, докстринг), и рушить
-    чужой индекс из-за своей неудачи нечестно.
+    чужой индекс из-за своей неудачи нечестно. `changelog` — исходный текст
+    (None — чейнджлог не трогали).
     """
     _write_version(previous)
     if not was_staged:
         _git("reset", "--quiet", "HEAD", "--", "version.py", check=False)
+    if changelog is not None:
+        _write_changelog(changelog)
+        if not changelog_staged:
+            _git("reset", "--quiet", "HEAD", "--", "CHANGELOG.md", check=False)
 
 
 # --- Сценарий ---
@@ -156,10 +216,21 @@ def _rollback(previous: str, was_staged: bool):
 
 def _release(args) -> int:
     current = read_version()
-    version = next_version(current, datetime.date.today())
+    today = datetime.date.today()
+    version = next_version(current, today)
     tag = f"v{version}"
 
     _check_ready(tag, args.version_only)
+
+    # Чейнджлог закрывается до первой записи: пустой раздел — остановка.
+    # --version-only описывать нечем, но если строки всё же есть — закрываем.
+    changelog_before = _read_changelog()
+    changelog_after = None
+    try:
+        changelog_after = release_changelog(changelog_before, version, today)
+    except ReleaseError:
+        if not args.version_only:
+            raise
 
     subject = f"Release {version}"
     if args.description:
@@ -168,7 +239,13 @@ def _release(args) -> int:
 
     print(f"[RELEASE] версия  {current} -> {version}")
     print(f"[RELEASE] коммит  {subject}")
-    print(f"[RELEASE] файлы   version.py + в индексе: {len(staged)}")
+    if changelog_after is not None:
+        print(f"[RELEASE] чейндж  «Не выпущено» -> {version}")
+        own_files = "version.py + CHANGELOG.md"
+    else:
+        print("[RELEASE] чейндж  без изменений (--version-only, раздел пуст)")
+        own_files = "version.py"
+    print(f"[RELEASE] файлы   {own_files} + в индексе: {len(staged)}")
     for path in staged:
         print(f"[RELEASE]           {path}")
     print(f"[RELEASE] тег     {tag} (аннотированный)")
@@ -179,14 +256,22 @@ def _release(args) -> int:
         return 0
 
     _write_version(version)
+    if changelog_after is not None:
+        _write_changelog(changelog_after)
     try:
         _git("add", "--", "version.py")
+        if changelog_after is not None:
+            _git("add", "--", "CHANGELOG.md")
         commit_args = ["commit", "-m", subject]
         if args.body:
             commit_args += ["-m", args.body]
         _git(*commit_args)
     except ReleaseError:
-        _rollback(current, was_staged="version.py" in staged)
+        _rollback(
+            current, was_staged="version.py" in staged,
+            changelog=changelog_before if changelog_after is not None else None,
+            changelog_staged="CHANGELOG.md" in staged,
+        )
         raise
 
     try:
