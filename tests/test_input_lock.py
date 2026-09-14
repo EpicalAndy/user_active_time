@@ -18,6 +18,11 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Тест гоняет настоящий events_monitor, а тот пишет в консоль логи со
+# стрелками; под перенаправленным выводом (pytest, пайп) без UTF-8 они падают.
+from bootstrap import setup_console  # noqa: E402
+setup_console()
+
 from constants import (  # noqa: E402
     KBDLLHOOKSTRUCT,
     VK_LCONTROL,

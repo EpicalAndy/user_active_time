@@ -1,5 +1,12 @@
 """
-Инициализация пользовательского config.py.
+Инициализация процесса: кодировка консоли и пользовательский config.py.
+
+Консоль. Логи приложения печатаются по-русски и со стрелками («→»). В живой
+консоли Windows Python пишет UTF-8 сам, но стоит перенаправить вывод в файл
+или пайп (`start.bat > log.txt`, запуск из другого процесса, тест-раннер) —
+поток берёт кодировку локали (cp1251), и первая же стрелка роняет `print`
+исключением UnicodeEncodeError прямо в потоке слушателя сессий. Поэтому
+stdout/stderr переводятся в UTF-8 с заменой того, что не кодируется.
 
 config.py в проекте — это шаблон с дефолтными значениями. При каждом запуске
 пользовательский конфиг пересобирается из шаблона: значения присваиваний
@@ -24,6 +31,19 @@ USER_CONFIG_PATH = os.path.join(USER_LOG_DIR, "config.py")
 _PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 _DEFAULT_CONFIG_PATH = os.path.join(_PROJECT_DIR, "config.py")
 _ENCODING = "utf-8"
+
+
+def setup_console():
+    """Переводит stdout/stderr в UTF-8, чтобы русские логи не роняли print.
+
+    Ошибки кодирования заменяются, а не выбрасываются: лог с «?» вместо
+    символа лучше, чем упавший поток. Потоков может не быть вовсе (pythonw,
+    сборка без консоли) — тогда print и так ничего не делает.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding=_ENCODING, errors="replace")
 
 
 def setup_user_config():

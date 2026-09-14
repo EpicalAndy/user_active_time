@@ -97,7 +97,7 @@
 <!-- ============================================================ -->
 <h2 id="architecture">Архитектура и потоки</h2>
 
-<p><code>main.py</code> подключает пользовательский конфиг (<code>bootstrap.setup_user_config()</code> — до любых импортов, читающих <code>config</code>), затем запускает монитор сессий в daemon-потоке <code>SessionMonitor</code>, а в главном потоке — Tkinter-виджет. Если все опции отображения виджета выключены (<code>is_widget_enabled()</code>), монитор крутится в главном потоке без UI.</p>
+<p><code>main.py</code> переводит stdout/stderr в UTF-8 (<code>bootstrap.setup_console()</code>: логи русские и со стрелками, а под перенаправленным выводом Windows подставляет cp1251 и <code>print</code> падает с <code>UnicodeEncodeError</code>; ошибки кодирования заменяются на «?»), подключает пользовательский конфиг (<code>bootstrap.setup_user_config()</code> — до любых импортов, читающих <code>config</code>), затем запускает монитор сессий в daemon-потоке <code>SessionMonitor</code>, а в главном потоке — Tkinter-виджет. Если все опции отображения виджета выключены (<code>is_widget_enabled()</code>), монитор крутится в главном потоке без UI.</p>
 
 <table>
   <tr><th>Поток</th><th>Что делает</th></tr>
@@ -410,7 +410,7 @@ git push --follow-tags                           # или сразу флаго�
 <ul class="files">
   <li><code>main.py</code> — точка входа</li>
   <li><code>version.py</code> — <code>__version__</code> и <code>version_tuple()</code>; <code>CHANGELOG.md</code> — что нового по версиям</li>
-  <li><code>bootstrap.py</code> — пересборка пользовательского <code>config.py</code> из шаблона и подключение его через <code>sys.path</code></li>
+  <li><code>bootstrap.py</code> — UTF-8 для консоли, пересборка пользовательского <code>config.py</code> из шаблона и подключение его через <code>sys.path</code></li>
   <li><code>config.py</code> — <b>шаблон настроек</b> (не модифицируется приложением)</li>
   <li><code>constants.py</code> — константы Windows API, ctypes-типы (<code>WNDPROC</code>, <code>HOOKPROC</code>), привязки функций, шрифты, тексты UI, <code>MIN_IDLE_GAP_SECONDS</code>, <code>REPORT_JSON_VERSION</code></li>
   <li><code>utility.py</code> — форматирование дат/времени, <code>resource_path</code>, <code>truncate_percent</code>, расчёт норм дня (<code>get_work_hours</code>, <code>get_break_hours</code>, <code>get_activity_norm_hours</code>)</li>
