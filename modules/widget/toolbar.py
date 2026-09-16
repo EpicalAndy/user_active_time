@@ -7,8 +7,8 @@ from collections.abc import Callable
 from typing import Literal
 
 from config import MAIN_FONT_SIZE
-from constants import (
-    FONT_FAMILY,
+from constants import FONT_FAMILY
+from texts import (
     HELP_MENU_ABOUT,
     HELP_MENU_DEV_GUIDE,
     HELP_MENU_GITHUB,
@@ -21,12 +21,12 @@ from constants import (
     REPORT_MENU_PERIOD,
     REPORT_MENU_TODAY,
     REPORTS_MENU_LABEL,
+    TOOLS_MENU_LABEL,
     TOOLTIP_ADD_ACTIVE_TIME,
     TOOLTIP_HELP,
     TOOLTIP_OPEN_SETTINGS,
     TOOLTIP_TOOLS,
     TOOLTIP_WIDGETS,
-    TOOLS_MENU_LABEL,
     WIDGETS_MENU_LABEL,
 )
 from modules import theme

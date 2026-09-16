@@ -16,7 +16,7 @@
         в порядке `choices`, а не в порядке кликов.
 """
 
-from constants import (
+from texts import (
     WIDGET_OPT_CENTER_LABEL,
     WIDGET_OPT_CENTER_PERCENT,
     WIDGET_OPT_CENTER_TIME,

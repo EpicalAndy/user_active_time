@@ -7,11 +7,8 @@ import tkinter as tk
 from tkinter import ttk
 
 from config import DATE_DISPLAY_FORMAT, MAIN_FONT_SIZE
-from constants import (
-    DEFAULT_MANUAL_ACTIVITY_DESCRIPTION,
-    FONT_FAMILY,
-    PERIOD_DIALOG_CALENDAR_BUTTON,
-)
+from constants import FONT_FAMILY
+from texts import DEFAULT_MANUAL_ACTIVITY_DESCRIPTION, PERIOD_DIALOG_CALENDAR_BUTTON
 from modules import theme
 from modules.calendar_popup import CalendarPopup
 from modules.session_monitor import (

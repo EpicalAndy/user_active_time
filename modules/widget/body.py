@@ -7,8 +7,8 @@ import tkinter as tk
 
 import config
 from config import MAIN_FONT_SIZE
-from constants import (
-    FONT_FAMILY,
+from constants import FONT_FAMILY
+from texts import (
     METRIC_ACTIVE_TIME,
     METRIC_ACTIVITY_PERCENT,
     METRIC_FREE_TIME,

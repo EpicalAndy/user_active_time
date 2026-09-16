@@ -27,7 +27,7 @@ import tkinter as tk
 from tkinter import messagebox
 
 import config
-from constants import (
+from texts import (
     INPUT_LOCK_HOTKEY_INVALID_TEXT,
     INPUT_LOCK_HOTKEY_INVALID_TITLE,
     INPUT_LOCK_UNAVAILABLE_TEXT,

@@ -8,10 +8,8 @@ import tkinter as tk
 from collections.abc import Callable
 
 from config import MAIN_FONT_SIZE
-from constants import (
-    CALENDAR_POPUP_TITLE,
-    FONT_FAMILY,
-)
+from constants import FONT_FAMILY
+from texts import CALENDAR_POPUP_TITLE
 from modules import theme
 from modules.ui_utils import center_on_parent
 

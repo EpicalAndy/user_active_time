@@ -21,8 +21,8 @@
 import tkinter as tk
 
 import config
-from constants import (
-    FONT_FAMILY,
+from constants import FONT_FAMILY
+from texts import (
     METRIC_RECOMMENDED_ETA,
     METRIC_WORK_DAY_END,
     WIDGET_CAPTION_TIME_MARKS,

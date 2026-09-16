@@ -32,7 +32,8 @@ import calendar
 import datetime
 import tkinter as tk
 
-from constants import FONT_FAMILY, WEEKDAY_SHORT_NAMES, WIDGET_CAPTION_HEATMAP
+from constants import FONT_FAMILY
+from texts import WEEKDAY_SHORT_NAMES, WIDGET_CAPTION_HEATMAP
 from modules import theme
 from modules.ui_utils import attach_tooltip
 from modules.week_activity import (

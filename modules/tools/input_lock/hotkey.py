@@ -13,7 +13,7 @@ LL-хук стоит в цепочке раньше. Значит, единст�
 Ctrl во время блокировки, — это мы сами.
 """
 
-from constants import (
+from winapi import (
     VK_CONTROL,
     VK_LCONTROL,
     VK_LMENU,

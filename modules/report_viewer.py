@@ -12,9 +12,8 @@ from tkinter import filedialog, messagebox
 
 import config
 from config import LOG_DIR, MAIN_FONT_SIZE
-from constants import (
-    ENCODING,
-    FONT_FAMILY,
+from constants import ENCODING, FONT_FAMILY
+from texts import (
     METRIC_ACTIVE_TIME,
     METRIC_ACTIVITY_NORM,
     METRIC_BREAK_TIME,

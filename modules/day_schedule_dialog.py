@@ -14,7 +14,8 @@ from collections.abc import Callable
 
 import utility
 from config import MAIN_FONT_SIZE
-from constants import (
+from constants import FONT_FAMILY
+from texts import (
     DAY_DIALOG_CANCEL,
     DAY_DIALOG_DAYOFF,
     DAY_DIALOG_HOURS_LABEL,
@@ -22,7 +23,6 @@ from constants import (
     DAY_DIALOG_SAVE,
     DAY_DIALOG_TITLE,
     DAY_DIALOG_USE_SCHEDULE,
-    FONT_FAMILY,
 )
 from modules import theme, work_calendar
 from modules.ui_utils import center_on_parent

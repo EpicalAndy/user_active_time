@@ -20,10 +20,10 @@ from config import (
     WIDGET_SHOW_SESSION_COUNT,
 )
 import config
-from constants import (
+from constants import APP_NAME
+from texts import (
     ABOUT_DESCRIPTION,
     ABOUT_TITLE,
-    APP_NAME,
     DEV_GUIDE_PATH,
     DOC_NOT_FOUND_TEXT,
     GITHUB_URL,

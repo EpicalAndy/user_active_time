@@ -7,8 +7,8 @@ import tkinter as tk
 from tkinter import ttk
 
 from config import MAIN_FONT_SIZE, MIN_ACTIVITY_THRESHOLD, RECOMMENDED_ACTIVITY_THRESHOLD
-from constants import (
-    FONT_FAMILY,
+from constants import FONT_FAMILY
+from texts import (
     PERIOD_REPORT_BREAKDOWN_LABEL,
     PERIOD_REPORT_CLOSE,
     PERIOD_REPORT_COL_ACTIVE,

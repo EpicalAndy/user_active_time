@@ -14,7 +14,7 @@ import threading
 import pystray
 from PIL import Image, ImageDraw
 
-from constants import TRAY_MENU_OPEN, TRAY_MENU_QUIT, TRAY_TITLE
+from texts import TRAY_MENU_OPEN, TRAY_MENU_QUIT, TRAY_TITLE
 from modules import theme
 
 

@@ -18,8 +18,8 @@ import tkinter as tk
 
 import utility
 from config import MAIN_FONT_SIZE
-from constants import (
-    FONT_FAMILY,
+from constants import FONT_FAMILY
+from texts import (
     SCHEDULE_CALENDAR_TITLE,
     SCHEDULE_CLOSE,
     SCHEDULE_LEGEND_DAYOFF,

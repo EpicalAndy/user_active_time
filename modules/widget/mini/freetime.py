@@ -27,7 +27,7 @@
 ещё можно расслабляться». Он и уходит в минус, показывая перерасход.
 """
 
-from constants import WIDGET_CAPTION_FREE_TIME
+from texts import WIDGET_CAPTION_FREE_TIME
 from modules import theme
 from utility import format_duration_signed
 from ..body import free_time_color

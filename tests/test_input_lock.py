@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from bootstrap import setup_console  # noqa: E402
 setup_console()
 
-from constants import (  # noqa: E402
+from winapi import (  # noqa: E402
     KBDLLHOOKSTRUCT,
     VK_LCONTROL,
     VK_LMENU,

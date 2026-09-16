@@ -13,11 +13,7 @@
 
 import ctypes
 
-from constants import (
-    KBDLLHOOKSTRUCT,
-    WM_KEYDOWN,
-    WM_SYSKEYDOWN,
-)
+from winapi import KBDLLHOOKSTRUCT, WM_KEYDOWN, WM_SYSKEYDOWN
 from modules.events_monitor import INPUT_KIND_KEYBOARD
 
 from .hotkey import HotkeyMatcher

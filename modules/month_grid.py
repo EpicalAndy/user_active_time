@@ -19,7 +19,8 @@ import datetime
 import tkinter as tk
 
 from config import MAIN_FONT_SIZE
-from constants import FONT_FAMILY, WEEKDAY_SHORT_NAMES
+from constants import FONT_FAMILY
+from texts import WEEKDAY_SHORT_NAMES
 from modules import theme
 from modules.ui_utils import attach_tooltip, center_on_screen
 

@@ -22,7 +22,8 @@
 import tkinter as tk
 
 import config
-from constants import FONT_FAMILY, WIDGET_CAPTION_COUNTDOWN
+from constants import FONT_FAMILY
+from texts import WIDGET_CAPTION_COUNTDOWN
 from modules import theme
 from modules.events_monitor import get_countdown_remaining
 from .base import BaseMiniWidget

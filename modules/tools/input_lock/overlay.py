@@ -15,8 +15,8 @@
 import tkinter as tk
 
 from config import MAIN_FONT_SIZE
-from constants import (
-    FONT_FAMILY,
+from constants import FONT_FAMILY
+from texts import (
     INPUT_LOCK_OVERLAY_HINT,
     INPUT_LOCK_OVERLAY_LEFT,
     INPUT_LOCK_OVERLAY_TITLE,

@@ -16,18 +16,18 @@ import threading
 from ctypes import wintypes
 
 from config import LOG_DIR
-from constants import (
+from winapi import (
+    kernel32,
     NOTIFY_FOR_THIS_SESSION,
-    WNDCLASSW,
-    WNDPROC,
+    user32,
     WM_QUIT,
     WM_WTSSESSION_CHANGE,
+    WNDCLASSW,
+    WNDPROC,
     WTS_SESSION_LOCK,
     WTS_SESSION_LOGOFF,
     WTS_SESSION_LOGON,
     WTS_SESSION_UNLOCK,
-    kernel32,
-    user32,
     wtsapi32,
 )
 from modules import events_monitor

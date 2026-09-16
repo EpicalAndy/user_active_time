@@ -14,7 +14,8 @@ mainloop у них нет, обновляются в такт метрикам �
 import tkinter as tk
 from collections.abc import Callable
 
-from constants import FONT_FAMILY, WIDGET_REMOVE
+from constants import FONT_FAMILY
+from texts import WIDGET_REMOVE
 from modules import theme
 
 # Крестик закрытия. Живёт в правом верхнем углу — у всех мини-виджетов там

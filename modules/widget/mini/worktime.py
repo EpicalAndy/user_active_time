@@ -6,7 +6,7 @@
 """
 
 import config
-from constants import WIDGET_CAPTION_WORK_TIME
+from texts import WIDGET_CAPTION_WORK_TIME
 from .ring import RingWidget
 
 

@@ -14,7 +14,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from constants import TIMELINE_TOOLTIP_NO_DATA  # noqa: E402
+from texts import TIMELINE_TOOLTIP_NO_DATA  # noqa: E402
 from modules.widget.day_timeline import (  # noqa: E402
     hour_tick_positions,
     tooltip_text,

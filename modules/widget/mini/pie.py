@@ -6,7 +6,7 @@
 """
 
 import config
-from constants import WIDGET_CAPTION_ACTIVITY
+from texts import WIDGET_CAPTION_ACTIVITY
 from .ring import RingWidget
 
 

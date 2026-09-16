@@ -18,7 +18,8 @@ import math
 import tkinter as tk
 
 import config
-from constants import FONT_FAMILY, WIDGET_CAPTION_TIMELINE
+from constants import FONT_FAMILY
+from texts import WIDGET_CAPTION_TIMELINE
 from modules import theme
 from ..timeline_cells import cell_kinds, segment_color
 from .ring import MIN_ARC_PX, PAD, RADIUS, RING_WIDTH, SIZE, RingWidget

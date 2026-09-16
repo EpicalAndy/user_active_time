@@ -24,8 +24,8 @@ import math
 import tkinter as tk
 
 from config import MAIN_FONT_SIZE
-from constants import (
-    FONT_FAMILY,
+from constants import FONT_FAMILY
+from texts import (
     METRIC_TIMELINE,
     TIMELINE_TOOLTIP_ACTIVITY,
     TIMELINE_TOOLTIP_NO_DATA,

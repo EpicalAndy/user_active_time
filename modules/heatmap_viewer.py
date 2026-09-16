@@ -9,8 +9,8 @@ import datetime
 import tkinter as tk
 
 from config import MAIN_FONT_SIZE, MIN_ACTIVITY_THRESHOLD, RECOMMENDED_ACTIVITY_THRESHOLD
-from constants import (
-    FONT_FAMILY,
+from constants import FONT_FAMILY
+from texts import (
     HEATMAP_CLOSE,
     HEATMAP_LEGEND_HIGH,
     HEATMAP_LEGEND_LOW,

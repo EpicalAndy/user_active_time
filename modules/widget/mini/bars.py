@@ -24,8 +24,8 @@ import tkinter as tk
 from collections.abc import Callable
 
 import config
-from constants import (
-    FONT_FAMILY,
+from constants import FONT_FAMILY
+from texts import (
     METRIC_ACTIVITY_PERCENT,
     METRIC_FREE_TIME,
     METRIC_FULL_DAY_TIME,

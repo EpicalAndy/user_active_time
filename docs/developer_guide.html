@@ -205,7 +205,7 @@ win_events    — WTS-подписка, скрытое окно, цикл соо
 
 <!-- ============================================================ -->
 <h2 id="sessions">Мониторинг сессий</h2>
-<p>Скрытое окно + <code>WTSRegisterSessionNotification</code> — единственный способ узнать о LOCK/UNLOCK/LOGON/LOGOFF без прав администратора. <code>win_events.py</code> регистрирует класс окна (<code>WNDCLASSW</code>, <code>WNDPROC</code> из <code>constants.py</code>), крутит цикл сообщений и транслирует <code>WM_WTSSESSION_CHANGE</code> в операции жизненного цикла из <code>session.py</code>: <code>start_session</code> / <code>end_session</code> / <code>log_event</code>. Остановка — <code>request_stop()</code> посылает <code>WM_QUIT</code>.</p>
+<p>Скрытое окно + <code>WTSRegisterSessionNotification</code> — единственный способ узнать о LOCK/UNLOCK/LOGON/LOGOFF без прав администратора. <code>win_events.py</code> регистрирует класс окна (<code>WNDCLASSW</code>, <code>WNDPROC</code> из <code>winapi.py</code>), крутит цикл сообщений и транслирует <code>WM_WTSSESSION_CHANGE</code> в операции жизненного цикла из <code>session.py</code>: <code>start_session</code> / <code>end_session</code> / <code>log_event</code>. Остановка — <code>request_stop()</code> посылает <code>WM_QUIT</code>.</p>
 
 <!-- ============================================================ -->
 <h2 id="input">Мониторинг ввода</h2>
@@ -414,7 +414,9 @@ git push --follow-tags                           # или сразу флаго�
   <li><code>version.py</code> — <code>__version__</code> и <code>version_tuple()</code>; <code>CHANGELOG.md</code> — что нового по версиям</li>
   <li><code>bootstrap.py</code> — UTF-8 для консоли, пересборка пользовательского <code>config.py</code> из шаблона и подключение его через <code>sys.path</code></li>
   <li><code>config.py</code> — <b>шаблон настроек</b> (не модифицируется приложением)</li>
-  <li><code>constants.py</code> — константы Windows API, ctypes-типы (<code>WNDPROC</code>, <code>HOOKPROC</code>), привязки функций, шрифты, тексты UI, <code>MIN_IDLE_GAP_SECONDS</code>, <code>REPORT_JSON_VERSION</code></li>
+  <li><code>constants.py</code> — общие константы: кодировка, шрифт, имя приложения, <code>MIN_IDLE_GAP_SECONDS</code>, <code>REPORT_JSON_VERSION</code></li>
+  <li><code>texts.py</code> — все тексты интерфейса: подписи кнопок и меню, названия метрик, подсказки</li>
+  <li><code>winapi.py</code> — константы Windows API, коды клавиш, ctypes-типы (<code>WNDPROC</code>, <code>HOOKPROC</code>) и привязки функций</li>
   <li><code>utility.py</code> — форматирование дат/времени, <code>resource_path</code>, <code>truncate_percent</code>, расчёт норм дня (<code>get_work_hours</code>, <code>get_break_hours</code>, <code>get_activity_norm_hours</code>)</li>
   <li><code>modules/session_monitor/</code> — монитор сессий (слои — в разделе <a href="#architecture">Архитектура</a>)</li>
   <li><code>modules/events_monitor.py</code> — мониторинг ввода через LL-хуки, захват сырых гэпов</li>

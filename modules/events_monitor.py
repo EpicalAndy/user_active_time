@@ -17,15 +17,15 @@ import time
 from ctypes import wintypes
 
 import config
-from constants import (
+from constants import MIN_IDLE_GAP_SECONDS
+from winapi import (
     HOOKPROC,
-    MIN_IDLE_GAP_SECONDS,
+    kernel32,
+    user32,
     WH_KEYBOARD_LL,
     WH_MOUSE_LL,
     WM_MOUSEMOVE,
     WM_QUIT,
-    kernel32,
-    user32,
 )
 
 # --- Состояние ввода (запись из hook-потока, чтение из timer-потока) ---

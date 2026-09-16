@@ -7,8 +7,8 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from config import MAIN_FONT_SIZE
-from constants import (
-    FONT_FAMILY,
+from constants import FONT_FAMILY
+from texts import (
     PERIOD_DIALOG_BUILD_BUTTON,
     PERIOD_DIALOG_CALENDAR_BUTTON,
     PERIOD_DIALOG_DATE_PLACEHOLDER,
