@@ -20,7 +20,12 @@ import re
 import config
 from constants import ENCODING
 from modules import activity_intervals
-from utility import calculate_activity_percent, format_duration, format_percent
+from utility import (
+    calculate_activity_percent,
+    format_duration,
+    format_percent,
+    get_input_timeout,
+)
 
 # Типы событий → активность
 _ACTIVE_EVENTS = {"LOGON", "UNLOCK", "INPUT_ACTIVE", "MONITOR_START"}
@@ -228,14 +233,14 @@ def manual_hour_intervals(events: list) -> list:
 def v2_intervals(data: dict, date_obj: datetime.date) -> list:
     """Точные интервалы активности/простоя из сырых sessions/idle (схема v2).
 
-    Таймаут берётся текущий (`config.INPUT_ACTIVITY_TIMEOUT`) — график
-    отражает актуальную настройку, как и пересчитанное активное время.
+    Таймаут берётся текущий, для дня недели этой даты (`get_input_timeout`) —
+    график отражает актуальную настройку, как и пересчитанное активное время.
     """
     sessions = _parse_iso_intervals(data.get("sessions"), "start", "end")
-    idle = _parse_iso_intervals(data.get("idle"), "from", "to")
-    segments = activity_intervals.day_segments(
-        sessions, idle, config.INPUT_ACTIVITY_TIMEOUT, date_obj,
-    )
+    timeout = get_input_timeout(date_obj)
+    # Таймаут 0 — простой в этот день недели не считается: гэпы не рисуем.
+    idle = _parse_iso_intervals(data.get("idle"), "from", "to") if timeout > 0 else []
+    segments = activity_intervals.day_segments(sessions, idle, timeout, date_obj)
     day_start = datetime.datetime.combine(date_obj, datetime.time.min)
     result = []
     for seg_start, seg_end, state in segments:

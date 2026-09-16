@@ -79,7 +79,7 @@ def _collect(pending_gaps, stored_idle=()):
         "session_start_time": stats.session.session_start_time,
         "peek": events_monitor.peek_idle_gaps,
         "open_idle": events_monitor.get_open_idle,
-        "timeout": config.INPUT_ACTIVITY_TIMEOUT,
+        "timeout": dict(config.INPUT_ACTIVITY_TIMEOUT_BY_DAY),
     }
     try:
         stats.datetime = types.SimpleNamespace(
@@ -92,7 +92,8 @@ def _collect(pending_gaps, stored_idle=()):
         stats.session.session_start_time = dt(9)
         events_monitor.peek_idle_gaps = lambda: list(pending_gaps)
         events_monitor.get_open_idle = lambda: None
-        config.INPUT_ACTIVITY_TIMEOUT = TIMEOUT
+        # Таймаут задаётся по дням недели — выставляем один на все.
+        config.INPUT_ACTIVITY_TIMEOUT_BY_DAY.update(dict.fromkeys(config.INPUT_ACTIVITY_TIMEOUT_BY_DAY, TIMEOUT))
         return stats.get_current_stats()
     finally:
         stats.datetime = saved["datetime"]
@@ -103,7 +104,8 @@ def _collect(pending_gaps, stored_idle=()):
         stats.session.session_start_time = saved["session_start_time"]
         events_monitor.peek_idle_gaps = saved["peek"]
         events_monitor.get_open_idle = saved["open_idle"]
-        config.INPUT_ACTIVITY_TIMEOUT = saved["timeout"]
+        config.INPUT_ACTIVITY_TIMEOUT_BY_DAY.clear()
+        config.INPUT_ACTIVITY_TIMEOUT_BY_DAY.update(saved["timeout"])
 
 
 def _inactive_segments(result):

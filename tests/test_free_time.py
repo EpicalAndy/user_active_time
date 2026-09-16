@@ -78,7 +78,7 @@ def _collect(idle_gaps=()):
         "session_start_time": stats.session.session_start_time,
         "peek": events_monitor.peek_idle_gaps,
         "open_idle": events_monitor.get_open_idle,
-        "timeout": config.INPUT_ACTIVITY_TIMEOUT,
+        "timeout": dict(config.INPUT_ACTIVITY_TIMEOUT_BY_DAY),
         "recommended": config.RECOMMENDED_ACTIVITY_THRESHOLD,
         "minimum": config.MIN_ACTIVITY_THRESHOLD,
     }
@@ -93,7 +93,8 @@ def _collect(idle_gaps=()):
         stats.session.session_start_time = dt(9)
         events_monitor.peek_idle_gaps = list
         events_monitor.get_open_idle = lambda: None
-        config.INPUT_ACTIVITY_TIMEOUT = TIMEOUT
+        # Таймаут задаётся по дням недели — выставляем один на все.
+        config.INPUT_ACTIVITY_TIMEOUT_BY_DAY.update(dict.fromkeys(config.INPUT_ACTIVITY_TIMEOUT_BY_DAY, TIMEOUT))
         config.RECOMMENDED_ACTIVITY_THRESHOLD = RECOMMENDED_PCT
         config.MIN_ACTIVITY_THRESHOLD = MIN_PCT
         return stats.get_current_stats()
@@ -106,7 +107,8 @@ def _collect(idle_gaps=()):
         stats.session.session_start_time = saved["session_start_time"]
         events_monitor.peek_idle_gaps = saved["peek"]
         events_monitor.get_open_idle = saved["open_idle"]
-        config.INPUT_ACTIVITY_TIMEOUT = saved["timeout"]
+        config.INPUT_ACTIVITY_TIMEOUT_BY_DAY.clear()
+        config.INPUT_ACTIVITY_TIMEOUT_BY_DAY.update(saved["timeout"])
         config.RECOMMENDED_ACTIVITY_THRESHOLD = saved["recommended"]
         config.MIN_ACTIVITY_THRESHOLD = saved["minimum"]
 

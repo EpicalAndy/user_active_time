@@ -16,8 +16,8 @@
 ширины по жирному «88:88»: мигающий текст растёт симметрично и не толкает
 метрики справа.
 
-INPUT_ACTIVITY_TIMEOUT читается один раз при создании: появление/исчезание
-countdown'а требует перезапуска приложения (`enabled`).
+Включён ли мониторинг ввода (`input_monitoring_enabled`) читается один раз
+при создании: появление/исчезание countdown'а требует перезапуска (`enabled`).
 """
 
 import tkinter as tk
@@ -27,6 +27,7 @@ from config import MAIN_FONT_SIZE
 from constants import FONT_FAMILY
 from modules import theme
 from modules.ui_utils import bold_pixel_width
+from utility import input_monitoring_enabled
 
 # Состояния countdown'а для внешней индикации (рамка виджета).
 _COUNTDOWN_NORMAL = "normal"
@@ -63,7 +64,7 @@ class CountdownIndicator:
 
         self._slot: tk.Frame | None = None
         self._label: tk.Label | None = None
-        if config.INPUT_ACTIVITY_TIMEOUT > 0:
+        if input_monitoring_enabled():
             width = max(
                 bold_pixel_width("88:88", MAIN_FONT_SIZE - 1),
                 bold_pixel_width(_PLACEHOLDER, MAIN_FONT_SIZE - 1),

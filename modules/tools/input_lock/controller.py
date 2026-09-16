@@ -27,6 +27,7 @@ import tkinter as tk
 from tkinter import messagebox
 
 import config
+from utility import input_monitoring_enabled
 from texts import (
     INPUT_LOCK_HOTKEY_INVALID_TEXT,
     INPUT_LOCK_HOTKEY_INVALID_TITLE,
@@ -147,7 +148,7 @@ class InputLockTool:
         hotkey = parse_hotkey(config.INPUT_LOCK_HOTKEY)
 
         # Блокировка живёт на хуках монитора ввода: нет их — нечем блокировать.
-        if config.INPUT_ACTIVITY_TIMEOUT <= 0:
+        if not input_monitoring_enabled():
             messagebox.showwarning(
                 INPUT_LOCK_UNAVAILABLE_TITLE,
                 INPUT_LOCK_UNAVAILABLE_TEXT,

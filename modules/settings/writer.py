@@ -19,7 +19,7 @@ from constants import ENCODING
 from modules import theme
 from modules.tools.spec import SETTING_BOOL, SETTING_TEXT
 
-# Порядок дней в блоке WORK_HOURS_BY_DAY — как в шаблоне config.py.
+# Порядок дней в блоках WORK_HOURS_BY_DAY / INPUT_ACTIVITY_TIMEOUT_BY_DAY — как в шаблоне config.py.
 WORK_DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 
@@ -52,11 +52,6 @@ def write_config_file(values: dict, tool_specs: list[dict], path: str = USER_CON
 def render_config(content: str, values: dict, tool_specs: list[dict]) -> str:
     """Текст config.py с подставленными значениями (чистая функция — для тестов)."""
     # Таймеры
-    content = re.sub(
-        r"^INPUT_ACTIVITY_TIMEOUT\s*=\s*.+$",
-        f"INPUT_ACTIVITY_TIMEOUT = {values['input_activity_timeout']}",
-        content, flags=re.MULTILINE,
-    )
     content = re.sub(
         r"^COUNTDOWN_WARNING_SECONDS\s*=\s*.+$",
         f"COUNTDOWN_WARNING_SECONDS = {values['countdown_warning_seconds']}",
@@ -153,6 +148,18 @@ def render_config(content: str, values: dict, tool_specs: list[dict]) -> str:
         content, flags=re.MULTILINE | re.DOTALL,
     )
 
+    # Таймауты неактивности по дням — тоже блок целиком, только значения целые
+    timeouts = values["input_timeouts"]
+    new_block = "INPUT_ACTIVITY_TIMEOUT_BY_DAY = {\n"
+    for key in WORK_DAY_KEYS:
+        new_block += f'    "{key}": {int(timeouts[key])},\n'
+    new_block += "}"
+    content = re.sub(
+        r"^INPUT_ACTIVITY_TIMEOUT_BY_DAY\s*=\s*\{[^}]+\}",
+        new_block,
+        content, flags=re.MULTILINE | re.DOTALL,
+    )
+
     # Перерыв
     content = re.sub(
         r"^BREAK_MINUTES\s*=\s*.+$",
@@ -170,7 +177,6 @@ def apply_runtime(values: dict):
     config.STOP_COUNTDOWN_AT_RECOMMENDED = values["stop_countdown_at_recommended"]
     config.WIDGET_PROGRESS_HIGHLIGHT = values["widget_progress_highlight"]
     config.TRACK_MOUSE_MOVE = values["track_mouse_move"]
-    config.INPUT_ACTIVITY_TIMEOUT = values["input_activity_timeout"]
     config.COUNTDOWN_WARNING_SECONDS = values["countdown_warning_seconds"]
     config.RECOMMENDED_ACTIVITY_THRESHOLD = values["recommended_activity_threshold"]
     config.MIN_ACTIVITY_THRESHOLD = values["min_activity_threshold"]
@@ -188,6 +194,8 @@ def apply_runtime(values: dict):
         setattr(config, attr, val)
     for key, val in values["work_hours"].items():
         config.WORK_HOURS_BY_DAY[key] = val
+    for key, val in values["input_timeouts"].items():
+        config.INPUT_ACTIVITY_TIMEOUT_BY_DAY[key] = int(val)
     config.BREAK_MINUTES = values["break_minutes"]
     # Тема: обновляем config и перепривязываем палитру theme.COLOR_*.
     # Окна, открытые после этого, отрисуются в новой теме; постоянный

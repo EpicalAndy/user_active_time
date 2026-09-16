@@ -113,6 +113,33 @@ def get_work_hours(date: datetime.date) -> float:
     return hours
 
 
+def get_input_timeout(date: datetime.date) -> int:
+    """Таймаут неактивности (сек) для указанного дня; 0 = простой не считается.
+
+    По дню недели из `INPUT_ACTIVITY_TIMEOUT_BY_DAY` (читается динамически —
+    конвенция hot-reload); день без записи получает DEFAULT_INPUT_ACTIVITY_TIMEOUT.
+    """
+    value = config.INPUT_ACTIVITY_TIMEOUT_BY_DAY.get(_DAY_NAMES[date.weekday()])
+    if value is None:
+        return config.DEFAULT_INPUT_ACTIVITY_TIMEOUT
+    return max(0, int(value))
+
+
+def input_monitoring_enabled() -> bool:
+    """Нужен ли мониторинг ввода вообще: хоть в один день простой считается.
+
+    Ноль во все дни — хуки ввода и обратный отсчёт не запускаются (это
+    свойство процесса, решается при старте, как раньше общий ноль).
+    """
+    return any(get_input_timeout(date) > 0 for date in _week_dates())
+
+
+def _week_dates() -> list[datetime.date]:
+    """Семь дат подряд — чтобы обойти все дни недели через get_input_timeout."""
+    today = datetime.date.today()
+    return [today + datetime.timedelta(days=i) for i in range(7)]
+
+
 def get_break_hours(date: datetime.date) -> float:
     """Возвращает перерыв за день в часах — часть рабочего времени вне нормы активности.
 

@@ -18,6 +18,7 @@ from ctypes import wintypes
 
 import config
 from constants import MIN_IDLE_GAP_SECONDS
+from utility import get_input_timeout, input_monitoring_enabled
 from winapi import (
     HOOKPROC,
     kernel32,
@@ -191,8 +192,8 @@ def start():
     """Запускает мониторинг ввода"""
     global _hook_thread, _timer_thread
 
-    if config.INPUT_ACTIVITY_TIMEOUT <= 0:
-        print("[EVENTS] Мониторинг ввода отключен (INPUT_ACTIVITY_TIMEOUT = 0)")
+    if not input_monitoring_enabled():
+        print("[EVENTS] Мониторинг ввода отключен (таймаут 0 во все дни недели)")
         return
 
     _stop_event.clear()
@@ -207,14 +208,14 @@ def start():
     _hook_thread.start()
     _timer_thread.start()
 
-    print(f"[EVENTS] Мониторинг ввода запущен (таймаут: {config.INPUT_ACTIVITY_TIMEOUT}с)")
+    print(f"[EVENTS] Мониторинг ввода запущен (таймауты по дням: {config.INPUT_ACTIVITY_TIMEOUT_BY_DAY})")
 
 
 def stop():
     """Останавливает мониторинг ввода"""
     global _hook_thread, _timer_thread
 
-    if config.INPUT_ACTIVITY_TIMEOUT <= 0:
+    if not input_monitoring_enabled():
         return
 
     _stop_event.set()
@@ -302,10 +303,15 @@ def get_open_idle() -> tuple[datetime.datetime, datetime.datetime] | None:
 
 def get_countdown_remaining() -> int | None:
     """Секунды до перехода в неактивность; 0 если уже неактивен; None если отключено."""
-    if config.INPUT_ACTIVITY_TIMEOUT <= 0 or not _session_running or _screen_locked:
+    if not _session_running or _screen_locked:
+        return None
+    # Таймаут — сегодняшний; ноль значит «сегодня простой не считается» —
+    # отсчёта нет, как и в выключенном мониторинге.
+    timeout = get_input_timeout(datetime.date.today())
+    if timeout <= 0:
         return None
     last = max(_last_input_mono, _observed_input_mono)
-    remaining = config.INPUT_ACTIVITY_TIMEOUT - (time.monotonic() - last)
+    remaining = timeout - (time.monotonic() - last)
     return max(0, int(remaining))
 
 
@@ -315,7 +321,7 @@ def notify_session_start():
     global _last_input_mono, _last_input_source
     global _mono0, _wall0, _observed_input_mono
 
-    if config.INPUT_ACTIVITY_TIMEOUT <= 0:
+    if not input_monitoring_enabled():
         return
 
     _mono0 = time.monotonic()
@@ -338,7 +344,7 @@ def notify_session_end():
     """Вызывается при завершении сессии (LOCK/LOGOFF). Финализирует открытый гэп."""
     global _session_running, _screen_locked, _observed_input_mono
 
-    if config.INPUT_ACTIVITY_TIMEOUT <= 0:
+    if not input_monitoring_enabled():
         return
 
     if _session_running:

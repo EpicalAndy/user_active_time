@@ -54,7 +54,7 @@ def load_report_day_state(date_key: str) -> dict | None:
 
     legacy_base_seconds подбирается так, чтобы recompute_active давал ровно
     сохранённое active_seconds (проекция сессий может отличаться, если с момента
-    записи менялся INPUT_ACTIVITY_TIMEOUT, — «замораживаем» активное время дня).
+    записи менялся таймаут неактивности, — «замораживаем» активное время дня).
     """
     path = os.path.join(LOG_DIR, get_report_filename(USERNAME, parse_date_key(date_key)))
     if not os.path.exists(path):

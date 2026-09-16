@@ -17,7 +17,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import config  # noqa: E402
+from utility import get_input_timeout  # noqa: E402
 from modules.report_reader import (  # noqa: E402
     STATE_ACTIVE,
     STATE_INACTIVE,
@@ -140,7 +140,7 @@ def test_parse_report_v2_builds_segments_from_raw_intervals():
     assert data["work_combined"] == "4ч 0м 0с (50.0%)"     # от 8ч
     assert data["break_time"] == "0ч 30м 0с"
     # Часовой гэп простоя минус текущий таймаут: простой начинается позже 10:00.
-    timeout_h = config.INPUT_ACTIVITY_TIMEOUT / HOUR
+    timeout_h = get_input_timeout(datetime.date(2026, 9, 14)) / HOUR
     assert data["intervals"] == [
         (9.0, 10.0 + timeout_h, STATE_ACTIVE),
         (10.0 + timeout_h, 11.0, STATE_INACTIVE),

@@ -19,7 +19,7 @@ from modules.settings.writer import WORK_DAY_KEYS, render_config  # noqa: E402
 from modules.tools.spec import SETTING_BOOL, SETTING_TEXT  # noqa: E402
 
 TEMPLATE = '''# Таймаут
-INPUT_ACTIVITY_TIMEOUT = 300
+DEFAULT_INPUT_ACTIVITY_TIMEOUT = 300
 COUNTDOWN_WARNING_SECONDS = 60
 SOUND_NOTIFICATION = True
 COUNTDOWN_TICK_SOUND = False
@@ -46,6 +46,15 @@ WORK_HOURS_BY_DAY = {
     "saturday": 0,
     "sunday": 0,
 }
+INPUT_ACTIVITY_TIMEOUT_BY_DAY = {
+    "monday": 300,
+    "tuesday": 300,
+    "wednesday": 300,
+    "thursday": 300,
+    "friday": 300,
+    "saturday": 300,
+    "sunday": 300,
+}
 BREAK_MINUTES = 30
 UNTOUCHED = "stays"
 '''
@@ -59,11 +68,11 @@ TOOL_SPECS = [
 def values(**overrides) -> dict:
     base = {
         "work_hours": {key: 8 for key in WORK_DAY_KEYS},
+        "input_timeouts": {key: 300 for key in WORK_DAY_KEYS},
         "break_minutes": 45,
         "metrics": {"WIDGET_SHOW_ACTIVE_TIME": False, "WIDGET_SHOW_SESSION_COUNT": True},
         "theme": "light",
         "week_mode": "rolling",
-        "input_activity_timeout": 120,
         "countdown_warning_seconds": 30,
         "sound_notification": False,
         "countdown_tick_sound": True,
@@ -93,7 +102,7 @@ def lines_of(text: str) -> dict:
 
 def test_scalars_are_replaced_line_by_line():
     got = lines_of(render_config(TEMPLATE, values(), TOOL_SPECS))
-    assert got["INPUT_ACTIVITY_TIMEOUT"] == "120"
+    assert got["DEFAULT_INPUT_ACTIVITY_TIMEOUT"] == "300"
     assert got["SOUND_NOTIFICATION"] == "False"
     assert got["RECOMMENDED_ACTIVITY_THRESHOLD"] == "85"
     assert got["FREE_TIME_WARNING_PERCENT"] == "0"
@@ -134,6 +143,29 @@ def test_work_hours_block_is_rewritten_in_template_order():
         '    "sunday": 8,\n'
         "}"
     )
+
+
+def test_timeout_by_day_block_is_rewritten():
+    timeouts = {key: 300 for key in WORK_DAY_KEYS}
+    timeouts["monday"] = 180
+    timeouts["friday"] = 600
+    out = render_config(TEMPLATE, values(input_timeouts=timeouts), TOOL_SPECS)
+    block = out[out.index("INPUT_ACTIVITY_TIMEOUT_BY_DAY = {"):]
+    block = block[:block.index("}") + 1]
+    expected = [
+        "INPUT_ACTIVITY_TIMEOUT_BY_DAY = {",
+        '    "monday": 180,',
+        '    "tuesday": 300,',
+        '    "wednesday": 300,',
+        '    "thursday": 300,',
+        '    "friday": 600,',
+        '    "saturday": 300,',
+        '    "sunday": 300,',
+        "}",
+    ]
+    assert block.splitlines() == expected
+    # Дефолт для дня без записи блоком не задет.
+    assert lines_of(out)["DEFAULT_INPUT_ACTIVITY_TIMEOUT"] == "300"
 
 
 def test_rendering_is_idempotent():

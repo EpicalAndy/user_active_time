@@ -2,9 +2,10 @@
 Пересчёт активного времени и таймлайна дня из сырых интервалов.
 
 Активное время — не накопительный счётчик, а **проекция**: оно каждый раз
-считается заново из `sessions`/`idle` с *текущим* `INPUT_ACTIVITY_TIMEOUT`
-(ядро формулы — `modules/activity_intervals.py`). Поэтому изменение таймаута
-пересчитывает и уже прошедшую часть дня.
+считается заново из `sessions`/`idle` с *текущим* таймаутом неактивности
+для дня недели этой даты (`get_input_timeout`; ядро формулы —
+`modules/activity_intervals.py`). Поэтому изменение таймаута пересчитывает
+и уже прошедшую часть дня.
 
 Слагаемые дня: проекция сессий и простоя + ручное время из лога +
 `legacy_base_seconds` (наследие записей схемы v1, см. `state_store.ensure_v2`).
@@ -12,15 +13,17 @@
 
 import datetime
 
-import config
 from modules import activity_intervals
-from utility import parse_time
+from utility import get_input_timeout, parse_time
 from .journal import manual_seconds, parse_manual_entries
 from .state_store import parse_idle_intervals, parse_session_intervals
 
 
-def _day_intervals(day_state: dict, live_open_session=None, extra_idle=()):
+def _day_intervals(day_state: dict, date, live_open_session=None, extra_idle=()):
     """Интервалы дня (sessions, idle) с подмешанной открытой сессией и гэпом.
+
+    Если в этот день недели простой не считается (таймаут 0), гэпы отбрасываются
+    целиком — вычитать из присутствия нечего.
 
     Открытая (незакрытая) сессия учитывается так:
     - live_open_session=(старт, сейчас) — «живой» вариант до текущей секунды
@@ -34,6 +37,8 @@ def _day_intervals(day_state: dict, live_open_session=None, extra_idle=()):
         sessions.append(live_open_session)
     elif day_state.get("open_session"):
         sessions += parse_session_intervals([day_state["open_session"]])
+    if get_input_timeout(date) <= 0:
+        return sessions, []
     idle = parse_idle_intervals(day_state.get("idle", [])) + list(extra_idle)
     return sessions, idle
 
@@ -54,9 +59,9 @@ def _manual_intervals(day_state: dict, date) -> list:
 
 def recompute_active(day_state: dict, date, live_open_session=None, extra_idle=()) -> int:
     """Активное время дня = проекция от sessions/idle + ручное время + legacy-смещение."""
-    sessions, idle = _day_intervals(day_state, live_open_session, extra_idle)
+    sessions, idle = _day_intervals(day_state, date, live_open_session, extra_idle)
     base = activity_intervals.compute_active_seconds(
-        sessions, idle, config.INPUT_ACTIVITY_TIMEOUT, date,
+        sessions, idle, get_input_timeout(date), date,
     )
     manual = manual_seconds(day_state.get("log_entries", []))
     return base + manual + day_state.get("legacy_base_seconds", 0)
@@ -81,9 +86,9 @@ def build_timeline(
     if span_end <= span_start:
         return None
 
-    sessions, idle = _day_intervals(day_state, live_open_session, extra_idle)
+    sessions, idle = _day_intervals(day_state, date, live_open_session, extra_idle)
     raw = list(activity_intervals.day_segments(
-        sessions, idle, config.INPUT_ACTIVITY_TIMEOUT, date,
+        sessions, idle, get_input_timeout(date), date,
     ))
     for manual_start, manual_end in _manual_intervals(day_state, date):
         raw.append((manual_start, manual_end, "manual"))
@@ -122,11 +127,11 @@ def active_reached_at(
     if target_seconds <= 0:
         return None
 
-    sessions, idle = _day_intervals(day_state, live_open_session, extra_idle)
+    sessions, idle = _day_intervals(day_state, date, live_open_session, extra_idle)
     spans = [
         (seg_start, seg_end)
         for seg_start, seg_end, kind in activity_intervals.day_segments(
-            sessions, idle, config.INPUT_ACTIVITY_TIMEOUT, date,
+            sessions, idle, get_input_timeout(date), date,
         )
         if kind == "active"
     ]

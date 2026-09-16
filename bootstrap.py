@@ -90,6 +90,7 @@ def _merge_config(template_text: str, user_text: str | None) -> str:
     user_values = _extract_top_level_values(user_text)
     if not user_values:
         return template_text
+    _migrate_input_timeout(user_values)
 
     template_bytes = template_text.encode(_ENCODING)
     template_tree = ast.parse(template_text)
@@ -111,6 +112,43 @@ def _merge_config(template_text: str, user_text: str | None) -> str:
     for start, end, new_bytes in replacements:
         result = result[:start] + new_bytes + result[end:]
     return result.decode(_ENCODING)
+
+
+_WEEK_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+
+def _migrate_input_timeout(user_values: dict[str, str]):
+    """Общий INPUT_ACTIVITY_TIMEOUT (до 2026.09.5) → таймаут на каждый день недели.
+
+    Раньше таймаут был один на все дни; теперь он задаётся по дням, а общего
+    параметра в шаблоне нет — при слиянии он бы просто отбросился, и
+    настроенное значение пропало бы. Поэтому, пока в пользовательском конфиге
+    есть общий таймаут, он раскладывается по дням: день без записи или с нулём
+    (в переходной схеме 0 значил «общий») получает общее значение, день со
+    своим значением остаётся как есть. Общий ноль («мониторинг выключен») так
+    же честно становится нулями по дням.
+    """
+    raw = user_values.pop("INPUT_ACTIVITY_TIMEOUT", None)
+    if raw is None:
+        return
+    try:
+        general = int(ast.literal_eval(raw))
+    except (ValueError, SyntaxError):
+        return
+    by_day: dict = {}
+    by_day_raw = user_values.get("INPUT_ACTIVITY_TIMEOUT_BY_DAY")
+    if by_day_raw is not None:
+        try:
+            parsed = ast.literal_eval(by_day_raw)
+        except (ValueError, SyntaxError):
+            parsed = None
+        if isinstance(parsed, dict):
+            by_day = parsed
+    lines = []
+    for day in _WEEK_DAYS:
+        value = int(by_day.get(day) or 0)
+        lines.append(f'    "{day}": {value if value > 0 else general},')
+    user_values["INPUT_ACTIVITY_TIMEOUT_BY_DAY"] = "{" + chr(10) + chr(10).join(lines) + chr(10) + "}"
 
 
 def _extract_top_level_values(text: str) -> dict[str, str]:

@@ -8,7 +8,12 @@ from typing import Any
 
 import config
 from constants import FONT_FAMILY
-from texts import METRIC_BREAK_TIME, SETTINGS_CALENDAR_BUTTON
+from texts import (
+    METRIC_BREAK_TIME,
+    SETTINGS_CALENDAR_BUTTON,
+    SETTINGS_TIMEOUT_HINT,
+    SETTINGS_TIMEOUT_LABEL,
+)
 from modules import theme
 
 # Дни недели: ключ в WORK_HOURS_BY_DAY → отображаемое название
@@ -35,23 +40,42 @@ class GeneralTab:
         hours_frame = ttk.LabelFrame(self.frame, text="Рабочие часы")
         hours_frame.pack(fill=tk.X, **pad)
 
-        self._day_vars: dict[str, tk.DoubleVar] = {}
-        tk.Label(hours_frame, text="Часы по дням недели:", font=(FONT_FAMILY, 9)).pack(
-            anchor=tk.W, padx=8, pady=(6, 0),
-        )
-        row = tk.Frame(hours_frame)
-        row.pack(fill=tk.X, padx=8, pady=(2, 6))
+        # Таблица по дням недели: строка часов и строка таймаута неактивности.
+        # Таймаут задаётся на каждый день, как в корпоративных трекерах;
+        # 0 в дне — простой в этот день не считается.
+        grid = tk.Frame(hours_frame)
+        grid.pack(fill=tk.X, padx=8, pady=(6, 2))
+        for col, (_, label) in enumerate(_DAYS, start=1):
+            tk.Label(grid, text=label, font=(FONT_FAMILY, 9)).grid(row=0, column=col, padx=2)
 
-        for key, label in _DAYS:
-            col = tk.Frame(row)
-            col.pack(side=tk.LEFT, expand=True)
-            tk.Label(col, text=label, font=(FONT_FAMILY, 9)).pack()
+        tk.Label(grid, text="Часы:", font=(FONT_FAMILY, 9)).grid(
+            row=1, column=0, sticky=tk.W, pady=2,
+        )
+        self._day_vars: dict[str, tk.DoubleVar] = {}
+        for col, (key, _) in enumerate(_DAYS, start=1):
             var = tk.DoubleVar(value=config.WORK_HOURS_BY_DAY.get(key, config.DEFAULT_WORK_HOURS))
             self._day_vars[key] = var
             ttk.Spinbox(
-                col, from_=0, to=24, increment=0.25, width=5,
+                grid, from_=0, to=24, increment=0.25, width=5,
                 textvariable=var, justify=tk.CENTER, format="%.2f",
-            ).pack()
+            ).grid(row=1, column=col, padx=2, pady=2)
+
+        tk.Label(grid, text=f"{SETTINGS_TIMEOUT_LABEL}:", font=(FONT_FAMILY, 9)).grid(
+            row=2, column=0, sticky=tk.W, pady=2,
+        )
+        self._day_timeout_vars: dict[str, tk.IntVar] = {}
+        for col, (key, _) in enumerate(_DAYS, start=1):
+            var = tk.IntVar(value=config.INPUT_ACTIVITY_TIMEOUT_BY_DAY.get(
+                key, config.DEFAULT_INPUT_ACTIVITY_TIMEOUT,
+            ))
+            self._day_timeout_vars[key] = var
+            ttk.Spinbox(
+                grid, from_=0, to=3600, increment=30, width=5,
+                textvariable=var, justify=tk.CENTER,
+            ).grid(row=2, column=col, padx=2, pady=2)
+        tk.Label(
+            hours_frame, text=SETTINGS_TIMEOUT_HINT, font=(FONT_FAMILY, 8),
+        ).pack(anchor=tk.W, padx=8, pady=(0, 6))
 
         # Перерыв вычитается из нормы активности, но не из рабочих часов —
         # присутствовать нужно всё время, 100% активности считается без перерыва.
@@ -133,28 +157,20 @@ class GeneralTab:
         timer_grid = tk.Frame(timers_frame)
         timer_grid.pack(fill=tk.X, padx=8, pady=6)
 
-        tk.Label(timer_grid, text="Таймаут неактивности (сек):", font=(FONT_FAMILY, 9)).grid(
-            row=0, column=0, sticky=tk.W, pady=2,
-        )
-        self._timeout_var = tk.IntVar(value=config.INPUT_ACTIVITY_TIMEOUT)
-        ttk.Spinbox(timer_grid, from_=0, to=3600, width=6, textvariable=self._timeout_var).grid(
-            row=0, column=1, padx=(8, 0), pady=2,
-        )
-
-        tk.Label(timer_grid, text="Предупреждение (сек):", font=(FONT_FAMILY, 9)).grid(
-            row=1, column=0, sticky=tk.W, pady=2,
-        )
+        tk.Label(
+            timer_grid, text="Предупреждение о простое (сек):", font=(FONT_FAMILY, 9),
+        ).grid(row=0, column=0, sticky=tk.W, pady=2)
         self._warning_var = tk.IntVar(value=config.COUNTDOWN_WARNING_SECONDS)
         ttk.Spinbox(timer_grid, from_=0, to=300, width=6, textvariable=self._warning_var).grid(
-            row=1, column=1, padx=(8, 0), pady=2,
+            row=0, column=1, padx=(8, 0), pady=2,
         )
 
     def values(self) -> dict:
         return {
             "work_hours": {key: self._day_vars[key].get() for key, _ in _DAYS},
+            "input_timeouts": {key: self._day_timeout_vars[key].get() for key, _ in _DAYS},
             "break_minutes": self._break_var.get(),
             "theme": self._theme_var.get(),
-            "input_activity_timeout": self._timeout_var.get(),
             "countdown_warning_seconds": self._warning_var.get(),
             "sound_notification": self._sound_var.get(),
             "countdown_tick_sound": self._tick_sound_var.get(),

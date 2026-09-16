@@ -12,6 +12,7 @@
 """
 
 import ctypes
+import datetime
 import os
 import sys
 import time
@@ -38,6 +39,7 @@ from modules.events_monitor import (  # noqa: E402
     INPUT_KIND_MOUSE,
 )
 import config  # noqa: E402
+from utility import get_input_timeout  # noqa: E402
 from modules.tools.input_lock import blocker  # noqa: E402
 from modules.tools.input_lock.controller import InputLockTool  # noqa: E402
 from modules.tools.spec import (  # noqa: E402
@@ -253,11 +255,11 @@ def test_blocked_keypress_does_not_reset_the_idle_countdown():
 def test_unlock_counts_as_activity():
     """Разблокировал — вернулся к работе: отсчёт стартует заново."""
     _idle_for(60)
-    assert events_monitor.get_countdown_remaining() < config.INPUT_ACTIVITY_TIMEOUT
+    assert events_monitor.get_countdown_remaining() < get_input_timeout(datetime.date.today())
 
     events_monitor.note_input("клавиатура")
 
-    assert events_monitor.get_countdown_remaining() == config.INPUT_ACTIVITY_TIMEOUT
+    assert events_monitor.get_countdown_remaining() == get_input_timeout(datetime.date.today())
 
 
 def test_note_input_is_ignored_without_a_session():
