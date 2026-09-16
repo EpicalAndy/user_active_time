@@ -1,17 +1,18 @@
 """
-Виджет отображения активности на рабочем столе
+Виджет отображения активности на рабочем столе — окно-конфигуратор.
+
+Здесь то, что держит состояние виджета: окно и его «хром» (заголовок, тулбар,
+содержимое), тикер обновления метрик и отсчёта, трей, настройки. Тело и
+недельная полоса — в `content`, действия меню «Отчёты»/«Помощь» — в
+`actions`, позиция окна между запусками — в `position`.
 """
 
 import datetime
-import json
-import os
 import tkinter as tk
-import webbrowser
 from collections.abc import Callable
-from tkinter import messagebox
+from functools import partial
 
 from config import (
-    LOG_DIR,
     WIDGET_SHOW_ACTIVE_TIME,
     WIDGET_SHOW_ACTIVITY_PERCENT,
     WIDGET_SHOW_FULL_DAY_TIME,
@@ -20,38 +21,18 @@ from config import (
     WIDGET_SHOW_SESSION_COUNT,
 )
 import config
-from constants import APP_NAME
-from texts import (
-    ABOUT_DESCRIPTION,
-    ABOUT_TITLE,
-    DEV_GUIDE_PATH,
-    DOC_NOT_FOUND_TEXT,
-    GITHUB_URL,
-    HELP_MENU_DEV_GUIDE,
-    HELP_MENU_README,
-    REPORT_NO_DATA_TITLE,
-    REPORT_NO_PAST_TEXT,
-    REPORT_NO_TODAY_TEXT,
-    USER_GUIDE_PATH,
-)
-from modules import theme
+from modules import theme, tools
 from modules.events_monitor import get_countdown_remaining
-from modules.heatmap_viewer import HeatmapViewer
 from modules.manual_activity_dialog import ManualActivityDialog
-from modules.period_report import find_latest_past_report_date, get_report_path
-from modules.period_report_dialog import PeriodReportDialog
-from modules.session_monitor import checkpoint_session
-from modules import tools
-from modules.report_viewer import ReportViewer
 from modules.settings import SettingsDialog
-from .body import WidgetBody
+from . import actions
+from .content import WidgetContent
 from .manager import WidgetManager
 from .notification import play_notification, play_tick
+from .position import place_window, save_position
 from .title_bar import PROGRESS_GOAL, PROGRESS_MIN, PROGRESS_NONE, TitleBar
 from .toolbar import WidgetToolbar
-from .week_strip import WeekStrip
-from utility import format_date_key, resource_path, truncate_percent
-from version import __version__
+from utility import format_date_key, truncate_percent
 
 # Фон окна (под телом и тулбаром) и тонкая линия-разделитель читаются
 # динамически из theme.* — см. _build_chrome / _apply_theme.
@@ -59,8 +40,6 @@ from version import __version__
 # Ширина виджета — даёт место длинным меткам вроде «До рекомендуемой нормы:»
 # плюс склеенным значениям вида «5ч 51м (86.6%)».
 WIDGET_WIDTH = 280
-
-_WIDGET_POS_FILE = os.path.join(LOG_DIR, "widget_position.json")
 
 
 def _progress_level(activity_percent: float) -> str:
@@ -118,7 +97,7 @@ class ActivityWidget:
         self.window = tk.Toplevel(self.root)
         self._setup_window()
         self._build_chrome()
-        self._position_window()
+        place_window(self.window, WIDGET_WIDTH)
         self._manager.restore()
         self._tray = self._create_tray()
         self._tick()
@@ -132,30 +111,30 @@ class ActivityWidget:
             self.window,
             on_close=self.close,
             on_minimize=self._minimize_to_tray,
-            on_position_changed=self._save_position,
+            on_position_changed=lambda: save_position(self.window),
             on_collapse=self._toggle_minimize,
         )
         self._toolbar = WidgetToolbar(
             self.window,
             on_add_active_time=self._add_active_time,
-            on_open_reports=lambda: os.startfile(LOG_DIR),
-            on_view_report=self._view_report,
+            on_open_reports=actions.open_reports_folder,
+            on_view_report=partial(actions.view_report, self.window),
             on_open_settings=self._open_settings,
-            on_open_readme=self._open_user_guide,
-            on_open_dev_guide=self._open_dev_guide,
-            on_open_github=lambda: webbrowser.open(GITHUB_URL),
-            on_open_about=self._open_about,
-            on_period_report=self._open_period_report,
-            on_heatmap=self._open_heatmap,
-            on_today_report=self._open_today_report,
-            on_last_report=self._open_last_report,
+            on_open_readme=partial(actions.open_user_guide, self.window),
+            on_open_dev_guide=partial(actions.open_dev_guide, self.window),
+            on_open_github=actions.open_github,
+            on_open_about=partial(actions.open_about, self.window),
+            on_period_report=partial(actions.open_period_report, self.window),
+            on_heatmap=partial(actions.open_heatmap, self.window),
+            on_today_report=partial(actions.open_today_report, self.window),
+            on_last_report=partial(actions.open_last_report, self.window),
             on_open_widgets=self._open_widgets_dialog,
             tool_items=tools.menu_items(self._tools),
         )
         self._toolbar.pack(fill=tk.X)
         self._toolbar_separator = tk.Frame(self.window, bg=theme.COLOR_MUTED, height=1)
         self._toolbar_separator.pack(fill=tk.X)
-        self._build_body()
+        self._content = WidgetContent(self.window)
 
     def _setup_window(self):
         self.window.overrideredirect(True)
@@ -170,26 +149,6 @@ class ActivityWidget:
             highlightcolor=theme.COLOR_DARK_BG,
         )
 
-    # --- Позиционирование ---
-
-    def _position_window(self):
-        self.window.update_idletasks()
-        width = WIDGET_WIDTH
-        screen_w = self.window.winfo_screenwidth()
-        screen_h = self.window.winfo_screenheight()
-        win_h = self.window.winfo_reqheight()
-
-        saved = self._load_position()
-        if saved:
-            sx, sy = saved
-            if 0 <= sx <= screen_w - width and 0 <= sy <= screen_h - win_h:
-                self.window.geometry(f"{width}x{win_h}+{sx}+{sy}")
-                return
-
-        x = screen_w - width - 20
-        y = screen_h - win_h - 60
-        self.window.geometry(f"{width}x{win_h}+{x}+{y}")
-
     # --- Обновление данных ---
 
     def _update_metrics(self):
@@ -198,12 +157,9 @@ class ActivityWidget:
         except Exception:
             return
 
-        # Тело и заголовок сами решают, как реагировать на нерабочий день.
-        self._body.update(stats)
-        # Полоса обновляется до проверки на нерабочий день: тело в такой день
-        # сворачивается в плашку, а неделя остаётся на месте.
-        if self._week_strip is not None:
-            self._week_strip.update(stats)
+        # Содержимое обновляется до проверки на нерабочий день: тело в такой
+        # день сворачивается в плашку, а недельная полоса остаётся на месте.
+        self._content.update(stats)
         # Мини-виджеты рабочего стола — та же частота, тот же stats.
         self._manager.update(stats)
 
@@ -230,7 +186,7 @@ class ActivityWidget:
     def _update_countdown(self):
         if not self._title_bar.has_countdown():
             return
-        if not self._body.is_working_day():
+        if not self._content.is_working_day():
             self._title_bar.clear_countdown()
             return
 
@@ -345,76 +301,13 @@ class ActivityWidget:
         if self._minimized:
             self._toolbar.pack(fill=tk.X)
             self._toolbar_separator.pack(fill=tk.X)
-            self._pack_body()
+            self._content.pack()
         else:
             self._toolbar.pack_forget()
             self._toolbar_separator.pack_forget()
-            self._forget_body()
+            self._content.pack_forget()
         self._minimized = not self._minimized
         self._resize_window()
-
-    def _view_report(self):
-        """Открывает визуализацию отчёта"""
-        ReportViewer(self.window)
-
-    def _open_today_report(self):
-        """Быстрое открытие отчёта за сегодня."""
-        # Принудительный чекпойнт — чтобы файл отчёта отражал идущую сессию
-        # вплоть до текущего момента, а не до последнего автосохранения.
-        checkpoint_session()
-        path = get_report_path(datetime.date.today())
-        if not os.path.exists(path):
-            messagebox.showinfo(
-                REPORT_NO_DATA_TITLE, REPORT_NO_TODAY_TEXT, parent=self.window,
-            )
-            return
-        ReportViewer(self.window, filepath=path)
-
-    def _open_last_report(self):
-        """Открывает ближайший по дате прошлый дневной отчёт."""
-        date = find_latest_past_report_date(datetime.date.today())
-        if date is None:
-            messagebox.showinfo(
-                REPORT_NO_DATA_TITLE, REPORT_NO_PAST_TEXT, parent=self.window,
-            )
-            return
-        ReportViewer(self.window, filepath=get_report_path(date))
-
-    def _open_period_report(self):
-        """Открывает диалог построения отчёта за период"""
-        PeriodReportDialog(self.window)
-
-    def _open_heatmap(self):
-        """Открывает окно тепловой карты активности"""
-        HeatmapViewer(self.window)
-
-    def _open_user_guide(self):
-        """Открывает руководство пользователя в браузере по умолчанию."""
-        self._open_doc(USER_GUIDE_PATH, HELP_MENU_README)
-
-    def _open_dev_guide(self):
-        """Открывает техническую документацию в браузере по умолчанию."""
-        self._open_doc(DEV_GUIDE_PATH, HELP_MENU_DEV_GUIDE)
-
-    def _open_doc(self, relative: str, title: str):
-        """Открывает HTML-документ из поставки приложения (docs/)."""
-        path = resource_path(relative)
-        if os.path.exists(path):
-            os.startfile(path)
-        else:
-            messagebox.showwarning(
-                title, DOC_NOT_FOUND_TEXT.format(path=path), parent=self.window,
-            )
-
-    def _open_about(self):
-        """Показывает версию приложения и ссылку на репозиторий."""
-        messagebox.showinfo(
-            ABOUT_TITLE,
-            f"{APP_NAME}\n{ABOUT_DESCRIPTION}\n\n"
-            f"Версия: {__version__}\n"
-            f"{GITHUB_URL}",
-            parent=self.window,
-        )
 
     def _open_widgets_dialog(self):
         """Открывает диалог управления мини-виджетами рабочего стола"""
@@ -441,10 +334,10 @@ class ActivityWidget:
         tools.refresh_tools(self._tools)
         if theme.current_theme() != theme_before:
             # Смена темы затрагивает всю «хромированную» часть — пересобираем
-            # её целиком (тело тоже, поэтому отдельный _rebuild_body не нужен).
+            # её целиком (тело тоже, поэтому отдельный _rebuild_content не нужен).
             self._apply_theme()
         else:
-            self._rebuild_body()
+            self._rebuild_content()
 
     def _apply_theme(self):
         """Перекрашивает виджет под текущую тему.
@@ -461,54 +354,26 @@ class ActivityWidget:
         self._title_bar.destroy()
         self._toolbar.destroy()
         self._toolbar_separator.destroy()
-        self._destroy_body()
+        self._content.destroy()
         self._build_chrome()
         if self._minimized:
             self._toolbar.pack_forget()
             self._toolbar_separator.pack_forget()
-            self._forget_body()
+            self._content.pack_forget()
         self._update_metrics()
         self._resize_window()
 
-    def _rebuild_body(self):
-        """Пересоздаёт тело виджета после изменения настроек"""
+    def _rebuild_content(self):
+        """Пересоздаёт тело и полосу после изменения настроек"""
         self._title_bar.rebuild_metric_labels()
-        self._destroy_body()
-        self._build_body()
+        self._content.destroy()
+        self._content = WidgetContent(self.window)
         if self._minimized:
             self._toolbar.pack_forget()
             self._toolbar_separator.pack_forget()
-            self._forget_body()
+            self._content.pack_forget()
         self._update_metrics()
         self._resize_window()
-
-    # --- Тело и недельная полоса ---
-    # Полоса — отдельный виджет рядом с телом, а не строка внутри него: тело
-    # в нерабочий день прячет все метрики, а неделя нужна и в такой день.
-    # Из-за этого тело и полоса всегда создаются, прячутся и уничтожаются
-    # вместе — этим и заняты четыре метода ниже.
-
-    def _build_body(self):
-        """Создаёт тело и (если включена) недельную полосу под ним."""
-        self._body = WidgetBody(self.window)
-        self._week_strip = WeekStrip(self.window) if config.WIDGET_SHOW_WEEK_ACTIVITY else None
-        self._pack_body()
-
-    def _pack_body(self):
-        self._body.pack(fill=tk.BOTH, expand=True)
-        if self._week_strip is not None:
-            self._week_strip.pack(fill=tk.X, pady=(0, 4))
-
-    def _forget_body(self):
-        self._body.pack_forget()
-        if self._week_strip is not None:
-            self._week_strip.pack_forget()
-
-    def _destroy_body(self):
-        self._body.destroy()
-        if self._week_strip is not None:
-            self._week_strip.destroy()
-            self._week_strip = None
 
     def _resize_window(self):
         """Пересчитывает размер окна под содержимое"""
@@ -519,27 +384,8 @@ class ActivityWidget:
         y = self.window.winfo_y()
         self.window.geometry(f"{width}x{win_h}+{x}+{y}")
 
-    def _load_position(self) -> tuple[int, int] | None:
-        """Загружает сохранённую позицию виджета"""
-        try:
-            with open(_WIDGET_POS_FILE, "r") as f:
-                pos = json.load(f)
-            return pos["x"], pos["y"]
-        except (FileNotFoundError, KeyError, json.JSONDecodeError, IOError):
-            return None
-
-    def _save_position(self):
-        """Сохраняет текущую позицию виджета"""
-        try:
-            x = self.window.winfo_x()
-            y = self.window.winfo_y()
-            with open(_WIDGET_POS_FILE, "w") as f:
-                json.dump({"x": x, "y": y}, f)
-        except IOError:
-            pass
-
     def close(self):
-        self._save_position()
+        save_position(self.window)
         tools.detach_tools(self._tools)
         if self._tray is not None:
             self._tray.stop()
