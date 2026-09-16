@@ -1,15 +1,15 @@
 """
-Диалог настроек приложения
+Диалог настроек приложения: вкладки, контролы, сбор значений.
+
+Запись собранного в config.py и применение на лету — в `config_writer`.
 """
 
-import re
 import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Any
 
 import config
-from bootstrap import USER_CONFIG_PATH as _CONFIG_PATH
-from constants import ENCODING, FONT_FAMILY
+from constants import FONT_FAMILY
 from texts import (
     METRIC_ACTIVE_TIME,
     METRIC_ACTIVITY_PERCENT_FULL,
@@ -34,6 +34,7 @@ from texts import (
     WEEK_MODE_ROLLING_LABEL,
 )
 from modules import theme
+from modules.config_writer import apply_runtime, write_config_file
 from modules.tools.registry import TOOL_CLASSES
 from modules.tools.spec import SETTING_BOOL, SETTING_INT, SETTING_TEXT
 from modules.ui_utils import center_on_parent
@@ -484,8 +485,8 @@ class SettingsDialog:
             return
 
         values = self._collect_values()
-        self._write_config_file(values)
-        self._apply_runtime(values)
+        write_config_file(values, self._tool_specs)
+        apply_runtime(values)
         self.saved = True
         self.dialog.destroy()
 
@@ -516,154 +517,6 @@ class SettingsDialog:
             "free_time_warning_percent": self._free_time_warning_var.get(),
             "tools": self._collect_tool_values(),
         }
-
-    def _write_config_file(self, values: dict):
-        with open(_CONFIG_PATH, "r", encoding=ENCODING) as f:
-            content = f.read()
-
-        # Таймеры
-        content = re.sub(
-            r"^INPUT_ACTIVITY_TIMEOUT\s*=\s*.+$",
-            f"INPUT_ACTIVITY_TIMEOUT = {values['input_activity_timeout']}",
-            content, flags=re.MULTILINE,
-        )
-        content = re.sub(
-            r"^COUNTDOWN_WARNING_SECONDS\s*=\s*.+$",
-            f"COUNTDOWN_WARNING_SECONDS = {values['countdown_warning_seconds']}",
-            content, flags=re.MULTILINE,
-        )
-        content = re.sub(
-            r"^SOUND_NOTIFICATION\s*=\s*.+$",
-            f"SOUND_NOTIFICATION = {values['sound_notification']}",
-            content, flags=re.MULTILINE,
-        )
-        content = re.sub(
-            r"^COUNTDOWN_TICK_SOUND\s*=\s*.+$",
-            f"COUNTDOWN_TICK_SOUND = {values['countdown_tick_sound']}",
-            content, flags=re.MULTILINE,
-        )
-        content = re.sub(
-            r"^STOP_COUNTDOWN_AT_RECOMMENDED\s*=\s*.+$",
-            f"STOP_COUNTDOWN_AT_RECOMMENDED = {values['stop_countdown_at_recommended']}",
-            content, flags=re.MULTILINE,
-        )
-        content = re.sub(
-            r"^WIDGET_PROGRESS_HIGHLIGHT\s*=\s*.+$",
-            f"WIDGET_PROGRESS_HIGHLIGHT = {values['widget_progress_highlight']}",
-            content, flags=re.MULTILINE,
-        )
-        content = re.sub(
-            r"^TRACK_MOUSE_MOVE\s*=\s*.+$",
-            f"TRACK_MOUSE_MOVE = {values['track_mouse_move']}",
-            content, flags=re.MULTILINE,
-        )
-
-        # Настройки инструментов — по схеме из реестра: строки пишутся
-        # в кавычках, числа и флаги как есть.
-        for spec in self._tool_specs:
-            key = spec["key"]
-            value = values["tools"][key]
-            if spec.get("kind", SETTING_BOOL) == SETTING_TEXT:
-                replacement = f'{key} = "{value}"'
-            else:
-                replacement = f"{key} = {value}"
-            content = re.sub(
-                "^" + key + r"\s*=\s*.+$",
-                replacement,
-                content, flags=re.MULTILINE,
-            )
-
-        # Тема оформления (строковое значение — в кавычках)
-        content = re.sub(
-            r"^THEME\s*=\s*.+$",
-            f'THEME = "{values["theme"]}"',
-            content, flags=re.MULTILINE,
-        )
-
-        # Режим недельной полосы — тоже строка
-        content = re.sub(
-            r"^WIDGET_WEEK_MODE\s*=\s*.+$",
-            f'WIDGET_WEEK_MODE = "{values["week_mode"]}"',
-            content, flags=re.MULTILINE,
-        )
-
-        # Пороги
-        for key, attr in (
-            ("recommended_activity_threshold", "RECOMMENDED_ACTIVITY_THRESHOLD"),
-            ("min_activity_threshold", "MIN_ACTIVITY_THRESHOLD"),
-            ("recommended_work_time_threshold", "RECOMMENDED_WORK_TIME_THRESHOLD"),
-            ("min_work_time_threshold", "MIN_WORK_TIME_THRESHOLD"),
-            ("free_time_warning_percent", "FREE_TIME_WARNING_PERCENT"),
-        ):
-            content = re.sub(
-                rf"^{attr}\s*=\s*.+$",
-                f"{attr} = {values[key]}",
-                content, flags=re.MULTILINE,
-            )
-
-        # Метрики
-        for attr, val in values["metrics"].items():
-            content = re.sub(
-                rf"^{attr}\s*=\s*.+$",
-                f"{attr} = {val}",
-                content, flags=re.MULTILINE,
-            )
-
-        # Рабочие часы — заменяем весь блок WORK_HOURS_BY_DAY
-        hours = values["work_hours"]
-        new_block = "WORK_HOURS_BY_DAY = {\n"
-        for key, _ in _DAYS:
-            v = hours[key]
-            formatted = str(int(v)) if v == int(v) else f"{v:.2f}"
-            new_block += f'    "{key}": {formatted},\n'
-        new_block += "}"
-        content = re.sub(
-            r"^WORK_HOURS_BY_DAY\s*=\s*\{[^}]+\}",
-            new_block,
-            content, flags=re.MULTILINE | re.DOTALL,
-        )
-
-        # Перерыв
-        content = re.sub(
-            r"^BREAK_MINUTES\s*=\s*.+$",
-            f"BREAK_MINUTES = {values['break_minutes']}",
-            content, flags=re.MULTILINE,
-        )
-
-        with open(_CONFIG_PATH, "w", encoding=ENCODING) as f:
-            f.write(content)
-
-    def _apply_runtime(self, values: dict):
-        """Обновляет атрибуты модуля config в памяти"""
-        config.SOUND_NOTIFICATION = values["sound_notification"]
-        config.COUNTDOWN_TICK_SOUND = values["countdown_tick_sound"]
-        config.STOP_COUNTDOWN_AT_RECOMMENDED = values["stop_countdown_at_recommended"]
-        config.WIDGET_PROGRESS_HIGHLIGHT = values["widget_progress_highlight"]
-        config.TRACK_MOUSE_MOVE = values["track_mouse_move"]
-        config.INPUT_ACTIVITY_TIMEOUT = values["input_activity_timeout"]
-        config.COUNTDOWN_WARNING_SECONDS = values["countdown_warning_seconds"]
-        config.RECOMMENDED_ACTIVITY_THRESHOLD = values["recommended_activity_threshold"]
-        config.MIN_ACTIVITY_THRESHOLD = values["min_activity_threshold"]
-        config.RECOMMENDED_WORK_TIME_THRESHOLD = values["recommended_work_time_threshold"]
-        config.MIN_WORK_TIME_THRESHOLD = values["min_work_time_threshold"]
-        config.FREE_TIME_WARNING_PERCENT = values["free_time_warning_percent"]
-        # Настройки инструментов: значения кладём в config, а перечитать их
-        # инструменты просит сам виджет (ActivityWidget._open_settings →
-        # tools.refresh_tools) — остальное читается динамически по месту.
-        for key, value in values["tools"].items():
-            setattr(config, key, value)
-        # Режим читается полосой на каждом обновлении — применится со следующим тиком.
-        config.WIDGET_WEEK_MODE = values["week_mode"]
-        for attr, val in values["metrics"].items():
-            setattr(config, attr, val)
-        for key, val in values["work_hours"].items():
-            config.WORK_HOURS_BY_DAY[key] = val
-        config.BREAK_MINUTES = values["break_minutes"]
-        # Тема: обновляем config и перепривязываем палитру theme.COLOR_*.
-        # Окна, открытые после этого, отрисуются в новой теме; постоянный
-        # виджет перекрасит себя сам (ActivityWidget._apply_theme).
-        config.THEME = values["theme"]
-        theme.set_theme(values["theme"])
 
     def wait(self):
         """Блокирует до закрытия диалога"""
