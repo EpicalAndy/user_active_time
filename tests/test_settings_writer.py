@@ -1,13 +1,13 @@
 """
-Тесты записи настроек в текст config.py (`modules/config_writer.render_config`).
+Тесты записи настроек в текст config.py (`modules/settings/writer.render_config`).
 
 Логика раньше жила внутри диалога настроек и без окна не проверялась.
 Проверяется, что подстановка идёт построчно (комментарии и незнакомые строки
 остаются как были), строки пишутся в кавычках, блок WORK_HOURS_BY_DAY
 переписывается целиком, а дробные часы не теряют точность.
 
-Запуск: `python -m pytest tests/test_config_writer.py`
-или как скрипт: `python tests/test_config_writer.py`.
+Запуск: `python -m pytest tests/test_settings_writer.py`
+или как скрипт: `python tests/test_settings_writer.py`.
 """
 
 import os
@@ -15,7 +15,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from modules.config_writer import WORK_DAY_KEYS, render_config  # noqa: E402
+from modules.settings.writer import WORK_DAY_KEYS, render_config  # noqa: E402
 from modules.tools.spec import SETTING_BOOL, SETTING_TEXT  # noqa: E402
 
 TEMPLATE = '''# Таймаут

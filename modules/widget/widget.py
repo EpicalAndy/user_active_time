@@ -43,7 +43,7 @@ from modules.period_report_dialog import PeriodReportDialog
 from modules.session_monitor import checkpoint_session
 from modules import tools
 from modules.report_viewer import ReportViewer
-from modules.settings_dialog import SettingsDialog
+from modules.settings import SettingsDialog
 from .body import WidgetBody
 from .manager import WidgetManager
 from .notification import play_notification, play_tick
