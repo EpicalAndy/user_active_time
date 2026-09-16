@@ -1,31 +1,23 @@
 """
-Заголовок виджета: название, мин/закрыть, обратный отсчёт неактивности,
+Заголовок виджета: название, кнопки окна, обратный отсчёт неактивности,
 дополнительные метрики (процент, остаток до конца дня, до рекомендуемой нормы).
 
-Drag-логика тоже здесь — окно двигается «за заголовок».
+Drag-логика тоже здесь — окно двигается «за заголовок». Сам countdown с
+миганием, режимом «норма выработана» и цветом рамки — в
+`countdown_indicator`; заголовок отдаёт ему свой лейбл названия и
+делегирует публичные методы, чтобы конфигуратор говорил только с заголовком.
 """
 
 import tkinter as tk
-import tkinter.font as tkfont
 from collections.abc import Callable
 
 import config
 from config import MAIN_FONT_SIZE
 from constants import FONT_FAMILY
 from modules import theme
+from modules.ui_utils import bold_pixel_width
 from utility import format_percent
-
-# Состояния countdown'а для внешней индикации (например, рамка виджета).
-_COUNTDOWN_NORMAL = "normal"
-_COUNTDOWN_WARNING = "warning"
-_COUNTDOWN_ZERO = "zero"
-
-# Уровни прогресса по активности — задают цвет рамки виджета.
-# Шкала та же, что у метрик в теле виджета (см. body._color_for_percent):
-# норма → зелёный, минимум → жёлтый, ниже минимума → без индикации.
-PROGRESS_NONE = "none"
-PROGRESS_MIN = "min"
-PROGRESS_GOAL = "goal"
+from .countdown_indicator import CountdownIndicator
 
 
 def _format_hm(seconds: int) -> str:
@@ -35,23 +27,12 @@ def _format_hm(seconds: int) -> str:
     return f"{h}ч {m}м"
 
 
-def _bold_pixel_width(text: str, size: int) -> int:
-    """Ширина текста в пикселях при ЖИРНОМ начертании FONT_FAMILY этого размера.
-
-    По этой (максимальной) ширине задаётся фиксированный слот лейбла, чтобы при
-    переключении bold/normal раскладка не «прыгала». Требует существующего root.
-    """
-    return tkfont.Font(family=FONT_FAMILY, size=size, weight="bold").measure(text)
-
-
 class TitleBar:
     """Заголовок виджета. Управляет своими лейблами, countdown'ом и drag'ом.
 
-    INPUT_ACTIVITY_TIMEOUT читается из config один раз при создании TitleBar
-    (сохраняем поведение исходной реализации: появление/исчезание countdown'а
-    требует перезапуска приложения). Прочие WIDGET_SHOW_TITLE_* читаются
-    динамически через `rebuild_metric_labels()` — диалог настроек умеет
-    дёргать его после сохранения.
+    WIDGET_SHOW_TITLE_* читаются динамически через `rebuild_metric_labels()` —
+    диалог настроек дёргает его после сохранения. Countdown создаётся один раз
+    (см. `CountdownIndicator`).
     """
 
     def __init__(
@@ -68,22 +49,10 @@ class TitleBar:
         self._on_collapse = on_collapse
         self._on_position_changed = on_position_changed
 
-        self._countdown_blinking = False
-        self._countdown_blink_bold = False
-        self._countdown_state = _COUNTDOWN_NORMAL
-        # Режим «норма выработана»: title и border всегда зелёные.
-        # _goal_placeholder=True дополнительно заменяет countdown на «__:__».
-        self._goal_reached = False
-        self._goal_placeholder = False
-        # Уровень прогресса для рамки. Живёт отдельно от _goal_reached:
-        # тот завязан на countdown (и без него не выставляется), а рамка
-        # должна подсвечиваться независимо от таймера неактивности.
-        self._progress_level = PROGRESS_NONE
         self._drag_x = 0
         self._drag_y = 0
 
-        self._countdown_label: tk.Label | None = None
-        self._countdown_slot: tk.Frame | None = None
+        self._countdown: CountdownIndicator | None = None
         self._title_slot: tk.Frame | None = None
         self._title_percent_label: tk.Label | None = None
         self._title_remaining_label: tk.Label | None = None
@@ -98,7 +67,7 @@ class TitleBar:
 
         # Слот фиксированной ширины: заголовок жирнеет при мигании, но слот
         # рассчитан по жирному начертанию — соседние метки не «прыгают».
-        title_w = _bold_pixel_width("Активность", MAIN_FONT_SIZE) + 2 * MAIN_FONT_SIZE + 2
+        title_w = bold_pixel_width("Активность", MAIN_FONT_SIZE) + 2 * MAIN_FONT_SIZE + 2
         self._title_slot = tk.Frame(self.frame, bg=theme.COLOR_DARK_BG, width=title_w)
         self._title_slot.pack(side=tk.LEFT, fill=tk.Y)
         self._title_slot.pack_propagate(False)
@@ -125,25 +94,8 @@ class TitleBar:
         self._minimize_btn = self._make_action_button("  —  ", self._on_minimize)
         self._minimize_btn.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # Countdown-лейбл создаётся один раз — переключение
-        # INPUT_ACTIVITY_TIMEOUT 0↔N требует перезапуска приложения.
-        if config.INPUT_ACTIVITY_TIMEOUT > 0:
-            # Слот фиксированной ширины по жирному «88:88»; лейбл центрирован,
-            # поэтому жирный/мигающий текст растёт симметрично и не толкает
-            # метрики справа.
-            cd_w = max(
-                _bold_pixel_width("88:88", MAIN_FONT_SIZE - 1),
-                _bold_pixel_width("__:__", MAIN_FONT_SIZE - 1),
-            ) + 4
-            self._countdown_slot = tk.Frame(self.frame, bg=theme.COLOR_DARK_BG, width=cd_w)
-            self._countdown_slot.pack(side=tk.LEFT, fill=tk.Y)
-            self._countdown_slot.pack_propagate(False)
-            self._countdown_label = tk.Label(
-                self._countdown_slot, text="",
-                bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
-                font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
-            )
-            self._countdown_label.pack(expand=True)
+        # Countdown ставит свой слот сразу за названием (пакуется LEFT до метрик).
+        self._countdown = CountdownIndicator(self.frame, self._title_label)
 
         self._build_metric_labels()
         self._bind_drag()
@@ -178,10 +130,7 @@ class TitleBar:
 
     def _bind_drag(self):
         widgets: list[tk.Widget] = [self.frame, self._title_slot, self._title_label]
-        if self._countdown_slot:
-            widgets.append(self._countdown_slot)
-        if self._countdown_label:
-            widgets.append(self._countdown_label)
+        widgets += self._countdown.drag_widgets()
         if self._title_percent_label:
             widgets.append(self._title_percent_label)
         if self._title_remaining_label:
@@ -220,173 +169,31 @@ class TitleBar:
             if label is not None:
                 label.configure(text="")
 
+    # --- Countdown и рамка: делегирование в CountdownIndicator ---
+
     def has_countdown(self) -> bool:
-        return self._countdown_label is not None
+        return self._countdown.enabled
 
     def update_countdown(self, remaining: int | None):
-        """Применяет остаток до неактивности к countdown-лейблу.
-
-        remaining: None — сессии нет / не отслеживается, скрываем текст.
-        0 — пользователь неактивен, жирный красный без мигания.
-        >0 — таймер обратного отсчёта; вблизи нуля включается мигание.
-
-        Если виджет в режиме «норма выработана» (`_goal_reached`):
-          * `_goal_placeholder=True` — обновление полностью пропускается
-            (на месте countdown остаётся зелёный «__:__»);
-          * иначе обновляются только цифры countdown, а цвет/шрифт
-            заголовка не трогаются — заголовок остаётся зелёным.
-        """
-        if self._countdown_label is None:
-            return
-        if self._goal_placeholder:
-            # Заполнитель уже отрисован в enter_goal_reached, не трогаем.
-            return
-        if remaining is None:
-            self._countdown_label.configure(text="")
-            self._countdown_blink_bold = False
-            self._countdown_state = _COUNTDOWN_NORMAL
-            return
-
-        minutes, secs = divmod(remaining, 60)
-        text = f"{minutes:02d}:{secs:02d}"
-
-        if remaining == 0:
-            # Неактивен — жирный красный, мигание выключено.
-            self._countdown_state = _COUNTDOWN_ZERO
-            self._countdown_blinking = False
-            self._countdown_blink_bold = False
-            self._countdown_label.configure(
-                text=text, fg=theme.COLOR_RED,
-                font=(FONT_FAMILY, MAIN_FONT_SIZE - 1, "bold"),
-            )
-            self._apply_title_state(theme.COLOR_RED, weight="bold")
-            return
-
-        warning_threshold = config.COUNTDOWN_WARNING_SECONDS
-        if warning_threshold > 0 and remaining <= warning_threshold:
-            # Приближение к неактивности — мигание управляется тикером.
-            self._countdown_state = _COUNTDOWN_WARNING
-            self._countdown_label.configure(text=text, fg=theme.COLOR_LIGHT_FG)
-            self._apply_title_state(theme.COLOR_LIGHT_FG, weight="normal")
-            self._countdown_blinking = True
-            return
-
-        # Обычное состояние.
-        self._countdown_state = _COUNTDOWN_NORMAL
-        self._countdown_blinking = False
-        self._countdown_blink_bold = False
-        self._countdown_label.configure(
-            text=text, fg=theme.COLOR_LIGHT_FG,
-            font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
-        )
-        self._apply_title_state(theme.COLOR_LIGHT_FG, weight="normal")
-
-    def _apply_title_state(self, color: str, weight: str):
-        """Красит заголовок «Активность» с учётом overriding'а goal_reached.
-
-        Когда `_goal_reached` — заголовок принудительно зелёный нормальный.
-        """
-        if self._goal_reached:
-            self._title_label.configure(
-                fg=theme.COLOR_GREEN, font=(FONT_FAMILY, MAIN_FONT_SIZE),
-            )
-        else:
-            self._title_label.configure(
-                fg=color, font=(FONT_FAMILY, MAIN_FONT_SIZE, weight),
-            )
+        self._countdown.update(remaining)
 
     def clear_countdown(self):
-        """Скрывает countdown (например, на нерабочем дне)."""
-        if self._countdown_label is None:
-            return
-        self._countdown_label.configure(text="")
-        self._countdown_blinking = False
-        self._countdown_state = _COUNTDOWN_NORMAL
-        # Сброс goal-состояния — на не-рабочем дне нет смысла его держать.
-        self.exit_goal_reached()
+        self._countdown.clear()
 
     def enter_goal_reached(self, show_placeholder: bool):
-        """Включает режим «норма выработана».
-
-        Заголовок «Активность» и countdown-alert (рамка) становятся
-        зелёными — это работает всегда, пока режим активен.
-
-        show_placeholder=True — countdown-лейбл заменяется зелёным
-        «__:__», и update_countdown игнорируется до выхода из режима.
-        show_placeholder=False — countdown продолжает обновляться
-        и мигать по обычным правилам; зелёным остаётся только заголовок.
-        """
-        if self._countdown_label is None:
-            return
-        self._goal_reached = True
-        # Заголовок сразу красим зелёным; следующий update_countdown учтёт флаг.
-        self._title_label.configure(
-            fg=theme.COLOR_GREEN, font=(FONT_FAMILY, MAIN_FONT_SIZE),
-        )
-        if show_placeholder:
-            self._goal_placeholder = True
-            self._countdown_state = _COUNTDOWN_NORMAL
-            self._countdown_blinking = False
-            self._countdown_blink_bold = False
-            self._countdown_label.configure(
-                text="__:__", fg=theme.COLOR_GREEN,
-                font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
-            )
-        else:
-            self._goal_placeholder = False
+        self._countdown.enter_goal_reached(show_placeholder)
 
     def exit_goal_reached(self):
-        """Выключает режим «норма выработана» — возвращаемся к обычной логике."""
-        self._goal_reached = False
-        self._goal_placeholder = False
+        self._countdown.exit_goal_reached()
 
     def set_progress_level(self, level: str):
-        """Задаёт уровень прогресса по активности (PROGRESS_*) для рамки."""
-        self._progress_level = level
+        self._countdown.set_progress_level(level)
 
     def border_indicator_color(self) -> str | None:
-        """Цвет рамки окна виджета.
-
-        Приоритеты:
-        - Норма выработана → сплошной зелёный (перекрывает red-предупреждения:
-          норма уже заработана, простой больше не важен).
-        - Фаза нуля → сплошной красный (как у текста заголовка).
-        - Фаза предупреждения, кадр «жирный красный» → красный.
-        - Минимум взят (но норма ещё нет) → жёлтый. Стоит НИЖЕ красного:
-          работа ещё не закончена, и предупреждение о простое важнее, чем
-          индикация прогресса.
-        - Иначе → None (индикатор не нужен).
-
-        Обе подсветки прогресса (зелёная и жёлтая) выключаются настройкой
-        WIDGET_PROGRESS_HIGHLIGHT — тогда рамка живёт только по правилам
-        countdown'а, а зелёным при норме остаётся только заголовок.
-        """
-        highlight = config.WIDGET_PROGRESS_HIGHLIGHT
-        if highlight and self._progress_level == PROGRESS_GOAL:
-            return theme.COLOR_GREEN
-        if self._countdown_state == _COUNTDOWN_ZERO:
-            return theme.COLOR_RED
-        if self._countdown_state == _COUNTDOWN_WARNING and self._countdown_blink_bold:
-            return theme.COLOR_RED
-        if highlight and self._progress_level == PROGRESS_MIN:
-            return theme.COLOR_YELLOW
-        return None
+        return self._countdown.border_color()
 
     def tick_blink(self):
-        """Один шаг анимации мигания (вызывать каждые ~500мс)."""
-        if not self._countdown_blinking or self._countdown_label is None:
-            return
-        self._countdown_blink_bold = not self._countdown_blink_bold
-        weight = "bold" if self._countdown_blink_bold else "normal"
-        fg = theme.COLOR_RED if self._countdown_blink_bold else theme.COLOR_LIGHT_FG
-        self._countdown_label.configure(
-            font=(FONT_FAMILY, MAIN_FONT_SIZE - 1, weight), fg=fg,
-        )
-        # Заголовок мигает только если не в режиме «норма выработана».
-        if not self._goal_reached:
-            self._title_label.configure(
-                font=(FONT_FAMILY, MAIN_FONT_SIZE, weight), fg=fg,
-            )
+        self._countdown.tick_blink()
 
     def rebuild_metric_labels(self):
         """Пересоздаёт опциональные лейблы заголовка по текущему config.

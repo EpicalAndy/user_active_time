@@ -30,7 +30,8 @@ from .content import WidgetContent
 from .manager import WidgetManager
 from .notification import play_notification, play_tick
 from .position import place_window, save_position
-from .title_bar import PROGRESS_GOAL, PROGRESS_MIN, PROGRESS_NONE, TitleBar
+from .countdown_indicator import PROGRESS_GOAL, PROGRESS_MIN, PROGRESS_NONE
+from .title_bar import TitleBar
 from .toolbar import WidgetToolbar
 from utility import format_date_key, truncate_percent
 

@@ -3,6 +3,7 @@ Tkinter UI-хелперы.
 """
 
 import tkinter as tk
+import tkinter.font as tkfont
 from collections.abc import Callable
 
 from constants import FONT_FAMILY
@@ -79,3 +80,12 @@ def attach_tooltip(
 
     widget.bind("<Enter>", on_enter, add="+")
     widget.bind("<Leave>", on_leave, add="+")
+
+
+def bold_pixel_width(text: str, size: int) -> int:
+    """Ширина текста в пикселях при ЖИРНОМ начертании FONT_FAMILY этого размера.
+
+    По этой (максимальной) ширине задаётся фиксированный слот лейбла, чтобы при
+    переключении bold/normal раскладка не «прыгала». Требует существующего root.
+    """
+    return tkfont.Font(family=FONT_FAMILY, size=size, weight="bold").measure(text)
