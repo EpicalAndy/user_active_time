@@ -31,6 +31,7 @@ from texts import (
     REPORT_NO_TODAY_TEXT,
     USER_GUIDE_PATH,
 )
+from modules.changelog_viewer import ChangelogViewer
 from modules.heatmap_viewer import HeatmapViewer
 from modules.period_report import find_latest_past_report_date, get_report_path
 from modules.period_report_dialog import PeriodReportDialog
@@ -95,6 +96,11 @@ def open_user_guide(parent: tk.Misc):
 def open_dev_guide(parent: tk.Misc):
     """Открывает техническую документацию в браузере по умолчанию."""
     _open_doc(parent, DEV_GUIDE_PATH, HELP_MENU_DEV_GUIDE)
+
+
+def open_changelog(parent: tk.Misc):
+    """Показывает чейнджлог приложения в отдельном окне."""
+    ChangelogViewer(parent)
 
 
 def _open_doc(parent: tk.Misc, relative: str, title: str):

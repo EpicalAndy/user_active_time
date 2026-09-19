@@ -313,7 +313,7 @@ win_events    — WTS-подписка, скрытое окно, цикл соо
 
 <p><b>Недельная полоса</b>: раскладка дат и источники данных — <code>modules/week_activity.py</code> (без tkinter; <code>build_days</code> — для любого списка дат, ею же пользуется мини-виджет «Тепловая карта»). Прошлые дни — из дневных JSON-отчётов, сегодняшняя клетка — из живой статистики (отчёт отстаёт на checkpoint). Файлы перечитываются на каждом обновлении. Виды клеток: данные есть / рабочий день без отчёта / нерабочий / будущий (<code>tests/test_week_activity.py</code>).</p>
 
-<p>Панель инструментов не знает, что делают пункты меню «Инструменты» — они приходят из реестра <code>modules/tools</code>. Меню «Помощь» открывает документы из <code>docs/</code> через <code>utility.resource_path</code> (см. <a href="#docs">Документация</a>).</p>
+<p>Панель инструментов не знает, что делают пункты меню «Инструменты» — они приходят из реестра <code>modules/tools</code>. Меню «Помощь» открывает документы из <code>docs/</code> через <code>utility.resource_path</code>, а пункт «Что нового» — окно <code>ChangelogViewer</code> с <code>CHANGELOG.md</code> (см. <a href="#docs">Документация</a>).</p>
 
 <!-- ============================================================ -->
 <h2 id="mini">Мини-виджеты</h2>
@@ -378,6 +378,7 @@ kind: OPTION_CHOICE (по умолчанию) — радиокнопки, зна
   <li><code>docs/developer_guide.html</code> — этот документ.</li>
 </ul>
 <p>Файлы самодостаточные (стили внутри, тёмная тема по <code>prefers-color-scheme</code>), чтобы один файл можно было переслать. Папка поставляется со сборкой (<code>main.spec</code>) и открывается из меню ❓: «Помощь» → руководство, «Техническая документация» → этот файл; путь берётся через <code>utility.resource_path</code>, который в сборке смотрит в <code>sys._MEIPASS</code>. <code>README.md</code> в корне — короткая страница для GitHub со ссылками сюда.</p>
+<p>Третий документ — <code>CHANGELOG.md</code> в корне, и он намеренно не HTML: это плоский список строк по версиям, рендерить из него страницу незачем. Пункт ❓ → «Что нового» показывает его своим окном (<code>modules/changelog_viewer.py</code>): <code>os.startfile</code> тут не годится — расширение <code>.md</code> в Windows часто ни к чему не привязано, а собственное окно ещё и рисуется в теме приложения. Разметка не разбирается: из markdown в файле встречаются только <code>#</code> и <code>##</code>, у них убираются решётки и вешается тег (<code>title</code> / <code>version</code>), остальные строки вставляются как есть. Текст read-only через <code>state=DISABLED</code> — выделение и копирование при этом работают. Файл кладётся в корень сборки <code>datas</code> в <code>main.spec</code> и ищется тем же <code>utility.resource_path</code>.</p>
 <aside class="note">
 <p>Документация — часть изменения, а не follow-up: любая доработка обновляет оба документа в той части, которой касается (поведение — в руководстве, устройство — здесь), в том же коммите.</p>
 </aside>
@@ -405,7 +406,7 @@ git push --follow-tags                           # или сразу флаго�
 
 <!-- ============================================================ -->
 <h2 id="build">Сборка</h2>
-<p>PyInstaller по <code>main.spec</code>: <code>datas</code> кладёт папку <code>docs/</code> рядом с исполняемым файлом, <code>hiddenimports=['pystray._win32']</code> — потому что <code>pystray</code> грузит бэкенд лениво и PyInstaller его не видит. Сборка в режиме <code>COLLECT</code> (папка <code>dist/main/</code>), консоль включена. Ресурсы в рантайме ищутся через <code>utility.resource_path</code>: от <code>sys._MEIPASS</code> в сборке, от корня проекта при обычном запуске.</p>
+<p>PyInstaller по <code>main.spec</code>: <code>datas</code> кладёт рядом с исполняемым файлом папку <code>docs/</code> и <code>CHANGELOG.md</code>, <code>hiddenimports=['pystray._win32']</code> — потому что <code>pystray</code> грузит бэкенд лениво и PyInstaller его не видит. Сборка в режиме <code>COLLECT</code> (папка <code>dist/main/</code>), консоль включена. Ресурсы в рантайме ищутся через <code>utility.resource_path</code>: от <code>sys._MEIPASS</code> в сборке, от корня проекта при обычном запуске.</p>
 <pre><code>.venv\Scripts\python -m PyInstaller main.spec</code></pre>
 
 <!-- ============================================================ -->
@@ -424,12 +425,13 @@ git push --follow-tags                           # или сразу флаго�
   <li><code>modules/activity_intervals.py</code> — чистое ядро активного времени из интервалов</li>
   <li><code>modules/work_calendar.py</code> — календарь-исключения (<code>work_calendar.json</code>)</li>
   <li><code>modules/theme.py</code> — палитры тем и переключение</li>
-  <li><code>modules/report.py</code>, <code>report_reader.py</code>, <code>report_viewer.py</code>, <code>period_report.py</code>, <code>period_report_dialog.py</code>, <code>period_report_viewer.py</code>, <code>heatmap_viewer.py</code>, <code>month_grid.py</code>, <code>schedule_calendar.py</code>, <code>day_schedule_dialog.py</code>, <code>calendar_popup.py</code>, <code>manual_activity_dialog.py</code>, <code>ui_utils.py</code> — отчёты и диалоги</li>
+  <li><code>modules/report.py</code>, <code>report_reader.py</code>, <code>report_viewer.py</code>, <code>period_report.py</code>, <code>period_report_dialog.py</code>, <code>period_report_viewer.py</code>, <code>heatmap_viewer.py</code>, <code>month_grid.py</code>, <code>schedule_calendar.py</code>, <code>day_schedule_dialog.py</code>, <code>calendar_popup.py</code>, <code>manual_activity_dialog.py</code>, <code>changelog_viewer.py</code>, <code>ui_utils.py</code> — отчёты и диалоги</li>
   <li><code>modules/settings/</code> — диалог настроек: <code>dialog.py</code> (окно, кнопки, сбор значений), <code>tab_general.py</code> / <code>tab_metrics.py</code> / <code>tab_tools.py</code> (вкладки, каждая отдаёт свою часть словаря через <code>values()</code>), <code>writer.py</code> (запись в config.py и применение на лету)</li>
   <li><code>modules/week_activity.py</code> — раскладка недельной полосы (данные, без tkinter)</li>
   <li><code>modules/widget/</code> — конфигуратор: <code>widget.py</code>, <code>content.py</code>, <code>actions.py</code>, <code>position.py</code>, <code>title_bar.py</code>, <code>countdown_indicator.py</code>, <code>toolbar.py</code>, <code>body.py</code>, <code>day_timeline.py</code>, <code>week_strip.py</code>, <code>timeline_cells.py</code>, <code>manager.py</code>, <code>widgets_dialog.py</code>, <code>widget_store.py</code>, <code>tray.py</code>, <code>notification.py</code>; <code>mini/</code> — мини-виджеты и их реестр</li>
   <li><code>modules/tools/</code> — инструменты: <code>registry.py</code>, <code>spec.py</code>, <code>input_lock/</code></li>
   <li><code>docs/</code> — <code>user_guide.html</code>, <code>developer_guide.html</code></li>
+  <li><code>CHANGELOG.md</code> — чейнджлог; показывается в окне ❓ → «Что нового»</li>
   <li><code>scripts/</code> — <code>release.py</code> (+ <code>release.md</code>), <code>migrate_reports_to_json.py</code> (+ <code>.md</code>)</li>
   <li><code>tests/</code> — см. ниже</li>
   <li><code>requirements.txt</code>, <code>start.bat</code>, <code>main.spec</code></li>

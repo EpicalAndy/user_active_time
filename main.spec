@@ -5,7 +5,8 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('docs', 'docs')],
+    # docs/ — HTML-руководства, CHANGELOG.md — окно «Что нового».
+    datas=[('docs', 'docs'), ('CHANGELOG.md', '.')],
     # pystray грузит бэкенд лениво — PyInstaller его не видит без явного указания.
     hiddenimports=['pystray._win32'],
     hookspath=[],

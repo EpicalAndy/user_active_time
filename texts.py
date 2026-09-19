@@ -23,12 +23,17 @@ DEFAULT_MANUAL_ACTIVITY_DESCRIPTION = "Добавлено пользовател
 HELP_MENU_LABEL = "❓"
 HELP_MENU_README = "Помощь"
 HELP_MENU_DEV_GUIDE = "Техническая документация"
+HELP_MENU_CHANGELOG = "Что нового"
 HELP_MENU_GITHUB = "github"
 HELP_MENU_ABOUT = "О программе"
 # «Помощь» и «Техническая документация» открывают HTML из docs/ (папка
 # поставляется со сборкой — см. main.spec).
 USER_GUIDE_PATH = "docs/user_guide.html"
 DEV_GUIDE_PATH = "docs/developer_guide.html"
+# «Что нового» — CHANGELOG.md из корня поставки, показывается своим окном
+# (см. modules/changelog_viewer.py).
+CHANGELOG_PATH = "CHANGELOG.md"
+CHANGELOG_TITLE = "Что нового"
 DOC_NOT_FOUND_TEXT = "Файл документации не найден:\n{path}"
 GITHUB_URL = "https://github.com/EpicalAndy/user_active_time"
 

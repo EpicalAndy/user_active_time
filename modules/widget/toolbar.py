@@ -10,6 +10,7 @@ from config import MAIN_FONT_SIZE
 from constants import FONT_FAMILY
 from texts import (
     HELP_MENU_ABOUT,
+    HELP_MENU_CHANGELOG,
     HELP_MENU_DEV_GUIDE,
     HELP_MENU_GITHUB,
     HELP_MENU_LABEL,
@@ -45,6 +46,7 @@ class WidgetToolbar:
         on_open_settings: Callable,
         on_open_readme: Callable,
         on_open_dev_guide: Callable,
+        on_open_changelog: Callable,
         on_open_github: Callable,
         on_open_about: Callable,
         on_period_report: Callable | None = None,
@@ -79,6 +81,7 @@ class WidgetToolbar:
             [
                 (HELP_MENU_README, on_open_readme),
                 (HELP_MENU_DEV_GUIDE, on_open_dev_guide),
+                (HELP_MENU_CHANGELOG, on_open_changelog),
                 (HELP_MENU_GITHUB, on_open_github),
                 None,
                 (HELP_MENU_ABOUT, on_open_about),

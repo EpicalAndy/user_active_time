@@ -123,6 +123,7 @@ class ActivityWidget:
             on_open_settings=self._open_settings,
             on_open_readme=partial(actions.open_user_guide, self.window),
             on_open_dev_guide=partial(actions.open_dev_guide, self.window),
+            on_open_changelog=partial(actions.open_changelog, self.window),
             on_open_github=actions.open_github,
             on_open_about=partial(actions.open_about, self.window),
             on_period_report=partial(actions.open_period_report, self.window),
