@@ -25,7 +25,7 @@
 репозитория, ни git.
 """
 
-__version__ = "2026.09.5"
+__version__ = "2026.09.6"
 
 
 def version_tuple(version: str = __version__) -> tuple[int, int, int]:
