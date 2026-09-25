@@ -79,18 +79,17 @@ class TitleBar:
         self._title_label.pack(side=tk.LEFT, fill=tk.Y)
 
         # Порядок слева направо (как в Windows): «—» (в трей), «□» (до
-        # заголовка), «✕» (закрыть). Пакуются справа-налево, поэтому «✕» —
+        # заголовка с тулбаром), «✕» (закрыть). Пакуются справа-налево, поэтому «✕» —
         # первым (крайний справа), «—» — последним (крайний слева).
         self._close_btn = self._make_action_button("  ✕  ", self._on_close)
         self._close_btn.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # «□» — свернуть до заголовка и обратно.
+        # «□» — свернуть до заголовка с тулбаром и обратно.
         if self._on_collapse is not None:
             self._collapse_btn = self._make_action_button("  □  ", self._on_collapse)
             self._collapse_btn.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # «—» — свернуть в трей. Трея пока нет: интерим-поведение = свернуть до
-        # заголовка; на следующем шаге переназначится на «свернуть в трей».
+        # «—» — свернуть в трей (без трея — свернуть до заголовка с тулбаром).
         self._minimize_btn = self._make_action_button("  —  ", self._on_minimize)
         self._minimize_btn.pack(side=tk.RIGHT, fill=tk.Y)
 

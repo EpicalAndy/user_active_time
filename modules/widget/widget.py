@@ -262,7 +262,7 @@ class ActivityWidget:
         """Создаёт и запускает значок в трее. None, если трей недоступен.
 
         Импорт pystray/Pillow ленивый: если зависимостей нет, приложение
-        продолжает работать, а кнопка «—» откатывается к сворачиванию до заголовка.
+        продолжает работать, а кнопка «—» откатывается к сворачиванию до заголовка с тулбаром.
         """
         try:
             from .tray import TrayIcon
@@ -286,7 +286,7 @@ class ActivityWidget:
         """Прячет окно конфигуратора в трей (мини-виджеты остаются на рабочем столе).
 
         Значок трея висит всегда, поэтому достаточно скрыть окно. Если трей
-        недоступен — откатываемся к сворачиванию до заголовка.
+        недоступен — откатываемся к сворачиванию до заголовка с тулбаром.
         """
         if self._tray is not None:
             self.window.withdraw()
@@ -299,17 +299,24 @@ class ActivityWidget:
         self.window.lift()
 
     def _toggle_minimize(self):
-        """Сворачивает/разворачивает тело виджета"""
+        """Сворачивает виджет до заголовка с тулбаром и разворачивает обратно.
+
+        Тулбар в свёрнутом виде остаётся: отчёты, настройки и ручное время
+        нужны и без тела. Разделитель прячется вместе с телом — под ним
+        в свёрнутом виде ничего нет.
+        """
         if self._minimized:
-            self._toolbar.pack(fill=tk.X)
             self._toolbar_separator.pack(fill=tk.X)
             self._content.pack()
-        else:
-            self._toolbar.pack_forget()
+        self._minimized = not self._minimized
+        self._hide_body_if_minimized()
+        self._resize_window()
+
+    def _hide_body_if_minimized(self):
+        """В свёрнутом виде прячет разделитель и тело (тулбар остаётся)."""
+        if self._minimized:
             self._toolbar_separator.pack_forget()
             self._content.pack_forget()
-        self._minimized = not self._minimized
-        self._resize_window()
 
     def _open_widgets_dialog(self):
         """Открывает диалог управления мини-виджетами рабочего стола"""
@@ -358,10 +365,7 @@ class ActivityWidget:
         self._toolbar_separator.destroy()
         self._content.destroy()
         self._build_chrome()
-        if self._minimized:
-            self._toolbar.pack_forget()
-            self._toolbar_separator.pack_forget()
-            self._content.pack_forget()
+        self._hide_body_if_minimized()
         self._update_metrics()
         self._resize_window()
 
@@ -370,10 +374,7 @@ class ActivityWidget:
         self._title_bar.rebuild_metric_labels()
         self._content.destroy()
         self._content = WidgetContent(self.window)
-        if self._minimized:
-            self._toolbar.pack_forget()
-            self._toolbar_separator.pack_forget()
-            self._content.pack_forget()
+        self._hide_body_if_minimized()
         self._update_metrics()
         self._resize_window()
 

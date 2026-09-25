@@ -15,7 +15,7 @@ TOOLTIP_ADD_ACTIVE_TIME = "Добавить активное время"
 TOOLTIP_OPEN_SETTINGS = "Настройки"
 TOOLTIP_HELP = "Помощь"
 TOOLTIP_WIDGETS = "Виджеты на рабочем столе"
-TOOLTIP_COLLAPSE = "Свернуть до заголовка"
+TOOLTIP_COLLAPSE = "Свернуть до заголовка с тулбаром"
 DEFAULT_MANUAL_ACTIVITY_DESCRIPTION = "Добавлено пользовательское время"
 
 # === Меню «Помощь» ===
