@@ -64,12 +64,6 @@ def _save():
     os.replace(tmp_path, CALENDAR_FILE)
 
 
-def reload():
-    """Сбрасывает кэш — следующее чтение перечитает файл с диска."""
-    global _cache
-    _cache = None
-
-
 def get_entry(date: datetime.date) -> dict | None:
     """Возвращает запись календаря для даты или None, если её нет."""
     entry = _ensure_loaded().get(_date_key(date))
@@ -120,10 +114,3 @@ def set_entry(date: datetime.date, hours: float | None, note: str = ""):
     else:
         cache[key] = {"hours": hours, "note": note}
     _save()
-
-
-def clear_entry(date: datetime.date):
-    """Удаляет запись на дату (возврат к расписанию по дню недели) и сохраняет."""
-    cache = _ensure_loaded()
-    if cache.pop(_date_key(date), None) is not None:
-        _save()

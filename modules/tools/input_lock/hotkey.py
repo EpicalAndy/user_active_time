@@ -187,9 +187,3 @@ class HotkeyMatcher:
 
         self._triggered = True
         return True
-
-    def is_hotkey_key(self, vk: int) -> bool:
-        """Участвует ли клавиша в комбинации (модификатор или основная)."""
-        if vk in _VK_TO_MODIFIER:
-            return True
-        return self._hotkey is not None and vk == self._hotkey.vk

@@ -69,10 +69,6 @@ _PALETTES: dict[str, dict[str, str]] = {
     },
 }
 
-# Подписчики на смену темы (например, постоянный виджет регистрирует
-# свою перекраску). Вызываются после применения новой палитры.
-_listeners: list = []
-
 _current_theme = THEME_DARK
 
 
@@ -91,34 +87,20 @@ def _apply_palette(name: str) -> None:
     globals().update(_PALETTES[name])
 
 
-def set_theme(name: str, *, notify: bool = True) -> None:
+def set_theme(name: str) -> None:
     """Переключает активную тему и перепривязывает theme.COLOR_*.
 
-    notify=True — уведомляет подписчиков (для live-перекраски уже открытых
-    долгоживущих окон вроде виджета). Окна, создаваемые после вызова,
-    подхватят новую палитру сами через динамическое чтение theme.COLOR_X.
+    Окна, создаваемые после вызова, подхватят новую палитру сами через
+    динамическое чтение theme.COLOR_X; постоянный виджет перекрашивает себя
+    сам (ActivityWidget._apply_theme).
     """
     global _current_theme
     if name not in _PALETTES:
         name = THEME_DARK
     _current_theme = name
     _apply_palette(name)
-    if notify:
-        for callback in list(_listeners):
-            callback()
-
-
-def subscribe(callback) -> None:
-    """Регистрирует callback, вызываемый после каждой смены темы."""
-    _listeners.append(callback)
-
-
-def unsubscribe(callback) -> None:
-    """Снимает регистрацию callback'а смены темы."""
-    if callback in _listeners:
-        _listeners.remove(callback)
 
 
 # Инициализация при импорте: берём тему из config, иначе тёмную.
 _initial = getattr(config, "THEME", THEME_DARK)
-set_theme(_initial if _initial in _PALETTES else THEME_DARK, notify=False)
+set_theme(_initial if _initial in _PALETTES else THEME_DARK)

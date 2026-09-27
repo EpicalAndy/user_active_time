@@ -7,7 +7,7 @@
 и позиция сохраняются — чтобы включение восстанавливало всё как было.
 
 Два уровня API:
-- по id (`add`/`remove`/`update_opts`/`list_instances`) — «под капотом», допускает
+- по id (`add`/`disable`/`update_opts`) — «под капотом», допускает
   несколько экземпляров одного типа;
 - по типу (`type_enabled`/`type_opts`/`set_type_enabled`/`update_type_opts`) — то,
   чем пользуется диалог управления: один настраиваемый виджет на тип.
@@ -60,12 +60,6 @@ class WidgetManager:
         self._persist()
         return widget_id
 
-    def remove(self, widget_id: str):
-        """Полностью удаляет виджет (запись + окно) и сохраняет реестр."""
-        self._despawn(widget_id)
-        self._items.pop(widget_id, None)
-        self._persist()
-
     def disable(self, widget_id: str):
         """Выключает виджет (прячет окно), сохраняя запись и настройки.
 
@@ -88,20 +82,6 @@ class WidgetManager:
         item.setdefault("opts", {}).update(opts)
         self._apply_opts_live(widget_id, item["opts"])
         self._persist()
-
-    def list_instances(self) -> list[dict]:
-        """Все записи в порядке создания: [{id, type, label, opts, enabled}]."""
-        out = []
-        for widget_id, item in self._items.items():
-            meta = WIDGET_TYPES.get(item["type"], {})
-            out.append({
-                "id": widget_id,
-                "type": item["type"],
-                "label": meta.get("label", item["type"]),
-                "opts": item.get("opts", {}),
-                "enabled": item.get("enabled", True),
-            })
-        return out
 
     # --- API по типу (для диалога: один виджет на тип) ---
 

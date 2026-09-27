@@ -27,9 +27,7 @@ WM_MOUSEMOVE = 0x0200
 
 # Сообщения клавиатуры, приходящие в WH_KEYBOARD_LL.
 WM_KEYDOWN = 0x0100
-WM_KEYUP = 0x0101
 WM_SYSKEYDOWN = 0x0104
-WM_SYSKEYUP = 0x0105
 
 # Виртуальные коды модификаторов. Обобщённые (VK_CONTROL и т.п.) в хук не
 # приходят — там всегда конкретная сторона (VK_LCONTROL / VK_RCONTROL),
