@@ -29,10 +29,10 @@ from modules import theme
 from modules.ui_utils import bold_pixel_width
 from utility import input_monitoring_enabled
 
-# Состояния countdown'а для внешней индикации (рамка виджета).
-_COUNTDOWN_NORMAL = "normal"
-_COUNTDOWN_WARNING = "warning"
-_COUNTDOWN_ZERO = "zero"
+# Фазы счётчика (см. countdown_phase). Общие для заголовка и мини-виджета.
+COUNTDOWN_NORMAL = "normal"
+COUNTDOWN_WARNING = "warning"
+COUNTDOWN_ZERO = "zero"
 
 # Уровни прогресса по активности — задают цвет рамки виджета.
 # Шкала та же, что у метрик в теле виджета (см. body._color_for_percent):
@@ -41,7 +41,23 @@ PROGRESS_NONE = "none"
 PROGRESS_MIN = "min"
 PROGRESS_GOAL = "goal"
 
-_PLACEHOLDER = "__:__"
+GOAL_PLACEHOLDER = "__:__"
+
+
+def countdown_phase(remaining: int) -> tuple[str, str]:
+    """«MM:SS» и фаза счётчика по остатку до неактивности (remaining ≥ 0).
+
+    Ноль — пользователь уже неактивен; предупреждение — остаток в пределах
+    COUNTDOWN_WARNING_SECONDS (0 в настройке предупреждение отключает).
+    """
+    minutes, secs = divmod(remaining, 60)
+    text = f"{minutes:02d}:{secs:02d}"
+    if remaining == 0:
+        return text, COUNTDOWN_ZERO
+    warning = config.COUNTDOWN_WARNING_SECONDS
+    if warning > 0 and remaining <= warning:
+        return text, COUNTDOWN_WARNING
+    return text, COUNTDOWN_NORMAL
 
 
 class CountdownIndicator:
@@ -52,7 +68,7 @@ class CountdownIndicator:
 
         self._blinking = False
         self._blink_bold = False
-        self._state = _COUNTDOWN_NORMAL
+        self._state = COUNTDOWN_NORMAL
         # Режим «норма выработана»: название и рамка всегда зелёные.
         # _goal_placeholder=True дополнительно заменяет countdown на «__:__».
         self._goal_reached = False
@@ -67,7 +83,7 @@ class CountdownIndicator:
         if input_monitoring_enabled():
             width = max(
                 bold_pixel_width("88:88", MAIN_FONT_SIZE - 1),
-                bold_pixel_width(_PLACEHOLDER, MAIN_FONT_SIZE - 1),
+                bold_pixel_width(GOAL_PLACEHOLDER, MAIN_FONT_SIZE - 1),
             ) + 4
             self._slot = tk.Frame(frame, bg=theme.COLOR_DARK_BG, width=width)
             self._slot.pack(side=tk.LEFT, fill=tk.Y)
@@ -110,15 +126,14 @@ class CountdownIndicator:
         if remaining is None:
             self._label.configure(text="")
             self._blink_bold = False
-            self._state = _COUNTDOWN_NORMAL
+            self._state = COUNTDOWN_NORMAL
             return
 
-        minutes, secs = divmod(remaining, 60)
-        text = f"{minutes:02d}:{secs:02d}"
+        text, phase = countdown_phase(remaining)
+        self._state = phase
 
-        if remaining == 0:
+        if phase == COUNTDOWN_ZERO:
             # Неактивен — жирный красный, мигание выключено.
-            self._state = _COUNTDOWN_ZERO
             self._blinking = False
             self._blink_bold = False
             self._label.configure(
@@ -128,17 +143,14 @@ class CountdownIndicator:
             self._apply_title_state(theme.COLOR_RED, weight="bold")
             return
 
-        warning_threshold = config.COUNTDOWN_WARNING_SECONDS
-        if warning_threshold > 0 and remaining <= warning_threshold:
+        if phase == COUNTDOWN_WARNING:
             # Приближение к неактивности — мигание управляется тикером.
-            self._state = _COUNTDOWN_WARNING
             self._label.configure(text=text, fg=theme.COLOR_LIGHT_FG)
             self._apply_title_state(theme.COLOR_LIGHT_FG, weight="normal")
             self._blinking = True
             return
 
         # Обычное состояние.
-        self._state = _COUNTDOWN_NORMAL
         self._blinking = False
         self._blink_bold = False
         self._label.configure(
@@ -167,7 +179,7 @@ class CountdownIndicator:
             return
         self._label.configure(text="")
         self._blinking = False
-        self._state = _COUNTDOWN_NORMAL
+        self._state = COUNTDOWN_NORMAL
         # Сброс goal-состояния — на нерабочем дне нет смысла его держать.
         self.exit_goal_reached()
 
@@ -205,11 +217,11 @@ class CountdownIndicator:
         )
         if show_placeholder:
             self._goal_placeholder = True
-            self._state = _COUNTDOWN_NORMAL
+            self._state = COUNTDOWN_NORMAL
             self._blinking = False
             self._blink_bold = False
             self._label.configure(
-                text=_PLACEHOLDER, fg=theme.COLOR_GREEN,
+                text=GOAL_PLACEHOLDER, fg=theme.COLOR_GREEN,
                 font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
             )
         else:
@@ -246,9 +258,9 @@ class CountdownIndicator:
         highlight = config.WIDGET_PROGRESS_HIGHLIGHT
         if highlight and self._progress_level == PROGRESS_GOAL:
             return theme.COLOR_GREEN
-        if self._state == _COUNTDOWN_ZERO:
+        if self._state == COUNTDOWN_ZERO:
             return theme.COLOR_RED
-        if self._state == _COUNTDOWN_WARNING and self._blink_bold:
+        if self._state == COUNTDOWN_WARNING and self._blink_bold:
             return theme.COLOR_RED
         if highlight and self._progress_level == PROGRESS_MIN:
             return theme.COLOR_YELLOW

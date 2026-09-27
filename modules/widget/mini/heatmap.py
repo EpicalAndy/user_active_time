@@ -146,12 +146,7 @@ class HeatmapWidget(BaseMiniWidget):
     def _build(self):
         self._grid = tk.Frame(self.window, bg=theme.COLOR_DARK_BG, padx=PAD, pady=PAD)
         self._grid.pack()
-        self._caption_label = tk.Label(
-            self.window, text=self.caption,
-            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED,
-            font=(FONT_FAMILY, 8),
-        )
-        self._caption_label.pack(fill=tk.X, pady=(0, 4))
+        self._build_caption()
 
         # Что сейчас разложено: (сегодня, период, отсчёт). Меняется — сетка
         # пересобирается; иначе клетки только перекрашиваются.

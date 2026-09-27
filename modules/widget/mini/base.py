@@ -37,6 +37,8 @@ PERCENT_DECIMALS = 0
 class BaseMiniWidget:
     """Базовый мини-виджет: окно, drag, контекстное меню, позиция."""
 
+    caption = ""  # подпись под содержимым (задаёт подкласс)
+
     def __init__(
         self,
         root: tk.Tk,
@@ -86,6 +88,34 @@ class BaseMiniWidget:
     def update(self, stats: dict):
         """Перерисовывает виджет по свежим stats. Реализует подкласс."""
         raise NotImplementedError
+
+    # --- Типовой каркас для `_build()` ---
+
+    def _build_canvas(self, width: int, height: int):
+        """Канва во всю ширину окна (`self._canvas`) и подпись под ней."""
+        self._canvas = tk.Canvas(
+            self.window, width=width, height=height,
+            bg=theme.COLOR_DARK_BG, highlightthickness=0,
+        )
+        self._canvas.pack()
+        self._build_caption()
+
+    def _build_caption(self):
+        """Подпись `caption` внизу окна (`self._caption_label`)."""
+        self._caption_label = tk.Label(
+            self.window, text=self.caption,
+            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED,
+            font=(FONT_FAMILY, 8),
+        )
+        self._caption_label.pack(fill=tk.X, pady=(0, 4))
+
+    def _fit_canvas_height(self, height: int):
+        """Подгоняет высоту канвы (набор строк мог смениться в настройках).
+
+        Окно пересчитает свой размер само.
+        """
+        if int(self._canvas.cget("height")) != height:
+            self._canvas.configure(height=height)
 
     def tick_second(self):
         """Секундный тик от менеджера.

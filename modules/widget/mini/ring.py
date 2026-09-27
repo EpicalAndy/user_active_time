@@ -37,7 +37,6 @@ MIN_ARC_DEGREES = math.degrees(MIN_ARC_PX / RADIUS)
 class RingWidget(BaseMiniWidget):
     """Кольцо-прогресс с процентом/временем в центре. Метрику задаёт подкласс."""
 
-    caption = ""  # подпись под кольцом (переопределяет подкласс)
 
     # --- Переопределяют подклассы ---
 
@@ -74,17 +73,7 @@ class RingWidget(BaseMiniWidget):
     # --- Отрисовка ---
 
     def _build(self):
-        self._canvas = tk.Canvas(
-            self.window, width=SIZE, height=SIZE,
-            bg=theme.COLOR_DARK_BG, highlightthickness=0,
-        )
-        self._canvas.pack()
-        self._caption_label = tk.Label(
-            self.window, text=self.caption,
-            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED,
-            font=(FONT_FAMILY, 8),
-        )
-        self._caption_label.pack(fill=tk.X, pady=(0, 4))
+        self._build_canvas(SIZE, SIZE)
 
     def update(self, stats: dict):
         working = stats.get("is_working_day", True)

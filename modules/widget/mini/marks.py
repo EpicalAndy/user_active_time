@@ -114,17 +114,7 @@ class TimeMarksWidget(BaseMiniWidget):
     # --- Каркас ---
 
     def _build(self):
-        self._canvas = tk.Canvas(
-            self.window, width=WIDTH, height=self._canvas_height(),
-            bg=theme.COLOR_DARK_BG, highlightthickness=0,
-        )
-        self._canvas.pack()
-        self._caption_label = tk.Label(
-            self.window, text=self.caption,
-            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED,
-            font=(FONT_FAMILY, 8),
-        )
-        self._caption_label.pack(fill=tk.X, pady=(0, 4))
+        self._build_canvas(WIDTH, self._canvas_height())
 
     def _canvas_height(self) -> int:
         """Высота под текущий набор строк (пустой набор — под одну строку)."""
@@ -137,12 +127,9 @@ class TimeMarksWidget(BaseMiniWidget):
         keys = selected_marks(self.opts)
         working = stats.get("is_working_day", True)
 
-        c = self._canvas
-        # Набор мог смениться через настройки — подгоняем высоту, окно
-        # пересчитает свой размер само.
         height = self._canvas_height()
-        if int(c.cget("height")) != height:
-            c.configure(height=height)
+        self._fit_canvas_height(height)
+        c = self._canvas
         c.delete("all")
         c.configure(bg=theme.COLOR_DARK_BG)
 

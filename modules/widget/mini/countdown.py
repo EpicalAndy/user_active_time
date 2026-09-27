@@ -19,19 +19,19 @@
 что крутит мигание в заголовке, поэтому обе анимации в одной фазе.
 """
 
-import tkinter as tk
-
 import config
 from constants import FONT_FAMILY
 from texts import WIDGET_CAPTION_COUNTDOWN
 from modules import theme
 from modules.events_monitor import get_countdown_remaining
+from ..countdown_indicator import (
+    COUNTDOWN_WARNING,
+    COUNTDOWN_ZERO,
+    GOAL_PLACEHOLDER,
+    countdown_phase,
+)
 from .base import BaseMiniWidget
 from .ring import PAD, SIZE
-
-# Заполнитель на месте счётчика, когда норма выработана и отсчёт остановлен
-# настройкой STOP_COUNTDOWN_AT_RECOMMENDED — тот же, что в заголовке.
-_GOAL_PLACEHOLDER = "__:__"
 
 # Начертания текста счётчика. BLINK — не начертание, а режим: реальный вес
 # берётся из фазы мигания (см. _weight).
@@ -57,17 +57,7 @@ class CountdownWidget(BaseMiniWidget):
     # --- Отрисовка ---
 
     def _build(self):
-        self._canvas = tk.Canvas(
-            self.window, width=SIZE, height=SIZE,
-            bg=theme.COLOR_DARK_BG, highlightthickness=0,
-        )
-        self._canvas.pack()
-        self._caption_label = tk.Label(
-            self.window, text=self.caption,
-            bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED,
-            font=(FONT_FAMILY, 8),
-        )
-        self._caption_label.pack(fill=tk.X, pady=(0, 4))
+        self._build_canvas(SIZE, SIZE)
 
     def update(self, stats: dict):
         self._is_working_day = stats.get("is_working_day", True)
@@ -111,21 +101,17 @@ class CountdownWidget(BaseMiniWidget):
         # Норма выработана и отсчёт остановлен настройкой — как в заголовке:
         # зелёный заполнитель вместо цифр.
         if self._goal_reached and config.STOP_COUNTDOWN_AT_RECOMMENDED:
-            return _GOAL_PLACEHOLDER, theme.COLOR_GREEN, _NORMAL
+            return GOAL_PLACEHOLDER, theme.COLOR_GREEN, _NORMAL
 
         remaining = get_countdown_remaining()
         if remaining is None:
             return "—", theme.COLOR_GRAY, _NORMAL
 
-        minutes, secs = divmod(remaining, 60)
-        text = f"{minutes:02d}:{secs:02d}"
-
-        if remaining == 0:
+        text, phase = countdown_phase(remaining)
+        if phase == COUNTDOWN_ZERO:
             # Пользователь уже неактивен — жирный красный без мигания.
             return text, theme.COLOR_RED, _BOLD
-
-        warning = config.COUNTDOWN_WARNING_SECONDS
-        if warning > 0 and remaining <= warning:
+        if phase == COUNTDOWN_WARNING:
             return text, theme.COLOR_RED, _BLINK
         return text, theme.COLOR_GREEN, _NORMAL
 

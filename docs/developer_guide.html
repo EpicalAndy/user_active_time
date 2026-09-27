@@ -317,7 +317,7 @@ win_events    — WTS-подписка, скрытое окно, цикл соо
 
 <!-- ============================================================ -->
 <h2 id="mini">Мини-виджеты</h2>
-<p><code>modules/widget/mini/</code>: <code>base.py</code> — базовое окно (поверх всех, без рамки, перетаскивание с любого места, крестик по наведению, ПКМ-меню), <code>ring.py</code> — кольцо-прогресс с общей геометрией и минимальной рисуемой дугой, типы: <code>pie.py</code> (активность), <code>worktime.py</code>, <code>freetime.py</code>, <code>timeline.py</code>, <code>bars.py</code>, <code>marks.py</code>, <code>heatmap.py</code>, <code>countdown.py</code>. <code>manager.py</code> — создание/удаление/восстановление/persist, <code>widgets_dialog.py</code> — окно управления, <code>options_menu.py</code> — пункты ПКМ-меню по схеме реестра.</p>
+<p><code>modules/widget/mini/</code>: <code>base.py</code> — базовое окно (поверх всех, без рамки, перетаскивание с любого места, крестик по наведению, ПКМ-меню) и типовой каркас для <code>_build()</code>: канва с подписью <code>caption</code> под ней (<code>_build_canvas</code>, <code>_build_caption</code>) и подгонка высоты канвы под число строк (<code>_fit_canvas_height</code>), <code>ring.py</code> — кольцо-прогресс с общей геометрией и минимальной рисуемой дугой, типы: <code>pie.py</code> (активность), <code>worktime.py</code>, <code>freetime.py</code>, <code>timeline.py</code>, <code>bars.py</code>, <code>marks.py</code>, <code>heatmap.py</code>, <code>countdown.py</code> (фазу счётчика и заполнитель «__:__» берёт у заголовка — <code>countdown_indicator.countdown_phase</code>, <code>GOAL_PLACEHOLDER</code>, поэтому оба счётчика переключаются одинаково). <code>manager.py</code> — создание/удаление/восстановление/persist, <code>widgets_dialog.py</code> — окно управления, <code>options_menu.py</code> — пункты ПКМ-меню по схеме реестра.</p>
 
 <h3>Реестр типов</h3>
 <p><code>mini/registry.py</code> — единый источник для UI (подпись, схема настроек) и для спавна по строковому типу. Новый тип — одна запись; его настройки описываются декларативно в <code>options</code>, и диалог управления рендерит контролы по схеме, не зная о конкретных типах:</p>
@@ -457,6 +457,7 @@ git push --follow-tags                           # или сразу флаго�
   <tr><td><code>test_day_timeline.py</code></td><td>строка таймлайна в теле: отметки часов внутри отрезка, текст подсказки</td></tr>
   <tr><td><code>test_timeline_arcs.py</code></td><td>раскладка таймлайна: ячейки, сохранность простоя, отсутствие вырожденных дуг</td></tr>
   <tr><td><code>test_week_activity.py</code></td><td>недельная полоса: даты обоих режимов, источники данных, виды клеток</td></tr>
+  <tr><td><code>test_countdown_phase.py</code></td><td>фаза счётчика по остатку: «MM:SS», предупреждение до порога включительно, 0 в пороге отключает предупреждение</td></tr>
   <tr><td><code>test_input_lock.py</code></td><td>блокировка ввода: разбор комбинации, распознавание, решения фильтра, учёт времени, полнота схемы настроек</td></tr>
   <tr><td><code>test_report_reader.py</code></td><td>чтение дневного отчёта: схемы v1/v2, парные значения, интервалы графика</td></tr>
   <tr><td><code>test_release_version.py</code></td><td>расчёт следующей версии: инкремент внутри месяца, сброс на стыке; закрытие раздела «Не выпущено» чейнджлога</td></tr>
