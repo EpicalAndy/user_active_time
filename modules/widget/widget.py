@@ -30,10 +30,11 @@ from .content import WidgetContent
 from .manager import WidgetManager
 from .notification import play_notification, play_tick
 from .position import place_window, save_position
-from .countdown_indicator import PROGRESS_GOAL, PROGRESS_MIN, PROGRESS_NONE
+from .countdown_indicator import PROGRESS_NONE, progress_level
 from .title_bar import TitleBar
 from .toolbar import WidgetToolbar
-from utility import format_date_key, truncate_percent
+from .tray import create_tray
+from utility import format_date_key
 
 # Фон окна (под телом и тулбаром) и тонкая линия-разделитель читаются
 # динамически из theme.* — см. _build_chrome / _apply_theme.
@@ -41,20 +42,6 @@ from utility import format_date_key, truncate_percent
 # Ширина виджета — даёт место длинным меткам вроде «До рекомендуемой нормы:»
 # плюс склеенным значениям вида «5ч 51м (86.6%)».
 WIDGET_WIDTH = 280
-
-
-def _progress_level(activity_percent: float) -> str:
-    """Уровень прогресса по тем же порогам, что и подсветка метрик в теле.
-
-    Сравнение — по усечённому проценту, как и в теле: рамка меняет цвет ровно
-    тогда, когда порог берёт показанное в заголовке число.
-    """
-    shown = truncate_percent(activity_percent)
-    if shown >= config.RECOMMENDED_ACTIVITY_THRESHOLD:
-        return PROGRESS_GOAL
-    if shown >= config.MIN_ACTIVITY_THRESHOLD:
-        return PROGRESS_MIN
-    return PROGRESS_NONE
 
 
 def is_widget_enabled() -> bool:
@@ -100,7 +87,11 @@ class ActivityWidget:
         self._build_chrome()
         place_window(self.window, WIDGET_WIDTH)
         self._manager.restore()
-        self._tray = self._create_tray()
+        # Без pystray трея нет — «—» тогда сворачивает до заголовка с тулбаром.
+        self._tray = create_tray(
+            on_open=lambda: self.root.after(0, self._show_from_tray),
+            on_quit=lambda: self.root.after(0, self.close),
+        )
         self._tick()
 
     def _build_chrome(self):
@@ -172,7 +163,7 @@ class ActivityWidget:
             return
 
         self._title_bar.update_metric_labels(stats)
-        self._title_bar.set_progress_level(_progress_level(stats["activity_percent"]))
+        self._title_bar.set_progress_level(progress_level(stats["activity_percent"]))
         # Кешируем для _update_countdown: он бегает в 60 раз чаще, чем мы
         # обновляем stats, и тянуть stats_provider() каждую секунду накладно.
         self._last_activity_percent = stats["activity_percent"]
@@ -257,30 +248,6 @@ class ActivityWidget:
         self.root.after(500, self._tick)
 
     # --- Управление ---
-
-    def _create_tray(self):
-        """Создаёт и запускает значок в трее. None, если трей недоступен.
-
-        Импорт pystray/Pillow ленивый: если зависимостей нет, приложение
-        продолжает работать, а кнопка «—» откатывается к сворачиванию до заголовка с тулбаром.
-        """
-        try:
-            from .tray import TrayIcon
-        except Exception as e:
-            import sys
-            print(f"[TRAY] Значок трея отключён — нет зависимости ({e}). "
-                  f"Установите: \"{sys.executable}\" -m pip install pystray Pillow")
-            return None
-        try:
-            tray = TrayIcon(
-                on_open=lambda: self.root.after(0, self._show_from_tray),
-                on_quit=lambda: self.root.after(0, self.close),
-            )
-            tray.start()
-            return tray
-        except Exception as e:
-            print(f"[TRAY] Не удалось запустить значок трея: {e}")
-            return None
 
     def _minimize_to_tray(self):
         """Прячет окно конфигуратора в трей (мини-виджеты остаются на рабочем столе).

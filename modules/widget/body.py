@@ -25,12 +25,18 @@ from texts import (
 )
 from modules import theme
 from .day_timeline import DayTimelineRow
+from .scales import (
+    color_for_percent,
+    free_time_color,
+    free_time_percent,
+    recommended_remaining_percent,
+    remaining_time_percent,
+    work_time_percent,
+)
 from utility import (
-    PERCENT_DECIMALS,
     format_duration_short,
     format_duration_signed,
     format_percent,
-    truncate_percent,
 )
 
 # Шкалы цветовой подсветки: какая метрика по какой шкале считается.
@@ -54,97 +60,6 @@ _METRIC_COLOR_SCALES: dict[str, str] = {
     "work_day_end": _SCALE_WORK_TIME,
     # session_count — без цветовой шкалы
 }
-
-
-def _color_for_percent(
-    pct: float, recommended: float, minimum: float,
-    decimals: int = PERCENT_DECIMALS,
-) -> str:
-    """Зелёный/жёлтый/красный по двум порогам.
-
-    Порог сверяется с тем числом, которое видит пользователь (усечённым до
-    `decimals` знаков, см. truncate_percent), иначе цвет расходится с цифрой
-    рядом: 79.96% печатается как «80.0%», а порог 80 ещё не взят. Мини-виджеты
-    показывают процент без дробной части и передают decimals=0.
-    """
-    shown = truncate_percent(pct, decimals)
-    if shown >= recommended:
-        return theme.COLOR_GREEN
-    if shown >= minimum:
-        return theme.COLOR_YELLOW
-    return theme.COLOR_RED
-
-
-def free_time_color(remaining: int, budget: int) -> str:
-    """Цвет метрики «свободное время» по остатку бюджета до рекомендуемой нормы.
-
-    Шкала считается по тому же бюджету, который показывают цифры метрики
-    (`free_remaining_seconds` и процент от `free_budget_seconds`), — иначе цвет
-    расходится с числом рядом:
-    - зелёный — остатка больше порога предупреждения;
-    - жёлтый  — остаток не выше порога (`FREE_TIME_WARNING_PERCENT` % бюджета),
-      свободное время заканчивается;
-    - красный — остаток исчерпан (ноль или минус).
-
-    Что просажена ещё и минимальная норма, цвет не показывает: это несёт
-    геометрия кольца в мини-виджете (пустое кольцо + красный трек).
-
-    Публичная (без подчёркивания): её же использует мини-виджет свободного времени.
-    """
-    if remaining <= 0:
-        return theme.COLOR_RED
-    warning = config.FREE_TIME_WARNING_PERCENT
-    if warning > 0 and budget > 0 and remaining <= budget * warning / 100:
-        return theme.COLOR_YELLOW
-    return theme.COLOR_GREEN
-
-
-def _work_time_percent(stats: dict) -> float | None:
-    """% общего рабочего времени относительно нормы; None если нормы нет."""
-    max_work = stats.get("max_work_seconds", 0)
-    if max_work <= 0:
-        return None
-    return stats["full_day_seconds"] / max_work * 100
-
-
-def _remaining_time_percent(stats: dict) -> float | None:
-    """% оставшегося до конца дня относительно нормы; None если нормы нет."""
-    max_work = stats.get("max_work_seconds", 0)
-    if max_work <= 0:
-        return None
-    remaining = max(0, stats.get("remaining_work_seconds", 0))
-    return remaining / max_work * 100
-
-
-def _recommended_remaining_percent(stats: dict) -> float | None:
-    """Сколько осталось добрать до рекомендуемой нормы, в % от неё.
-
-    Считается как `recommended_remaining / recommended × 100`, где
-    `recommended = activity_norm × RECOMMENDED_ACTIVITY_THRESHOLD / 100`,
-    а `activity_norm` — рабочее время без перерыва.
-    None — если нормы или порога нет.
-    """
-    activity_norm = stats.get("activity_norm_seconds", 0)
-    threshold = config.RECOMMENDED_ACTIVITY_THRESHOLD
-    if activity_norm <= 0 or threshold <= 0:
-        return None
-    recommended = activity_norm * threshold / 100
-    remaining = max(0, stats.get("recommended_remaining_seconds", 0))
-    return remaining / recommended * 100
-
-
-def _free_time_percent(stats: dict) -> float | None:
-    """Остаток свободного времени в % от бюджета до рекомендуемой нормы.
-
-    Знаменатель — тот же бюджет, к которому относится и само значение метрики
-    (`free_remaining_seconds`), поэтому «30м (25%)» читается согласованно.
-    Может быть отрицательным — это перерасход, а не ошибка. None — если бюджета
-    нет вовсе (норма присутствия целиком уходит в требуемую активность).
-    """
-    budget = stats.get("free_budget_seconds", 0)
-    if budget <= 0:
-        return None
-    return stats.get("free_remaining_seconds", 0) / budget * 100
 
 
 class WidgetBody:
@@ -293,36 +208,36 @@ class WidgetBody:
         if "full_day_time" in labels:
             text = format_duration_short(stats["full_day_seconds"])
             if config.WIDGET_SHOW_FULL_DAY_TIME_PERCENT:
-                pct = _work_time_percent(stats)
+                pct = work_time_percent(stats)
                 if pct is not None:
                     text += f" ({format_percent(pct)})"
             labels["full_day_time"]["value"].configure(text=text)
         if "full_day_time_percent" in labels:
-            pct = _work_time_percent(stats)
+            pct = work_time_percent(stats)
             labels["full_day_time_percent"]["value"].configure(
                 text=format_percent(pct) if pct is not None else "—",
             )
         if "remaining_time" in labels:
             text = format_duration_short(max(0, stats.get("remaining_work_seconds", 0)))
             if config.WIDGET_SHOW_REMAINING_TIME_PERCENT:
-                pct = _remaining_time_percent(stats)
+                pct = remaining_time_percent(stats)
                 if pct is not None:
                     text += f" ({format_percent(pct)})"
             labels["remaining_time"]["value"].configure(text=text)
         if "remaining_time_percent" in labels:
-            pct = _remaining_time_percent(stats)
+            pct = remaining_time_percent(stats)
             labels["remaining_time_percent"]["value"].configure(
                 text=format_percent(pct) if pct is not None else "—",
             )
         if "recommended_remaining" in labels:
             text = format_duration_short(max(0, stats.get("recommended_remaining_seconds", 0)))
             if config.WIDGET_SHOW_RECOMMENDED_REMAINING_PERCENT:
-                pct = _recommended_remaining_percent(stats)
+                pct = recommended_remaining_percent(stats)
                 if pct is not None:
                     text += f" ({format_percent(pct)})"
             labels["recommended_remaining"]["value"].configure(text=text)
         if "recommended_remaining_percent" in labels:
-            pct = _recommended_remaining_percent(stats)
+            pct = recommended_remaining_percent(stats)
             labels["recommended_remaining_percent"]["value"].configure(
                 text=format_percent(pct) if pct is not None else "—",
             )
@@ -330,12 +245,12 @@ class WidgetBody:
             # Со знаком: перерасход показываем как «-15м», а не подрезаем нулём.
             text = format_duration_signed(stats.get("free_remaining_seconds", 0))
             if config.WIDGET_SHOW_FREE_TIME_PERCENT:
-                pct = _free_time_percent(stats)
+                pct = free_time_percent(stats)
                 if pct is not None:
                     text += f" ({format_percent(pct)})"
             labels["free_time"]["value"].configure(text=text)
         if "free_time_percent" in labels:
-            pct = _free_time_percent(stats)
+            pct = free_time_percent(stats)
             labels["free_time_percent"]["value"].configure(
                 text=format_percent(pct) if pct is not None else "—",
             )
@@ -355,7 +270,7 @@ class WidgetBody:
     def _metric_color(self, metric_id: str, stats: dict) -> str | None:
         scale = _METRIC_COLOR_SCALES.get(metric_id)
         if scale == _SCALE_ACTIVITY:
-            return _color_for_percent(
+            return color_for_percent(
                 stats["activity_percent"],
                 config.RECOMMENDED_ACTIVITY_THRESHOLD,
                 config.MIN_ACTIVITY_THRESHOLD,
@@ -365,7 +280,7 @@ class WidgetBody:
             if max_work <= 0:
                 return None
             pct = stats["full_day_seconds"] / max_work * 100
-            return _color_for_percent(
+            return color_for_percent(
                 pct,
                 config.RECOMMENDED_WORK_TIME_THRESHOLD,
                 config.MIN_WORK_TIME_THRESHOLD,

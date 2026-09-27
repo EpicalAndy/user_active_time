@@ -12,7 +12,6 @@
 import tkinter as tk
 from tkinter import ttk
 
-from config import MAIN_FONT_SIZE
 from constants import FONT_FAMILY
 from texts import WIDGETS_DIALOG_CLOSE, WIDGETS_DIALOG_TITLE
 from modules.ui_utils import center_on_parent

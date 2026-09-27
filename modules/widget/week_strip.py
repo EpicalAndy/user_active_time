@@ -4,7 +4,7 @@
 Тот же вопрос, что и у тепловой карты («как прошли дни»), но в масштабе
 недели и прямо в основном окне: одна строка, семь клеток, цвет — по проценту
 активности за день, по той же шкале и тем же порогам, что и метрики в теле
-(_color_for_percent). Подробности дня — в подсказке при наведении.
+(color_for_percent). Подробности дня — в подсказке при наведении.
 
 Живёт рядом с телом, а не внутри него, намеренно: в нерабочий день тело
 сворачивается в серую плашку «Сегодня не рабочий день», а неделю в такой день
@@ -42,7 +42,7 @@ from modules.week_activity import (
     build_week,
 )
 from utility import format_date_display, format_duration_short, format_percent
-from .body import _color_for_percent
+from .scales import color_for_percent
 
 # Геометрия клетки. Рамка постоянной толщины и меняет только цвет: если
 # включать её лишь у «сегодня», клетка становилась бы на 4px больше соседних
@@ -125,7 +125,7 @@ def cell_color(data: dict) -> str:
     percent_value = data["activity_percent"]
     if percent_value is None:  # нормы за день нет — красить не по чему
         return theme.COLOR_GRAY
-    return _color_for_percent(
+    return color_for_percent(
         percent_value,
         config.RECOMMENDED_ACTIVITY_THRESHOLD,
         config.MIN_ACTIVITY_THRESHOLD,

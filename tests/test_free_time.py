@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config  # noqa: E402
 from modules import events_monitor, theme  # noqa: E402
 from modules.session_monitor import stats  # noqa: E402
-from modules.widget.body import free_time_color  # noqa: E402
+from modules.widget.scales import free_time_color  # noqa: E402
 from modules.widget.mini.freetime import FreeTimePieWidget  # noqa: E402
 from utility import format_date_key, format_duration_signed  # noqa: E402
 

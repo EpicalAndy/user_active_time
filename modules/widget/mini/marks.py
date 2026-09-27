@@ -29,7 +29,7 @@ from texts import (
     WIDGET_MARKS_EMPTY,
 )
 from modules import theme
-from ..body import _color_for_percent, _work_time_percent
+from ..scales import color_for_percent, work_time_percent
 from .base import PERCENT_DECIMALS, BaseMiniWidget
 
 # Геометрия. Ширина — под самое длинное название плюс «HH:MM» с отступами
@@ -53,7 +53,7 @@ def _recommended_eta(stats: dict):
     value = stats.get("recommended_eta")
     if not value:
         return None
-    return value, _color_for_percent(
+    return value, color_for_percent(
         stats.get("activity_percent", 0),
         config.RECOMMENDED_ACTIVITY_THRESHOLD, config.MIN_ACTIVITY_THRESHOLD,
         PERCENT_DECIMALS,
@@ -70,10 +70,10 @@ def _work_day_end(stats: dict):
     value = stats.get("work_day_end")
     if not value:
         return None
-    percent = _work_time_percent(stats)
+    percent = work_time_percent(stats)
     if percent is None:  # нормы присутствия нет — красить не по чему
         return value, theme.COLOR_LIGHT_FG
-    return value, _color_for_percent(
+    return value, color_for_percent(
         percent,
         config.RECOMMENDED_WORK_TIME_THRESHOLD, config.MIN_WORK_TIME_THRESHOLD,
         PERCENT_DECIMALS,

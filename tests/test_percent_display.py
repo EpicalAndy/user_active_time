@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config  # noqa: E402
 from modules import theme  # noqa: E402
-from modules.widget.body import _color_for_percent  # noqa: E402
+from modules.widget.scales import color_for_percent  # noqa: E402
 from modules.widget.mini.base import PERCENT_DECIMALS as MINI_DECIMALS  # noqa: E402
 from utility import (  # noqa: E402
     calculate_activity_percent,
@@ -30,7 +30,7 @@ MINIMUM = 70
 
 def color(pct, decimals=1):
     """Цвет по фиксированным порогам — тест не должен зависеть от конфига."""
-    return _color_for_percent(pct, RECOMMENDED, MINIMUM, decimals)
+    return color_for_percent(pct, RECOMMENDED, MINIMUM, decimals)
 
 
 # --- Усечение вместо округления ---
@@ -103,7 +103,7 @@ def test_thresholds_are_read_from_config_dynamically():
     saved = config.RECOMMENDED_ACTIVITY_THRESHOLD
     try:
         config.RECOMMENDED_ACTIVITY_THRESHOLD = 90
-        assert _color_for_percent(
+        assert color_for_percent(
             85.0, config.RECOMMENDED_ACTIVITY_THRESHOLD, MINIMUM,
         ) == theme.COLOR_YELLOW
     finally:

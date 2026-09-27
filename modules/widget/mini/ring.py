@@ -13,7 +13,7 @@ import tkinter as tk
 from constants import FONT_FAMILY
 from modules import theme
 from utility import format_duration_short, format_percent
-from ..body import _color_for_percent
+from ..scales import color_for_percent
 from .base import PERCENT_DECIMALS, BaseMiniWidget
 
 # Геометрия канвы и кольца. Публичные — их переиспользуют другие кольцевые
@@ -60,7 +60,7 @@ class RingWidget(BaseMiniWidget):
     def _arc_color(self, pct: float, stats: dict) -> str:
         """Цвет дуги прогресса. По умолчанию — процентная шкала подкласса."""
         recommended, minimum = self._thresholds()
-        return _color_for_percent(pct, recommended, minimum, PERCENT_DECIMALS)
+        return color_for_percent(pct, recommended, minimum, PERCENT_DECIMALS)
 
     def _track_color(self, pct: float, stats: dict) -> str:
         """Цвет трека (незаполненной части кольца).

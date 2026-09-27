@@ -7,12 +7,21 @@
 pystray работает в собственном потоке (Icon.run блокирует), поэтому колбэки
 `on_open`/`on_quit` вызываются НЕ в потоке Tk — вызывающая сторона обязана
 переадресовать их в главный поток (например, через `root.after(0, ...)`).
+
+pystray и Pillow — единственные внешние зависимости приложения. Если их нет,
+модуль всё равно импортируется, а `create_tray` возвращает None: приложение
+работает без трея.
 """
 
+import sys
 import threading
 
-import pystray
-from PIL import Image, ImageDraw
+try:
+    import pystray
+    from PIL import Image, ImageDraw
+except Exception as e:  # noqa: BLE001 — любая поломка зависимости = без трея
+    pystray = None
+    _IMPORT_ERROR = e
 
 from texts import TRAY_MENU_OPEN, TRAY_MENU_QUIT, TRAY_TITLE
 from modules import theme
@@ -32,7 +41,7 @@ _ZONES = (
 )
 
 
-def _make_image() -> Image.Image:
+def _make_image() -> "Image.Image":
     """Значок: кольцо в цветах зон активности (50% / 25% / 25%)."""
     size, scale = 64, 4  # рисуем крупнее и уменьшаем — так края сглаживаются
     big = size * scale
@@ -88,3 +97,22 @@ class TrayIcon:
             self._icon.stop()
         except Exception:
             pass
+
+
+def create_tray(on_open, on_quit) -> TrayIcon | None:
+    """Создаёт и запускает значок в трее. None, если трей недоступен.
+
+    Причина (нет зависимости или сбой запуска) печатается в консоль вместе с
+    командой установки — под тот интерпретатор, которым запущено приложение.
+    """
+    if pystray is None:
+        print(f"[TRAY] Значок трея отключён — нет зависимости ({_IMPORT_ERROR}). "
+              f"Установите: \"{sys.executable}\" -m pip install pystray Pillow")
+        return None
+    try:
+        tray = TrayIcon(on_open=on_open, on_quit=on_quit)
+        tray.start()
+        return tray
+    except Exception as e:
+        print(f"[TRAY] Не удалось запустить значок трея: {e}")
+        return None

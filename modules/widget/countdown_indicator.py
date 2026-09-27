@@ -27,7 +27,7 @@ from config import MAIN_FONT_SIZE
 from constants import FONT_FAMILY
 from modules import theme
 from modules.ui_utils import bold_pixel_width
-from utility import input_monitoring_enabled
+from utility import input_monitoring_enabled, truncate_percent
 
 # Фазы счётчика (см. countdown_phase). Общие для заголовка и мини-виджета.
 COUNTDOWN_NORMAL = "normal"
@@ -35,11 +35,25 @@ COUNTDOWN_WARNING = "warning"
 COUNTDOWN_ZERO = "zero"
 
 # Уровни прогресса по активности — задают цвет рамки виджета.
-# Шкала та же, что у метрик в теле виджета (см. body._color_for_percent):
+# Шкала та же, что у метрик в теле виджета (см. scales.color_for_percent):
 # норма → зелёный, минимум → жёлтый, ниже минимума → без индикации.
 PROGRESS_NONE = "none"
 PROGRESS_MIN = "min"
 PROGRESS_GOAL = "goal"
+
+
+def progress_level(activity_percent: float) -> str:
+    """Уровень прогресса по тем же порогам, что и подсветка метрик в теле.
+
+    Сравнение — по усечённому проценту, как и в теле: рамка меняет цвет ровно
+    тогда, когда порог берёт показанное в заголовке число.
+    """
+    shown = truncate_percent(activity_percent)
+    if shown >= config.RECOMMENDED_ACTIVITY_THRESHOLD:
+        return PROGRESS_GOAL
+    if shown >= config.MIN_ACTIVITY_THRESHOLD:
+        return PROGRESS_MIN
+    return PROGRESS_NONE
 
 GOAL_PLACEHOLDER = "__:__"
 
