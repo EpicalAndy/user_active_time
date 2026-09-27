@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config  # noqa: E402
 from modules import theme  # noqa: E402
-from modules.widget.scales import color_for_percent  # noqa: E402
+from modules.scales import color_for_percent  # noqa: E402
 from modules.widget.mini.base import PERCENT_DECIMALS as MINI_DECIMALS  # noqa: E402
 from utility import (  # noqa: E402
     calculate_activity_percent,

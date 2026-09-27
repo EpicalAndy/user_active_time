@@ -29,8 +29,8 @@
 
 from texts import WIDGET_CAPTION_FREE_TIME
 from modules import theme
+from modules.scales import free_time_color
 from utility import format_duration_signed
-from ..scales import free_time_color
 from .ring import RingWidget
 
 

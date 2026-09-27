@@ -33,6 +33,7 @@ from texts import (
     WEEKDAY_SHORT_NAMES,
 )
 from modules import theme
+from modules.scales import color_for_percent
 from modules.ui_utils import attach_tooltip
 from modules.week_activity import (
     KIND_DAY_OFF,
@@ -42,7 +43,6 @@ from modules.week_activity import (
     build_week,
 )
 from utility import format_date_display, format_duration_short, format_percent
-from .scales import color_for_percent
 
 # Геометрия клетки. Рамка постоянной толщины и меняет только цвет: если
 # включать её лишь у «сегодня», клетка становилась бы на 4px больше соседних

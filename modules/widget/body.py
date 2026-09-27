@@ -12,8 +12,8 @@ import config
 from config import MAIN_FONT_SIZE
 from constants import FONT_FAMILY
 from modules import theme
+from modules.metrics import METRICS
 from .day_timeline import DayTimelineRow
-from .metrics import METRICS
 
 
 class WidgetBody:

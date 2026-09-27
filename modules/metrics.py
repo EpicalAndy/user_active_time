@@ -12,6 +12,7 @@
 «5ч 12м (86.6%)», а без значения показывается один процент.
 
 Порядок `METRICS` — порядок строк в теле и галочек в настройках.
+`TITLE_METRICS` — какие из них можно вывести в заголовок.
 
 Без tkinter: только строки и цвета палитры (см. `scales`).
 """
@@ -23,6 +24,7 @@ import config
 from texts import (
     METRIC_ACTIVE_TIME,
     METRIC_ACTIVITY_PERCENT,
+    METRIC_ACTIVITY_PERCENT_FULL,
     METRIC_FREE_TIME,
     METRIC_FREE_TIME_PERCENT_FULL,
     METRIC_FULL_DAY_TIME,
@@ -34,6 +36,7 @@ from texts import (
     METRIC_REMAINING_TIME_FULL,
     METRIC_REMAINING_TIME_PERCENT_FULL,
     METRIC_SESSION_COUNT,
+    METRIC_SESSION_COUNT_FULL,
     METRIC_WORK_DAY_END,
     METRIC_WORK_DAY_END_FULL,
 )
@@ -63,21 +66,32 @@ SCALE_FREE_TIME = "free_time"
 
 @dataclass(frozen=True)
 class Metric:
-    """Описание метрики. Значение и процент — функции от stats."""
+    """Описание метрики. Значение и процент — функции от stats.
+
+    Подписи, оставленные пустыми, наследуют основные (см. __post_init__) —
+    задаются только там, где отличаются.
+    """
 
     key: str
     label: str                                   # подпись значения в теле
     value: Callable[[dict], str | None]          # значение текстом; None — нет данных
     show_attr: str                               # флаг config: значение в теле
     scale: str | None = None                     # цветовая шкала (None — без цвета)
-    short_label: str = ""                        # для компактных мест; пусто = label
+    short_label: str = ""                        # компактные места (мини-виджеты, трей)
+    settings_label: str = ""                     # галочка значения в настройках
     percent: Callable[[dict], float | None] | None = None  # парный процент
     percent_label: str = ""                      # подпись, когда показан только процент
+    settings_percent_label: str = ""             # галочка процента в настройках
     show_percent_attr: str = ""                  # флаг config: процент в теле
 
-    @property
-    def compact_label(self) -> str:
-        return self.short_label or self.label
+    def __post_init__(self):
+        for name, fallback in (
+            ("short_label", self.label),
+            ("settings_label", self.label),
+            ("settings_percent_label", self.percent_label),
+        ):
+            if not getattr(self, name):
+                object.__setattr__(self, name, fallback)
 
     def render(
         self, stats: dict, *, value: bool = True, percent: bool = False,
@@ -144,6 +158,7 @@ METRICS: tuple[Metric, ...] = (
         short_label=METRIC_ACTIVITY_PERCENT,
         percent=lambda stats: stats.get("activity_percent"),
         percent_label=METRIC_ACTIVITY_PERCENT,
+        settings_percent_label=METRIC_ACTIVITY_PERCENT_FULL,
         show_percent_attr="WIDGET_SHOW_ACTIVITY_PERCENT",
     ),
     Metric(
@@ -190,6 +205,7 @@ METRICS: tuple[Metric, ...] = (
     Metric(
         key="session_count",
         label=METRIC_SESSION_COUNT,
+        settings_label=METRIC_SESSION_COUNT_FULL,
         value=lambda stats: str(stats.get("session_count", 0)),
         show_attr="WIDGET_SHOW_SESSION_COUNT",
     ),
@@ -214,3 +230,11 @@ METRICS: tuple[Metric, ...] = (
 )
 
 BY_KEY: dict[str, Metric] = {metric.key: metric for metric in METRICS}
+
+# Метрики заголовка: флаг config → (ключ каталога, показывать значение).
+# value=False — только процент. Настройки включают не больше одной.
+TITLE_METRICS: tuple[tuple[str, str, bool], ...] = (
+    ("WIDGET_SHOW_TITLE_PERCENT", "activity", False),
+    ("WIDGET_SHOW_TITLE_REMAINING_TIME", "remaining_time", True),
+    ("WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING", "recommended_remaining", True),
+)

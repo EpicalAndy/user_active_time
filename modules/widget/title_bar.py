@@ -15,17 +15,9 @@ import config
 from config import MAIN_FONT_SIZE
 from constants import FONT_FAMILY
 from modules import theme
+from modules.metrics import BY_KEY, TITLE_METRICS, Metric
 from modules.ui_utils import bold_pixel_width
 from .countdown_indicator import CountdownIndicator
-from .metrics import BY_KEY, Metric
-
-# Метрики заголовка: флаг config → (ключ каталога, показывать значение).
-# value=False — только процент. Настройки включают не больше одной.
-_TITLE_METRICS = (
-    ("WIDGET_SHOW_TITLE_PERCENT", "activity", False),
-    ("WIDGET_SHOW_TITLE_REMAINING_TIME", "remaining_time", True),
-    ("WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING", "recommended_remaining", True),
-)
 
 
 class TitleBar:
@@ -111,7 +103,7 @@ class TitleBar:
         return btn
 
     def _build_metric_labels(self):
-        for attr, key, show_value in _TITLE_METRICS:
+        for attr, key, show_value in TITLE_METRICS:
             if getattr(config, attr):
                 self._metric_labels.append((self._make_metric_label(), BY_KEY[key], show_value))
 

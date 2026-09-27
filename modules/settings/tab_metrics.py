@@ -10,47 +10,26 @@ from typing import Any
 import config
 from constants import FONT_FAMILY
 from texts import (
-    METRIC_ACTIVE_TIME,
-    METRIC_ACTIVITY_PERCENT_FULL,
-    METRIC_FREE_TIME_FULL,
-    METRIC_FREE_TIME_PERCENT_FULL,
-    METRIC_FULL_DAY_TIME,
-    METRIC_FULL_DAY_TIME_PERCENT_FULL,
     METRIC_HIDE_OPTION,
-    METRIC_RECOMMENDED_ETA_FULL,
-    METRIC_RECOMMENDED_REMAINING_FULL,
-    METRIC_RECOMMENDED_REMAINING_PERCENT_FULL,
-    METRIC_REMAINING_TIME_FULL,
-    METRIC_REMAINING_TIME_PERCENT_FULL,
-    METRIC_SESSION_COUNT_FULL,
     METRIC_TIMELINE_FULL,
     METRIC_WEEK_ACTIVITY_FULL,
-    METRIC_WORK_DAY_END_FULL,
     WEEK_MODE_CALENDAR_LABEL,
     WEEK_MODE_LABEL,
     WEEK_MODE_ROLLING_LABEL,
 )
 from modules.week_activity import WEEK_MODE_CALENDAR, WEEK_MODE_ROLLING
+from modules.metrics import BY_KEY, METRICS, TITLE_METRICS
 
 # Раскладка чекбоксов «Виджет» — три группы: время | проценты | остальное.
-_WIDGET_METRIC_TIME_TOGGLES = [
-    ("WIDGET_SHOW_ACTIVE_TIME", METRIC_ACTIVE_TIME),
-    ("WIDGET_SHOW_FULL_DAY_TIME", METRIC_FULL_DAY_TIME),
-    ("WIDGET_SHOW_RECOMMENDED_REMAINING", METRIC_RECOMMENDED_REMAINING_FULL),
-    ("WIDGET_SHOW_REMAINING_TIME", METRIC_REMAINING_TIME_FULL),
-    ("WIDGET_SHOW_FREE_TIME", METRIC_FREE_TIME_FULL),
-]
-_WIDGET_METRIC_PERCENT_TOGGLES = [
-    ("WIDGET_SHOW_ACTIVITY_PERCENT", METRIC_ACTIVITY_PERCENT_FULL),
-    ("WIDGET_SHOW_FULL_DAY_TIME_PERCENT", METRIC_FULL_DAY_TIME_PERCENT_FULL),
-    ("WIDGET_SHOW_RECOMMENDED_REMAINING_PERCENT", METRIC_RECOMMENDED_REMAINING_PERCENT_FULL),
-    ("WIDGET_SHOW_REMAINING_TIME_PERCENT", METRIC_REMAINING_TIME_PERCENT_FULL),
-    ("WIDGET_SHOW_FREE_TIME_PERCENT", METRIC_FREE_TIME_PERCENT_FULL),
-]
+# Метрики и подписи — из каталога, в его порядке: пары «время + процент»
+# дают две колонки, прочие — строки под ними.
+_PAIRED = [metric for metric in METRICS if metric.percent is not None]
+_WIDGET_METRIC_TIME_TOGGLES = [(m.show_attr, m.settings_label) for m in _PAIRED]
+_WIDGET_METRIC_PERCENT_TOGGLES = [(m.show_percent_attr, m.settings_percent_label) for m in _PAIRED]
 _WIDGET_METRIC_OTHER_TOGGLES = [
-    ("WIDGET_SHOW_SESSION_COUNT", METRIC_SESSION_COUNT_FULL),
-    ("WIDGET_SHOW_WORK_DAY_END", METRIC_WORK_DAY_END_FULL),
-    ("WIDGET_SHOW_RECOMMENDED_ETA", METRIC_RECOMMENDED_ETA_FULL),
+    (m.show_attr, m.settings_label) for m in METRICS if m.percent is None
+] + [
+    # Таймлайн — полоса, а не текстовая метрика, поэтому не в каталоге.
     ("WIDGET_SHOW_DAY_TIMELINE", METRIC_TIMELINE_FULL),
 ]
 # Недельная полоса — своя группа: у неё, в отличие от прочих метрик, есть
@@ -72,11 +51,9 @@ _WIDGET_METRIC_TOGGLES = (
 # В заголовке можно выбрать только одну метрику или «Не отображать».
 # Пустой attr — значение «ничего не показывать» (все связанные флаги становятся False).
 _TITLE_METRIC_RADIO = [
-    ("WIDGET_SHOW_TITLE_PERCENT", METRIC_ACTIVITY_PERCENT_FULL),
-    ("WIDGET_SHOW_TITLE_REMAINING_TIME", METRIC_REMAINING_TIME_FULL),
-    ("WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING", METRIC_RECOMMENDED_REMAINING_FULL),
-    ("", METRIC_HIDE_OPTION),
-]
+    (attr, BY_KEY[key].settings_label if show_value else BY_KEY[key].settings_percent_label)
+    for attr, key, show_value in TITLE_METRICS
+] + [("", METRIC_HIDE_OPTION)]
 _TITLE_METRIC_ATTRS = [attr for attr, _ in _TITLE_METRIC_RADIO if attr]
 
 

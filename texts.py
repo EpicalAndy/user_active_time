@@ -222,7 +222,6 @@ METRIC_REMAINING_TIME_PERCENT_FULL = "Осталось до конца дня (%
 METRIC_RECOMMENDED_REMAINING_FULL = "До рекомендуемой нормы"
 METRIC_RECOMMENDED_REMAINING_PERCENT_FULL = "До рекомендуемой нормы (%)"
 METRIC_FREE_TIME = "Свободное время"
-METRIC_FREE_TIME_FULL = "Свободное время"
 METRIC_FREE_TIME_PERCENT_FULL = "Свободное время (%)"
 METRIC_WORK_DAY_END = "Конец дня"
 METRIC_WORK_DAY_END_FULL = "Окончание рабочего дня"

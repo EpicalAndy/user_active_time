@@ -12,8 +12,8 @@ import tkinter as tk
 
 from constants import FONT_FAMILY
 from modules import theme
+from modules.scales import color_for_percent
 from utility import format_duration_short, format_percent
-from ..scales import color_for_percent
 from .base import PERCENT_DECIMALS, BaseMiniWidget
 
 # Геометрия канвы и кольца. Публичные — их переиспользуют другие кольцевые

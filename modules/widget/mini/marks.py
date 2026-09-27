@@ -23,7 +23,7 @@ import tkinter as tk
 from constants import FONT_FAMILY
 from texts import WIDGET_CAPTION_TIME_MARKS, WIDGET_MARKS_EMPTY
 from modules import theme
-from ..metrics import BY_KEY
+from modules.metrics import BY_KEY
 from .base import PERCENT_DECIMALS, BaseMiniWidget
 
 # Геометрия. Ширина — под самое длинное название плюс «HH:MM» с отступами
@@ -60,7 +60,7 @@ def read_mark(key: str, stats: dict) -> tuple[str, str] | None:
 
 
 # Для реестра: варианты галочек и набор по умолчанию (все).
-MARK_CHOICES = [(key, BY_KEY[key].compact_label) for key in _MARKS]
+MARK_CHOICES = [(key, BY_KEY[key].short_label) for key in _MARKS]
 DEFAULT_MARKS = list(_MARKS)
 
 
@@ -121,7 +121,7 @@ class TimeMarksWidget(BaseMiniWidget):
                 value, color = _EMPTY_VALUE, theme.COLOR_MUTED
             else:
                 value, color = reading
-            self._draw_row(y, BY_KEY[key].compact_label, value, color)
+            self._draw_row(y, BY_KEY[key].short_label, value, color)
             y += ROW_HEIGHT + ROW_GAP
 
     def _draw_row(self, y: int, label: str, value: str, color: str):

@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config  # noqa: E402
 from modules import theme  # noqa: E402
-from modules.widget.metrics import BY_KEY, EMPTY, METRICS  # noqa: E402
+from modules.metrics import BY_KEY, EMPTY, METRICS, TITLE_METRICS  # noqa: E402
 
 # 09:00–17:00 (8ч нормы, перерыв не учитываем), сейчас 11:00.
 STATS = {
@@ -77,16 +77,10 @@ def test_config_flags_exist():
             assert metric.percent_label, metric.key
 
 
-def test_settings_tab_flags_are_in_catalog():
-    """Пока вкладка настроек держит свой список флагов — он не должен разойтись с каталогом."""
-    from modules.settings import tab_metrics
-    catalog = {m.show_attr for m in METRICS} | {m.show_percent_attr for m in METRICS if m.percent}
-    tab = {attr for attr, _ in (
-        tab_metrics._WIDGET_METRIC_TIME_TOGGLES
-        + tab_metrics._WIDGET_METRIC_PERCENT_TOGGLES
-        + tab_metrics._WIDGET_METRIC_OTHER_TOGGLES
-    )} - {"WIDGET_SHOW_DAY_TIMELINE"}  # таймлайн — полоса, а не текстовая метрика
-    assert tab == catalog
+def test_title_metrics_refer_to_catalog():
+    for attr, key, _show_value in TITLE_METRICS:
+        assert hasattr(config, attr), attr
+        assert key in BY_KEY, key
 
 
 # --- Текст ---
@@ -123,9 +117,15 @@ def test_clock_values():
     assert BY_KEY["recommended_eta"].value(STATS) is None
 
 
-def test_compact_label_falls_back_to_label():
-    assert BY_KEY["work_day_end"].compact_label != BY_KEY["work_day_end"].label
-    assert BY_KEY["work_time"].compact_label == BY_KEY["work_time"].label
+def test_empty_labels_inherit_main_ones():
+    """Подпись задаётся только там, где отличается; иначе берётся основная."""
+    work_time = BY_KEY["work_time"]
+    assert work_time.short_label == work_time.settings_label == work_time.label
+    assert work_time.settings_percent_label == work_time.percent_label
+    # Где отличаются — свои.
+    assert BY_KEY["work_day_end"].short_label != BY_KEY["work_day_end"].label
+    assert BY_KEY["session_count"].settings_label != BY_KEY["session_count"].label
+    assert BY_KEY["activity"].settings_percent_label != BY_KEY["activity"].percent_label
 
 
 # --- Цвет ---

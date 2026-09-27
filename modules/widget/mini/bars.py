@@ -23,19 +23,11 @@
 import tkinter as tk
 from collections.abc import Callable
 
-import config
 from constants import FONT_FAMILY
-from texts import (
-    METRIC_ACTIVITY_PERCENT,
-    METRIC_FREE_TIME,
-    METRIC_FULL_DAY_TIME,
-    METRIC_TIMELINE,
-    WIDGET_BARS_EMPTY,
-    WIDGET_CAPTION_BARS,
-)
+from texts import METRIC_TIMELINE, WIDGET_BARS_EMPTY, WIDGET_CAPTION_BARS
 from modules import theme
-from utility import format_duration_signed, format_percent
-from ..scales import color_for_percent, free_time_color
+from modules.metrics import BY_KEY
+from utility import format_percent
 from .base import PERCENT_DECIMALS, BaseMiniWidget
 from ..timeline_cells import cell_kinds, segment_color
 
@@ -65,38 +57,29 @@ _STRIP_CELLS = WIDTH - 2 * PAD_X
 # --- Метрики ---
 
 
-def _activity(stats: dict):
-    pct = stats.get("activity_percent")
-    if pct is None:
-        return None
-    return pct, format_percent(pct, PERCENT_DECIMALS), color_for_percent(
-        pct, config.RECOMMENDED_ACTIVITY_THRESHOLD, config.MIN_ACTIVITY_THRESHOLD,
-        PERCENT_DECIMALS,
-    )
+def _percent_bar(key: str):
+    """Полоса по парному проценту метрики каталога: заливка, текст и цвет."""
+    metric = BY_KEY[key]
 
+    def read_bar(stats: dict):
+        pct = metric.percent(stats)
+        if pct is None:
+            return None
+        text = metric.render(stats, value=False, percent=True, decimals=PERCENT_DECIMALS)
+        return pct, text, metric.color(stats, PERCENT_DECIMALS)
 
-def _work_time(stats: dict):
-    max_work = stats.get("max_work_seconds", 0)
-    if max_work <= 0:
-        return None
-    pct = stats.get("full_day_seconds", 0) / max_work * 100
-    return pct, format_percent(pct, PERCENT_DECIMALS), color_for_percent(
-        pct, config.RECOMMENDED_WORK_TIME_THRESHOLD, config.MIN_WORK_TIME_THRESHOLD,
-        PERCENT_DECIMALS,
-    )
+    return read_bar
 
 
 def _free_time(stats: dict):
     budget_min = stats.get("free_budget_min_seconds", 0)
     if budget_min <= 0:
         return None
-    remaining = stats.get("free_remaining_seconds", 0)
-    remaining_min = stats.get("free_remaining_min_seconds", 0)
     # Шкала та же, что у кольца свободного времени: полная полоса = бюджет до
     # минимальной нормы, а значение и цвет — по остатку до рекомендуемой.
-    pct = remaining_min / budget_min * 100
-    color = free_time_color(remaining, stats.get("free_budget_seconds", 0))
-    return pct, format_duration_signed(remaining), color
+    pct = stats.get("free_remaining_min_seconds", 0) / budget_min * 100
+    metric = BY_KEY["free_time"]
+    return pct, metric.value(stats), metric.color(stats)
 
 
 def _timeline(stats: dict):
@@ -119,9 +102,10 @@ def _timeline(stats: dict):
 
 # Порядок здесь = порядок полос в виджете.
 _BARS: dict[str, dict] = {
-    "activity": {"label": METRIC_ACTIVITY_PERCENT, "read": _activity},
-    "work_time": {"label": METRIC_FULL_DAY_TIME, "read": _work_time},
-    "free_time": {"label": METRIC_FREE_TIME, "read": _free_time},
+    "activity": {"label": BY_KEY["activity"].short_label, "read": _percent_bar("activity")},
+    "work_time": {"label": BY_KEY["work_time"].short_label, "read": _percent_bar("work_time")},
+    "free_time": {"label": BY_KEY["free_time"].short_label, "read": _free_time},
+    # Таймлайн — лента, а не метрика с процентом, поэтому не из каталога.
     "timeline": {"label": METRIC_TIMELINE, "read": _timeline},
 }
 
