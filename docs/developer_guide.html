@@ -407,7 +407,7 @@ git push --follow-tags                           # или сразу флаго�
 
 <!-- ============================================================ -->
 <h2 id="build">Сборка</h2>
-<p>PyInstaller по <code>main.spec</code>: <code>datas</code> кладёт рядом с исполняемым файлом папку <code>docs/</code> и <code>CHANGELOG.md</code>, <code>hiddenimports=['pystray._win32']</code> — потому что <code>pystray</code> грузит бэкенд лениво и PyInstaller его не видит. Сборка в режиме <code>COLLECT</code> (папка <code>dist/main/</code>), консоль включена. Ресурсы в рантайме ищутся через <code>utility.resource_path</code>: от <code>sys._MEIPASS</code> в сборке, от корня проекта при обычном запуске.</p>
+<p>PyInstaller по <code>main.spec</code>: <code>datas</code> кладёт рядом с исполняемым файлом папку <code>docs/</code> и <code>CHANGELOG.md</code>, <code>hiddenimports=['pystray._win32']</code> — потому что <code>pystray</code> грузит бэкенд лениво и PyInstaller его не видит. Сборка в режиме <code>COLLECT</code> (папка <code>dist/main/</code>), консоль включена. <code>build/</code> и <code>dist/</code> в git не хранятся (см. <code>.gitignore</code>) — сборка делается локально. Ресурсы в рантайме ищутся через <code>utility.resource_path</code>: от <code>sys._MEIPASS</code> в сборке, от корня проекта при обычном запуске.</p>
 <pre><code>.venv\Scripts\python -m PyInstaller main.spec</code></pre>
 
 <!-- ============================================================ -->

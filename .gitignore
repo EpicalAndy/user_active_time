@@ -1,2 +1,11 @@
 __pycache__/
 .venv/
+
+# Артефакты PyInstaller — собираются локально по main.spec.
+build/
+dist/
+
+# Личные данные и локальные настройки.
+reports/
+.claude/settings.local.json
+*.lnk
