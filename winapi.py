@@ -145,3 +145,18 @@ user32.PostThreadMessageW.argtypes = [
     wintypes.WPARAM,     # wParam
     wintypes.LPARAM,     # lParam
 ]
+
+
+def run_message_loop() -> None:
+    """Цикл сообщений текущего потока: крутится до WM_QUIT или ошибки GetMessage.
+
+    Нужен и скрытому окну WTS-уведомлений, и LL-хукам ввода: Windows вызывает
+    их колбэки, только пока поток, поставивший их, выбирает сообщения.
+    """
+    msg = wintypes.MSG()
+    while True:
+        ret = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
+        if ret == 0 or ret == -1:
+            break
+        user32.TranslateMessage(ctypes.byref(msg))
+        user32.DispatchMessageW(ctypes.byref(msg))

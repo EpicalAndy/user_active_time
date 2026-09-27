@@ -6,6 +6,7 @@ import tkinter as tk
 import tkinter.font as tkfont
 from collections.abc import Callable
 
+from config import MAIN_FONT_SIZE
 from constants import FONT_FAMILY
 from modules import theme
 
@@ -80,6 +81,19 @@ def attach_tooltip(
 
     widget.bind("<Enter>", on_enter, add="+")
     widget.bind("<Leave>", on_leave, add="+")
+
+
+def legend_item(parent: tk.Misc, color: str, text: str, padx: int = 8) -> None:
+    """Элемент легенды в строку: цветной квадрат 12×12 и подпись справа."""
+    frame = tk.Frame(parent, bg=theme.COLOR_DARK_BG)
+    frame.pack(side=tk.LEFT, padx=padx)
+    box = tk.Canvas(frame, width=14, height=14, bg=theme.COLOR_DARK_BG, highlightthickness=0)
+    box.pack(side=tk.LEFT, padx=(0, 4))
+    box.create_rectangle(1, 1, 13, 13, fill=color, outline="")
+    tk.Label(
+        frame, text=text, bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
+        font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
+    ).pack(side=tk.LEFT)
 
 
 def restore_parent_grab_on_destroy(window: tk.Toplevel) -> None:

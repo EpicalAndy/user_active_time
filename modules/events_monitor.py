@@ -10,11 +10,9 @@
 текущему таймауту — это про «сейчас», не про запекание истории.
 """
 
-import ctypes
 import datetime
 import threading
 import time
-from ctypes import wintypes
 
 import config
 from constants import MIN_IDLE_GAP_SECONDS
@@ -22,6 +20,7 @@ from utility import get_input_timeout, input_monitoring_enabled
 from winapi import (
     HOOKPROC,
     kernel32,
+    run_message_loop,
     user32,
     WH_KEYBOARD_LL,
     WH_MOUSE_LL,
@@ -149,13 +148,7 @@ def _hook_thread_func():
 
     print("[EVENTS] Хуки ввода установлены")
 
-    msg = wintypes.MSG()
-    while True:
-        ret = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
-        if ret == 0 or ret == -1:
-            break
-        user32.TranslateMessage(ctypes.byref(msg))
-        user32.DispatchMessageW(ctypes.byref(msg))
+    run_message_loop()
 
     if kb_hook:
         user32.UnhookWindowsHookEx(kb_hook)

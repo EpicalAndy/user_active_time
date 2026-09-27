@@ -34,6 +34,7 @@ from texts import (
 from modules import theme, work_calendar
 from modules.day_schedule_dialog import DayScheduleDialog
 from modules.month_grid import MonthCalendarGrid
+from modules.ui_utils import legend_item
 from utility import format_date_display
 
 
@@ -99,7 +100,7 @@ class ScheduleCalendar(MonthCalendarGrid):
             (theme.COLOR_DARKER_BG, SCHEDULE_LEGEND_DEFAULT),
         ]
         for color, label in items:
-            self._legend_item(legend, color, label)
+            legend_item(legend, color, label)
 
         # Маркер заметки — текстом, без цветной плашки.
         tk.Label(
@@ -107,14 +108,3 @@ class ScheduleCalendar(MonthCalendarGrid):
             bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
             font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
         ).pack(side=tk.LEFT, padx=8)
-
-    def _legend_item(self, parent: tk.Frame, color: str, text: str):
-        frame = tk.Frame(parent, bg=theme.COLOR_DARK_BG)
-        frame.pack(side=tk.LEFT, padx=8)
-        box = tk.Canvas(frame, width=14, height=14, bg=theme.COLOR_DARK_BG, highlightthickness=0)
-        box.pack(side=tk.LEFT, padx=(0, 4))
-        box.create_rectangle(1, 1, 13, 13, fill=color, outline="")
-        tk.Label(
-            frame, text=text, bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
-            font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
-        ).pack(side=tk.LEFT)

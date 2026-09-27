@@ -8,8 +8,7 @@
 import datetime
 import tkinter as tk
 
-from config import MAIN_FONT_SIZE, MIN_ACTIVITY_THRESHOLD, RECOMMENDED_ACTIVITY_THRESHOLD
-from constants import FONT_FAMILY
+from config import MIN_ACTIVITY_THRESHOLD, RECOMMENDED_ACTIVITY_THRESHOLD
 from texts import (
     HEATMAP_CLOSE,
     HEATMAP_LEGEND_HIGH,
@@ -23,6 +22,7 @@ from texts import (
 )
 from modules import theme
 from modules.month_grid import MonthCalendarGrid
+from modules.ui_utils import legend_item
 from modules.period_report import percent, read_day_metrics
 from modules.report import get_report_path
 from modules.report_viewer import ReportViewer
@@ -104,15 +104,4 @@ class HeatmapViewer(MonthCalendarGrid):
             (theme.COLOR_GRAY, HEATMAP_LEGEND_NO_DATA),
         ]
         for color, label in items:
-            self._legend_item(legend, color, label)
-
-    def _legend_item(self, parent: tk.Frame, color: str, text: str):
-        frame = tk.Frame(parent, bg=theme.COLOR_DARK_BG)
-        frame.pack(side=tk.LEFT, padx=8)
-        box = tk.Canvas(frame, width=14, height=14, bg=theme.COLOR_DARK_BG, highlightthickness=0)
-        box.pack(side=tk.LEFT, padx=(0, 4))
-        box.create_rectangle(1, 1, 13, 13, fill=color, outline="")
-        tk.Label(
-            frame, text=text, bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
-            font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
-        ).pack(side=tk.LEFT)
+            legend_item(legend, color, label)

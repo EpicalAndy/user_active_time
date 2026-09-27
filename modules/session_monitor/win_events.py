@@ -13,12 +13,12 @@ import ctypes
 import datetime
 import os
 import threading
-from ctypes import wintypes
 
 from config import LOG_DIR
 from winapi import (
     kernel32,
     NOTIFY_FOR_THIS_SESSION,
+    run_message_loop,
     user32,
     WM_QUIT,
     WM_WTSSESSION_CHANGE,
@@ -130,17 +130,6 @@ def subscribe_to_session_events(hwnd):
         print("Подписка на события сессии: ОК")
     else:
         print("Предупреждение: не удалось подписаться на события")
-
-
-def run_message_loop():
-    """Запускает цикл обработки сообщений Windows"""
-    msg = wintypes.MSG()
-    while True:
-        ret = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
-        if ret == 0 or ret == -1:
-            break
-        user32.TranslateMessage(ctypes.byref(msg))
-        user32.DispatchMessageW(ctypes.byref(msg))
 
 
 def main():

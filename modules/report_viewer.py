@@ -26,7 +26,7 @@ from modules.report_reader import (
     parse_report,
     time_to_hours,
 )
-from modules.ui_utils import center_on_screen
+from modules.ui_utils import center_on_screen, legend_item
 
 
 class ReportViewer:
@@ -108,9 +108,9 @@ class ReportViewer:
         legend_frame = tk.Frame(self.win, bg=theme.COLOR_DARK_BG)
         legend_frame.pack(pady=(4, 12))
 
-        self._legend_item(legend_frame, theme.COLOR_GREEN, "Активность")
-        self._legend_item(legend_frame, theme.COLOR_RED, "Простой")
-        self._legend_item(legend_frame, theme.COLOR_BLUE, "Добавленное время")
+        legend_item(legend_frame, theme.COLOR_GREEN, "Активность", padx=12)
+        legend_item(legend_frame, theme.COLOR_RED, "Простой", padx=12)
+        legend_item(legend_frame, theme.COLOR_BLUE, "Добавленное время", padx=12)
 
         # --- Кнопка закрыть ---
         tk.Button(
@@ -208,17 +208,3 @@ class ReportViewer:
                 text=str(h), anchor=tk.N,
                 fill=theme.COLOR_LIGHT_FG, font=(FONT_FAMILY, 8),
             )
-
-    def _legend_item(self, parent: tk.Frame, color: str, text: str):
-        """Добавляет элемент легенды"""
-        frame = tk.Frame(parent, bg=theme.COLOR_DARK_BG)
-        frame.pack(side=tk.LEFT, padx=12)
-
-        box = tk.Canvas(frame, width=14, height=14, bg=theme.COLOR_DARK_BG, highlightthickness=0)
-        box.pack(side=tk.LEFT, padx=(0, 4))
-        box.create_rectangle(1, 1, 13, 13, fill=color, outline="")
-
-        tk.Label(
-            frame, text=text, bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
-            font=(FONT_FAMILY, MAIN_FONT_SIZE - 1),
-        ).pack(side=tk.LEFT)
