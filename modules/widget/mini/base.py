@@ -139,6 +139,17 @@ class BaseMiniWidget:
         except Exception:
             pass
 
+    def apply_theme(self):
+        """Перекрашивает каркас (окно, подпись, крестик) под текущую тему.
+
+        Уже созданные tk-виджеты сами цвет не меняют. Содержимое здесь не
+        трогаем: канвы и сетки читают палитру заново при каждой отрисовке, и
+        конфигуратор сразу после смены темы раздаёт свежие stats.
+        """
+        self.window.configure(bg=theme.COLOR_DARK_BG)
+        self._caption_label.configure(bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED)
+        self._close_btn.configure(bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED)
+
     def apply_opts(self, opts: dict):
         """Применяет новые настройки виджета и немедленно перерисовывает."""
         self.opts = opts or {}
@@ -279,9 +290,6 @@ class BaseMiniWidget:
         self.window.bind("<Leave>", self._hide_close_later)
 
     def _show_close(self, _event=None):
-        # Цвета переназначаем при каждом показе: мини-виджеты не перекрашивают
-        # себя при смене темы, а так крестик подхватит актуальную палитру.
-        self._close_btn.configure(bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED)
         self._close_btn.place(
             relx=1.0, x=-_CLOSE_INSET, y=_CLOSE_INSET, anchor="ne",
         )

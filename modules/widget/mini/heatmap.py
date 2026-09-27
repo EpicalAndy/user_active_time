@@ -176,10 +176,9 @@ class HeatmapWidget(BaseMiniWidget):
         today = datetime.date.today()
         rows = self._ensure_layout(today)
 
-        # Палитру переназначаем на каждом тике: мини-виджеты не перекрашивают
-        # себя при смене темы, а так подхватят её со следующим обновлением.
+        # Палитру сетки переназначаем при каждой отрисовке — так она подхватит
+        # смену темы (каркас окна перекрашивает BaseMiniWidget.apply_theme).
         self._grid.configure(bg=theme.COLOR_DARK_BG)
-        self._caption_label.configure(bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED)
         for header in self._headers:
             header.configure(bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED)
 

@@ -150,6 +150,18 @@ class WidgetManager:
             except Exception:
                 pass
 
+    def apply_theme(self):
+        """Перекрашивает каркас живых виджетов после смены темы.
+
+        Содержимое перерисует следующий `update(stats)` — конфигуратор зовёт
+        его сразу после этого.
+        """
+        for widget in self._widgets.values():
+            try:
+                widget.apply_theme()
+            except Exception:
+                pass
+
     # --- Внутреннее ---
 
     def _entries_for_type(self, type_key: str) -> list[dict]:

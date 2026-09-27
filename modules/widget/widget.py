@@ -366,7 +366,8 @@ class ActivityWidget:
         self._content.destroy()
         self._build_chrome()
         self._hide_body_if_minimized()
-        self._update_metrics()
+        self._manager.apply_theme()
+        self._update_metrics()  # перерисует и содержимое мини-виджетов
         self._resize_window()
 
     def _rebuild_content(self):
