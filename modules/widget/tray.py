@@ -2,7 +2,14 @@
 Значок приложения в системном трее (pystray).
 
 Значок висит всё время работы приложения. Двойной клик по нему — открыть
-(вернуть окно конфигуратора); правый клик — меню «Открыть / Выход».
+(вернуть окно конфигуратора); правый клик — меню «Открыть / Метрика в
+подсказке / Выход».
+
+Подсказка при наведении: название с версией и одна метрика из каталога —
+одна, а не набор: Windows обрезает подсказку до 127 символов, и с несколькими
+метриками было бы непонятно, почему не влезает то, что выбрано. Выбор живёт в
+`tray.json` в LOG_DIR (как настройки мини-виджетов в `widgets.json`: меняется
+из контекстного меню, а не из диалога настроек).
 
 pystray работает в собственном потоке (Icon.run блокирует), поэтому колбэки
 `on_open`/`on_quit` вызываются НЕ в потоке Tk — вызывающая сторона обязана
@@ -13,6 +20,7 @@ pystray и Pillow — единственные внешние зависимос
 работает без трея.
 """
 
+import os
 import sys
 import threading
 
@@ -23,8 +31,60 @@ except Exception as e:  # noqa: BLE001 — любая поломка завис�
     pystray = None
     _IMPORT_ERROR = e
 
-from texts import TRAY_MENU_OPEN, TRAY_MENU_QUIT, TRAY_TITLE
+from config import LOG_DIR
+from texts import (
+    METRIC_HIDE_OPTION,
+    TRAY_MENU_OPEN,
+    TRAY_MENU_QUIT,
+    TRAY_MENU_TOOLTIP_METRIC,
+    TRAY_TITLE,
+    TRAY_TOOLTIP_DAY_OFF,
+)
 from modules import theme
+from modules.json_file import read_json, write_json_atomic
+from modules.metrics import BY_KEY, METRICS
+
+_TRAY_FILE = os.path.join(LOG_DIR, "tray.json")
+
+# Метрика подсказки по умолчанию и значение «не показывать».
+DEFAULT_TOOLTIP_METRIC = "activity"
+NO_METRIC = ""
+
+# Предел текста подсказки: szTip в NOTIFYICONDATAW — 128 WCHAR с нулём в конце.
+# Длиннее ctypes не обрежет, а упадёт, поэтому режем сами.
+_TOOLTIP_MAX = 127
+
+
+def tooltip_text(metric_key: str, stats: dict | None) -> str:
+    """Текст подсказки: название с версией и строка выбранной метрики.
+
+    stats=None (ещё не пришли) или метрика не выбрана — только название.
+    """
+    lines = [TRAY_TITLE]
+    metric = BY_KEY.get(metric_key)
+    if metric is not None and stats is not None:
+        if not stats.get("is_working_day", True):
+            lines.append(TRAY_TOOLTIP_DAY_OFF)
+        else:
+            lines.append(f"{metric.short_label}: {metric.render(stats, percent=True)}")
+    return "\n".join(lines)[:_TOOLTIP_MAX]
+
+
+def load_tooltip_metric() -> str:
+    """Сохранённый выбор метрики; неизвестный ключ или битый файл — по умолчанию."""
+    data = read_json(_TRAY_FILE)
+    key = data.get("tooltip_metric") if isinstance(data, dict) else None
+    if key == NO_METRIC or key in BY_KEY:
+        return key
+    return DEFAULT_TOOLTIP_METRIC
+
+
+def save_tooltip_metric(key: str):
+    """Сохраняет выбор; ошибка записи не роняет трей — выбор живёт до перезапуска."""
+    try:
+        write_json_atomic(_TRAY_FILE, {"tooltip_metric": key})
+    except OSError:
+        pass
 
 
 def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
@@ -63,22 +123,67 @@ def _make_image() -> "Image.Image":
 
 
 class TrayIcon:
-    """Обёртка над pystray.Icon: всегда в трее, запуск/остановка в потоке."""
+    """Обёртка над pystray.Icon: всегда в трее, запуск/остановка в потоке.
+
+    Подсказку пересчитывает `update_stats` (из потока Tk, в такт метрикам
+    виджета) и выбор метрики в меню (из потока pystray). Оба пишут только
+    ссылки — ключ и последний stats — и заново собирают текст целиком.
+    """
 
     def __init__(self, on_open, on_quit):
         self._on_open = on_open
         self._on_quit = on_quit
         self._thread: threading.Thread | None = None
+        self._metric_key = load_tooltip_metric()
+        self._stats: dict | None = None
         # default=True → пункт срабатывает по двойному клику (win32-бэкенд).
         self._icon = pystray.Icon(
             "user_active_time",
             _make_image(),
-            TRAY_TITLE,
+            tooltip_text(self._metric_key, None),
             menu=pystray.Menu(
                 pystray.MenuItem(TRAY_MENU_OPEN, self._open, default=True),
+                pystray.MenuItem(TRAY_MENU_TOOLTIP_METRIC, self._metric_menu()),
                 pystray.MenuItem(TRAY_MENU_QUIT, self._quit),
             ),
         )
+
+    def _metric_menu(self) -> "pystray.Menu":
+        """Подменю выбора метрики: радиопункты по каталогу и «Не отображать»."""
+        choices = [(metric.key, metric.short_label) for metric in METRICS]
+        choices.append((NO_METRIC, METRIC_HIDE_OPTION))
+        return pystray.Menu(*(
+            pystray.MenuItem(
+                label, self._select_action(key),
+                checked=self._is_selected(key), radio=True,
+            )
+            for key, label in choices
+        ))
+
+    # pystray проверяет число аргументов обработчика по co_argcount, поэтому
+    # ключ привязываем замыканием, а не параметром по умолчанию.
+    def _select_action(self, key: str):
+        return lambda: self._select_metric(key)
+
+    def _is_selected(self, key: str):
+        return lambda _item: self._metric_key == key
+
+    def _select_metric(self, key: str):
+        self._metric_key = key
+        save_tooltip_metric(key)
+        # win32-бэкенд собирает меню один раз — отметку переставляем явно.
+        self._icon.update_menu()
+        self._refresh_title()
+
+    def update_stats(self, stats: dict):
+        """Свежие метрики от виджета — пересчитывает подсказку."""
+        self._stats = stats
+        self._refresh_title()
+
+    def _refresh_title(self):
+        text = tooltip_text(self._metric_key, self._stats)
+        if self._icon.title != text:
+            self._icon.title = text
 
     def _open(self, _icon=None, _item=None):
         self._on_open()

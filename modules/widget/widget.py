@@ -153,8 +153,10 @@ class ActivityWidget:
         # Содержимое обновляется до проверки на нерабочий день: тело в такой
         # день сворачивается в плашку, а недельная полоса остаётся на месте.
         self._content.update(stats)
-        # Мини-виджеты рабочего стола — та же частота, тот же stats.
+        # Мини-виджеты рабочего стола и подсказка трея — та же частота, тот же stats.
         self._manager.update(stats)
+        if self._tray is not None:
+            self._tray.update_stats(stats)
 
         if not stats.get("is_working_day", True):
             self._title_bar.clear_metric_labels()

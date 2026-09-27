@@ -122,6 +122,8 @@ WIDGET_OPT_RANGE_ROLLING = "Скользящий (по сегодня)"
 TRAY_TITLE = f"{APP_NAME} {__version__}"
 TRAY_MENU_OPEN = "Открыть"
 TRAY_MENU_QUIT = "Выход"
+TRAY_MENU_TOOLTIP_METRIC = "Метрика в подсказке"
+TRAY_TOOLTIP_DAY_OFF = "Нерабочий день"
 
 # Ошибки для быстрых пунктов «сегодня» / «последний»
 REPORT_NO_DATA_TITLE = "Нет отчёта"
