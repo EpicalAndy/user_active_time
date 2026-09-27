@@ -16,15 +16,16 @@ from config import MAIN_FONT_SIZE
 from constants import FONT_FAMILY
 from modules import theme
 from modules.ui_utils import bold_pixel_width
-from utility import format_percent
 from .countdown_indicator import CountdownIndicator
+from .metrics import BY_KEY, Metric
 
-
-def _format_hm(seconds: int) -> str:
-    """Форматирует секунды в «Xч Yм» (без секунд)."""
-    h = seconds // 3600
-    m = (seconds % 3600) // 60
-    return f"{h}ч {m}м"
+# Метрики заголовка: флаг config → (ключ каталога, показывать значение).
+# value=False — только процент. Настройки включают не больше одной.
+_TITLE_METRICS = (
+    ("WIDGET_SHOW_TITLE_PERCENT", "activity", False),
+    ("WIDGET_SHOW_TITLE_REMAINING_TIME", "remaining_time", True),
+    ("WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING", "recommended_remaining", True),
+)
 
 
 class TitleBar:
@@ -54,9 +55,8 @@ class TitleBar:
 
         self._countdown: CountdownIndicator | None = None
         self._title_slot: tk.Frame | None = None
-        self._title_percent_label: tk.Label | None = None
-        self._title_remaining_label: tk.Label | None = None
-        self._title_recommended_remaining_label: tk.Label | None = None
+        # Лейблы включённых метрик: (лейбл, метрика каталога, показывать значение).
+        self._metric_labels: list[tuple[tk.Label, Metric, bool]] = []
 
         self._build()
 
@@ -111,12 +111,9 @@ class TitleBar:
         return btn
 
     def _build_metric_labels(self):
-        if config.WIDGET_SHOW_TITLE_PERCENT:
-            self._title_percent_label = self._make_metric_label()
-        if config.WIDGET_SHOW_TITLE_REMAINING_TIME:
-            self._title_remaining_label = self._make_metric_label()
-        if config.WIDGET_SHOW_TITLE_RECOMMENDED_REMAINING:
-            self._title_recommended_remaining_label = self._make_metric_label()
+        for attr, key, show_value in _TITLE_METRICS:
+            if getattr(config, attr):
+                self._metric_labels.append((self._make_metric_label(), BY_KEY[key], show_value))
 
     def _make_metric_label(self) -> tk.Label:
         label = tk.Label(
@@ -130,12 +127,7 @@ class TitleBar:
     def _bind_drag(self):
         widgets: list[tk.Widget] = [self.frame, self._title_slot, self._title_label]
         widgets += self._countdown.drag_widgets()
-        if self._title_percent_label:
-            widgets.append(self._title_percent_label)
-        if self._title_remaining_label:
-            widgets.append(self._title_remaining_label)
-        if self._title_recommended_remaining_label:
-            widgets.append(self._title_recommended_remaining_label)
+        widgets += [label for label, _, _ in self._metric_labels]
         for w in widgets:
             w.bind("<ButtonPress-1>", self._start_drag)
             w.bind("<B1-Motion>", self._on_drag)
@@ -145,28 +137,14 @@ class TitleBar:
 
     def update_metric_labels(self, stats: dict):
         """Обновляет тексты лейблов заголовка из stats."""
-        if self._title_percent_label is not None:
-            self._title_percent_label.configure(
-                text=f" {format_percent(stats['activity_percent'])}",
-            )
-        if self._title_remaining_label is not None:
-            self._title_remaining_label.configure(
-                text=f" {_format_hm(max(0, stats.get('remaining_work_seconds', 0)))}",
-            )
-        if self._title_recommended_remaining_label is not None:
-            self._title_recommended_remaining_label.configure(
-                text=f" {_format_hm(max(0, stats.get('recommended_remaining_seconds', 0)))}",
-            )
+        for label, metric, show_value in self._metric_labels:
+            text = metric.render(stats, value=show_value, percent=not show_value)
+            label.configure(text=f" {text}")
 
     def clear_metric_labels(self):
         """Очищает тексты лейблов (для режима «нерабочего дня»)."""
-        for label in (
-            self._title_percent_label,
-            self._title_remaining_label,
-            self._title_recommended_remaining_label,
-        ):
-            if label is not None:
-                label.configure(text="")
+        for label, _, _ in self._metric_labels:
+            label.configure(text="")
 
     # --- Countdown и рамка: делегирование в CountdownIndicator ---
 
@@ -199,15 +177,9 @@ class TitleBar:
 
         Вызывать после сохранения настроек.
         """
-        for attr in (
-            "_title_percent_label",
-            "_title_remaining_label",
-            "_title_recommended_remaining_label",
-        ):
-            label = getattr(self, attr)
-            if label is not None:
-                label.destroy()
-                setattr(self, attr, None)
+        for label, _, _ in self._metric_labels:
+            label.destroy()
+        self._metric_labels = []
         self._build_metric_labels()
         # Перепривязываем drag-обработчики к новым лейблам.
         self._bind_drag()

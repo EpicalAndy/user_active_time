@@ -20,16 +20,10 @@
 
 import tkinter as tk
 
-import config
 from constants import FONT_FAMILY
-from texts import (
-    METRIC_RECOMMENDED_ETA,
-    METRIC_WORK_DAY_END,
-    WIDGET_CAPTION_TIME_MARKS,
-    WIDGET_MARKS_EMPTY,
-)
+from texts import WIDGET_CAPTION_TIME_MARKS, WIDGET_MARKS_EMPTY
 from modules import theme
-from ..scales import color_for_percent, work_time_percent
+from ..metrics import BY_KEY
 from .base import PERCENT_DECIMALS, BaseMiniWidget
 
 # Геометрия. Ширина — под самое длинное название плюс «HH:MM» с отступами
@@ -47,47 +41,26 @@ _EMPTY_VALUE = "—"
 
 # --- Метрики ---
 
-
-def _recommended_eta(stats: dict):
-    """До рекомендуемой активности: цвет — по шкале активности, как в теле виджета."""
-    value = stats.get("recommended_eta")
-    if not value:
-        return None
-    return value, color_for_percent(
-        stats.get("activity_percent", 0),
-        config.RECOMMENDED_ACTIVITY_THRESHOLD, config.MIN_ACTIVITY_THRESHOLD,
-        PERCENT_DECIMALS,
-    )
+# Порядок здесь = порядок строк в виджете. Подпись, значение и цвет — из
+# каталога метрик.
+_MARKS = ("recommended_eta", "work_day_end")
 
 
-def _work_day_end(stats: dict):
-    """Конец дня: цвет — по шкале рабочего времени, как в теле виджета.
+def read_mark(key: str, stats: dict) -> tuple[str, str] | None:
+    """(время, цвет) отметки или None, пока момента нет.
 
-    Отметка стоит на месте весь день, а цвет к ней подтягивается: красный,
-    пока присутствия мало, жёлтый с `MIN_WORK_TIME_THRESHOLD`, зелёный на
-    `RECOMMENDED_WORK_TIME_THRESHOLD` — то есть когда до отметки дошли.
+    Цвет — по шкале метрики, как в теле виджета; если красить не по чему
+    (нет нормы присутствия) — нейтральный.
     """
-    value = stats.get("work_day_end")
-    if not value:
+    metric = BY_KEY[key]
+    value = metric.value(stats)
+    if value is None:
         return None
-    percent = work_time_percent(stats)
-    if percent is None:  # нормы присутствия нет — красить не по чему
-        return value, theme.COLOR_LIGHT_FG
-    return value, color_for_percent(
-        percent,
-        config.RECOMMENDED_WORK_TIME_THRESHOLD, config.MIN_WORK_TIME_THRESHOLD,
-        PERCENT_DECIMALS,
-    )
+    return value, metric.color(stats, PERCENT_DECIMALS) or theme.COLOR_LIGHT_FG
 
-
-# Порядок здесь = порядок строк в виджете.
-_MARKS: dict[str, dict] = {
-    "recommended_eta": {"label": METRIC_RECOMMENDED_ETA, "read": _recommended_eta},
-    "work_day_end": {"label": METRIC_WORK_DAY_END, "read": _work_day_end},
-}
 
 # Для реестра: варианты галочек и набор по умолчанию (все).
-MARK_CHOICES = [(key, meta["label"]) for key, meta in _MARKS.items()]
+MARK_CHOICES = [(key, BY_KEY[key].compact_label) for key in _MARKS]
 DEFAULT_MARKS = list(_MARKS)
 
 
@@ -142,14 +115,13 @@ class TimeMarksWidget(BaseMiniWidget):
 
         y = ROW_GAP
         for key in keys:
-            meta = _MARKS[key]
-            reading = meta["read"](stats) if working else None
+            reading = read_mark(key, stats) if working else None
             if reading is None:
                 # Нерабочий день или момента ещё нет — прочерк без цвета.
                 value, color = _EMPTY_VALUE, theme.COLOR_MUTED
             else:
                 value, color = reading
-            self._draw_row(y, meta["label"], value, color)
+            self._draw_row(y, BY_KEY[key].compact_label, value, color)
             y += ROW_HEIGHT + ROW_GAP
 
     def _draw_row(self, y: int, label: str, value: str, color: str):

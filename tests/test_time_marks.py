@@ -46,7 +46,7 @@ def read(key, stats=None):
         config.MIN_ACTIVITY_THRESHOLD = 70
         config.RECOMMENDED_WORK_TIME_THRESHOLD = 100
         config.MIN_WORK_TIME_THRESHOLD = 80
-        return marks._MARKS[key]["read"](stats if stats is not None else STATS)
+        return marks.read_mark(key, stats if stats is not None else STATS)
     finally:
         for name, value in saved.items():
             setattr(config, name, value)

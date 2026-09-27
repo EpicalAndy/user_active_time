@@ -1,6 +1,9 @@
 """
 Тело виджета: список метрик с цветной подсветкой значений
 и режим «нерабочего дня».
+
+Какие метрики есть, их подписи, текст и цвет — в каталоге (`metrics`); тело
+только выбирает включённые флагами config и раскладывает их строками.
 """
 
 import tkinter as tk
@@ -8,58 +11,9 @@ import tkinter as tk
 import config
 from config import MAIN_FONT_SIZE
 from constants import FONT_FAMILY
-from texts import (
-    METRIC_ACTIVE_TIME,
-    METRIC_ACTIVITY_PERCENT,
-    METRIC_FREE_TIME,
-    METRIC_FREE_TIME_PERCENT_FULL,
-    METRIC_FULL_DAY_TIME,
-    METRIC_FULL_DAY_TIME_PERCENT_FULL,
-    METRIC_RECOMMENDED_ETA_FULL,
-    METRIC_RECOMMENDED_REMAINING_FULL,
-    METRIC_RECOMMENDED_REMAINING_PERCENT_FULL,
-    METRIC_REMAINING_TIME_FULL,
-    METRIC_REMAINING_TIME_PERCENT_FULL,
-    METRIC_SESSION_COUNT,
-    METRIC_WORK_DAY_END_FULL,
-)
 from modules import theme
 from .day_timeline import DayTimelineRow
-from .scales import (
-    color_for_percent,
-    free_time_color,
-    free_time_percent,
-    recommended_remaining_percent,
-    remaining_time_percent,
-    work_time_percent,
-)
-from utility import (
-    format_duration_short,
-    format_duration_signed,
-    format_percent,
-)
-
-# Шкалы цветовой подсветки: какая метрика по какой шкале считается.
-_SCALE_ACTIVITY = "activity"
-_SCALE_WORK_TIME = "work_time"
-_SCALE_FREE_TIME = "free_time"
-_METRIC_COLOR_SCALES: dict[str, str] = {
-    "active_time": _SCALE_ACTIVITY,
-    "activity_percent": _SCALE_ACTIVITY,
-    "recommended_remaining": _SCALE_ACTIVITY,
-    "recommended_remaining_percent": _SCALE_ACTIVITY,
-    "full_day_time": _SCALE_WORK_TIME,
-    "full_day_time_percent": _SCALE_WORK_TIME,
-    "remaining_time": _SCALE_WORK_TIME,
-    "remaining_time_percent": _SCALE_WORK_TIME,
-    "free_time": _SCALE_FREE_TIME,
-    "free_time_percent": _SCALE_FREE_TIME,
-    "recommended_eta": _SCALE_ACTIVITY,
-    # Конец дня — величина из семьи рабочего времени, поэтому и шкала его:
-    # цвет говорит, насколько близко присутствие подошло к этой отметке.
-    "work_day_end": _SCALE_WORK_TIME,
-    # session_count — без цветовой шкалы
-}
+from .metrics import METRICS
 
 
 class WidgetBody:
@@ -90,53 +44,18 @@ class WidgetBody:
         self._build_metrics()
 
     def _build_metrics(self):
-        # Парные метрики «время + процент» склеиваются в одну строку, если
-        # оба чекбокса включены. Процент-only остаётся отдельной строкой
-        # на месте парного «времени».
-        # Порядок повторяет диалог настроек: время-пары, затем прочие.
-        if config.WIDGET_SHOW_ACTIVE_TIME:
-            self._metric_labels["active_time"] = self._add_metric(f"{METRIC_ACTIVE_TIME}:")
-        elif config.WIDGET_SHOW_ACTIVITY_PERCENT:
-            self._metric_labels["activity_percent"] = self._add_metric(f"{METRIC_ACTIVITY_PERCENT}:")
-
-        if config.WIDGET_SHOW_FULL_DAY_TIME:
-            self._metric_labels["full_day_time"] = self._add_metric(f"{METRIC_FULL_DAY_TIME}:")
-        elif config.WIDGET_SHOW_FULL_DAY_TIME_PERCENT:
-            self._metric_labels["full_day_time_percent"] = self._add_metric(
-                f"{METRIC_FULL_DAY_TIME_PERCENT_FULL}:",
-            )
-
-        if config.WIDGET_SHOW_RECOMMENDED_REMAINING:
-            self._metric_labels["recommended_remaining"] = self._add_metric(
-                f"{METRIC_RECOMMENDED_REMAINING_FULL}:",
-            )
-        elif config.WIDGET_SHOW_RECOMMENDED_REMAINING_PERCENT:
-            self._metric_labels["recommended_remaining_percent"] = self._add_metric(
-                f"{METRIC_RECOMMENDED_REMAINING_PERCENT_FULL}:",
-            )
-
-        if config.WIDGET_SHOW_REMAINING_TIME:
-            self._metric_labels["remaining_time"] = self._add_metric(f"{METRIC_REMAINING_TIME_FULL}:")
-        elif config.WIDGET_SHOW_REMAINING_TIME_PERCENT:
-            self._metric_labels["remaining_time_percent"] = self._add_metric(
-                f"{METRIC_REMAINING_TIME_PERCENT_FULL}:",
-            )
-
-        if config.WIDGET_SHOW_FREE_TIME:
-            self._metric_labels["free_time"] = self._add_metric(f"{METRIC_FREE_TIME}:")
-        elif config.WIDGET_SHOW_FREE_TIME_PERCENT:
-            self._metric_labels["free_time_percent"] = self._add_metric(
-                f"{METRIC_FREE_TIME_PERCENT_FULL}:",
-            )
-
-        if config.WIDGET_SHOW_SESSION_COUNT:
-            self._metric_labels["session_count"] = self._add_metric(f"{METRIC_SESSION_COUNT}:")
-        if config.WIDGET_SHOW_WORK_DAY_END:
-            self._metric_labels["work_day_end"] = self._add_metric(f"{METRIC_WORK_DAY_END_FULL}:")
-        if config.WIDGET_SHOW_RECOMMENDED_ETA:
-            self._metric_labels["recommended_eta"] = self._add_metric(
-                f"{METRIC_RECOMMENDED_ETA_FULL}:",
-            )
+        # Строка на метрику каталога, в его порядке. Пара «время + процент»
+        # склеивается в одну строку, если включены оба флага; без значения
+        # остаётся строка с одним процентом (со своей подписью).
+        for metric in METRICS:
+            show_value = getattr(config, metric.show_attr)
+            show_percent = bool(metric.show_percent_attr) and getattr(config, metric.show_percent_attr)
+            if not (show_value or show_percent):
+                continue
+            label = metric.label if show_value else metric.percent_label
+            row = self._add_metric(f"{label}:")
+            row.update(metric=metric, show_value=show_value, show_percent=show_percent)
+            self._metric_labels[metric.key] = row
         # Последней строкой: лента дня подводит итог цифрам над ней.
         if config.WIDGET_SHOW_DAY_TIMELINE:
             self._timeline = DayTimelineRow(self.frame)
@@ -192,105 +111,17 @@ class WidgetBody:
     # --- Внутреннее ---
 
     def _update_values(self, stats: dict):
-        labels = self._metric_labels
-        if "active_time" in labels:
-            text = format_duration_short(stats["active_seconds"])
-            # Парная склейка: если включён парный процент — дописываем в скобках.
-            if config.WIDGET_SHOW_ACTIVITY_PERCENT:
-                text += f" ({format_percent(stats['activity_percent'])})"
-            labels["active_time"]["value"].configure(text=text)
-        if "session_count" in labels:
-            labels["session_count"]["value"].configure(text=str(stats["session_count"]))
-        if "activity_percent" in labels:
-            labels["activity_percent"]["value"].configure(
-                text=format_percent(stats["activity_percent"]),
+        for row in self._metric_labels.values():
+            text = row["metric"].render(
+                stats, value=row["show_value"], percent=row["show_percent"],
             )
-        if "full_day_time" in labels:
-            text = format_duration_short(stats["full_day_seconds"])
-            if config.WIDGET_SHOW_FULL_DAY_TIME_PERCENT:
-                pct = work_time_percent(stats)
-                if pct is not None:
-                    text += f" ({format_percent(pct)})"
-            labels["full_day_time"]["value"].configure(text=text)
-        if "full_day_time_percent" in labels:
-            pct = work_time_percent(stats)
-            labels["full_day_time_percent"]["value"].configure(
-                text=format_percent(pct) if pct is not None else "—",
-            )
-        if "remaining_time" in labels:
-            text = format_duration_short(max(0, stats.get("remaining_work_seconds", 0)))
-            if config.WIDGET_SHOW_REMAINING_TIME_PERCENT:
-                pct = remaining_time_percent(stats)
-                if pct is not None:
-                    text += f" ({format_percent(pct)})"
-            labels["remaining_time"]["value"].configure(text=text)
-        if "remaining_time_percent" in labels:
-            pct = remaining_time_percent(stats)
-            labels["remaining_time_percent"]["value"].configure(
-                text=format_percent(pct) if pct is not None else "—",
-            )
-        if "recommended_remaining" in labels:
-            text = format_duration_short(max(0, stats.get("recommended_remaining_seconds", 0)))
-            if config.WIDGET_SHOW_RECOMMENDED_REMAINING_PERCENT:
-                pct = recommended_remaining_percent(stats)
-                if pct is not None:
-                    text += f" ({format_percent(pct)})"
-            labels["recommended_remaining"]["value"].configure(text=text)
-        if "recommended_remaining_percent" in labels:
-            pct = recommended_remaining_percent(stats)
-            labels["recommended_remaining_percent"]["value"].configure(
-                text=format_percent(pct) if pct is not None else "—",
-            )
-        if "free_time" in labels:
-            # Со знаком: перерасход показываем как «-15м», а не подрезаем нулём.
-            text = format_duration_signed(stats.get("free_remaining_seconds", 0))
-            if config.WIDGET_SHOW_FREE_TIME_PERCENT:
-                pct = free_time_percent(stats)
-                if pct is not None:
-                    text += f" ({format_percent(pct)})"
-            labels["free_time"]["value"].configure(text=text)
-        if "free_time_percent" in labels:
-            pct = free_time_percent(stats)
-            labels["free_time_percent"]["value"].configure(
-                text=format_percent(pct) if pct is not None else "—",
-            )
-        if "work_day_end" in labels:
-            labels["work_day_end"]["value"].configure(text=stats.get("work_day_end") or "—")
-        if "recommended_eta" in labels:
-            labels["recommended_eta"]["value"].configure(
-                text=stats.get("recommended_eta") or "—",
-            )
+            row["value"].configure(text=text)
 
     def _apply_colors(self, stats: dict):
         """Цвет идёт только на текст значения; фон и лейбл нейтральны."""
-        for metric_id, widgets in self._metric_labels.items():
-            color = self._metric_color(metric_id, stats) or theme.COLOR_LIGHT_FG
-            widgets["value"].configure(fg=color)
-
-    def _metric_color(self, metric_id: str, stats: dict) -> str | None:
-        scale = _METRIC_COLOR_SCALES.get(metric_id)
-        if scale == _SCALE_ACTIVITY:
-            return color_for_percent(
-                stats["activity_percent"],
-                config.RECOMMENDED_ACTIVITY_THRESHOLD,
-                config.MIN_ACTIVITY_THRESHOLD,
-            )
-        if scale == _SCALE_WORK_TIME:
-            max_work = stats.get("max_work_seconds", 0)
-            if max_work <= 0:
-                return None
-            pct = stats["full_day_seconds"] / max_work * 100
-            return color_for_percent(
-                pct,
-                config.RECOMMENDED_WORK_TIME_THRESHOLD,
-                config.MIN_WORK_TIME_THRESHOLD,
-            )
-        if scale == _SCALE_FREE_TIME:
-            return free_time_color(
-                stats.get("free_remaining_seconds", 0),
-                stats.get("free_budget_seconds", 0),
-            )
-        return None
+        for row in self._metric_labels.values():
+            color = row["metric"].color(stats) or theme.COLOR_LIGHT_FG
+            row["value"].configure(fg=color)
 
     def _show_day_off(self):
         self._is_working_day = False
