@@ -25,7 +25,7 @@ from texts import (
     DAY_DIALOG_USE_SCHEDULE,
 )
 from modules import theme, work_calendar
-from modules.ui_utils import center_on_parent
+from modules.ui_utils import center_on_parent, restore_parent_grab_on_destroy
 from utility import format_date_display
 
 _MODE_SCHEDULE = "schedule"
@@ -51,9 +51,8 @@ class DayScheduleDialog:
         self.win.configure(bg=theme.COLOR_DARK_BG)
         self.win.resizable(False, False)
         self.win.grab_set()
-        # Восстанавливаем grab родителя при закрытии, чтобы календарь
-        # снова реагировал на клики (см. CalendarPopup._on_destroy).
-        self.win.bind("<Destroy>", self._on_destroy)
+        # Календарь-родитель снова модальный после закрытия диалога.
+        restore_parent_grab_on_destroy(self.win)
         self.win.bind("<Escape>", lambda _e: self.win.destroy())
 
         self._mode_var = tk.StringVar()
@@ -178,13 +177,3 @@ class DayScheduleDialog:
         if self.on_saved is not None:
             self.on_saved()
         self.win.destroy()
-
-    def _on_destroy(self, event: tk.Event):
-        if event.widget is not self.win:
-            return
-        try:
-            parent = self.win.master
-            if isinstance(parent, (tk.Toplevel, tk.Tk)):
-                parent.grab_set()
-        except tk.TclError:
-            pass

@@ -11,13 +11,8 @@ from config import MAIN_FONT_SIZE
 from constants import FONT_FAMILY
 from texts import CALENDAR_POPUP_TITLE
 from modules import theme
-from modules.ui_utils import center_on_parent
-
-_MONTH_NAMES = [
-    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
-    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
-]
-_WEEKDAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+from modules.month_grid import MonthNavigator, grid_weekday_header
+from modules.ui_utils import center_on_parent, restore_parent_grab_on_destroy
 
 
 class CalendarPopup:
@@ -30,9 +25,6 @@ class CalendarPopup:
         initial_date: datetime.date | None = None,
     ):
         self.on_select = on_select
-        d = initial_date or datetime.date.today()
-        self.year = d.year
-        self.month = d.month
 
         self.win = tk.Toplevel(parent)
         self.win.title(CALENDAR_POPUP_TITLE)
@@ -40,53 +32,27 @@ class CalendarPopup:
         self.win.resizable(False, False)
         self.win.configure(bg=theme.COLOR_DARK_BG)
         self.win.grab_set()
-        # Восстанавливаем grab родителя при закрытии — иначе диалог-родитель
-        # перестаёт быть модальным после выбора даты или закрытия календаря.
-        self.win.bind("<Destroy>", self._on_destroy)
+        # Диалог-родитель снова модальный после выбора даты или закрытия.
+        restore_parent_grab_on_destroy(self.win)
         self.win.bind("<Escape>", lambda _e: self.win.destroy())
 
-        self._build_header()
+        self._nav = MonthNavigator(
+            self.win, initial_date or datetime.date.today(), on_change=self._render_grid,
+        )
+        self._nav.frame.pack(fill=tk.X, padx=8, pady=8)
         self._grid_frame = tk.Frame(self.win, bg=theme.COLOR_DARK_BG)
         self._grid_frame.pack(padx=8, pady=(0, 8))
         self._render_grid()
         center_on_parent(self.win, parent)
 
-    def _build_header(self):
-        header = tk.Frame(self.win, bg=theme.COLOR_DARK_BG)
-        header.pack(fill=tk.X, padx=8, pady=8)
-
-        tk.Button(
-            header, text="‹", command=self._prev_month, width=3,
-            font=(FONT_FAMILY, MAIN_FONT_SIZE),
-        ).pack(side=tk.LEFT)
-
-        self._title_label = tk.Label(
-            header, text="", bg=theme.COLOR_DARK_BG, fg=theme.COLOR_LIGHT_FG,
-            font=(FONT_FAMILY, MAIN_FONT_SIZE, "bold"),
-        )
-        self._title_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
-
-        tk.Button(
-            header, text="›", command=self._next_month, width=3,
-            font=(FONT_FAMILY, MAIN_FONT_SIZE),
-        ).pack(side=tk.RIGHT)
-
     def _render_grid(self):
         for w in self._grid_frame.winfo_children():
             w.destroy()
 
-        self._title_label.configure(text=f"{_MONTH_NAMES[self.month - 1]} {self.year}")
-
-        for col, name in enumerate(_WEEKDAY_NAMES):
-            tk.Label(
-                self._grid_frame, text=name,
-                bg=theme.COLOR_DARK_BG, fg=theme.COLOR_MUTED,
-                font=(FONT_FAMILY, MAIN_FONT_SIZE - 1, "bold"),
-                width=4,
-            ).grid(row=0, column=col, padx=1, pady=1)
+        grid_weekday_header(self._grid_frame, width=4, padx=1, pady=1)
 
         cal = calendar.Calendar(firstweekday=calendar.MONDAY)
-        weeks = cal.monthdayscalendar(self.year, self.month)
+        weeks = cal.monthdayscalendar(self._nav.year, self._nav.month)
         for row, week in enumerate(weeks, start=1):
             for col, day in enumerate(week):
                 if day == 0:
@@ -98,32 +64,6 @@ class CalendarPopup:
                 ).grid(row=row, column=col, padx=1, pady=1)
 
     def _select(self, day: int):
-        date = datetime.date(self.year, self.month, day)
+        date = datetime.date(self._nav.year, self._nav.month, day)
         self.on_select(date)
         self.win.destroy()
-
-    def _prev_month(self):
-        if self.month == 1:
-            self.year -= 1
-            self.month = 12
-        else:
-            self.month -= 1
-        self._render_grid()
-
-    def _next_month(self):
-        if self.month == 12:
-            self.year += 1
-            self.month = 1
-        else:
-            self.month += 1
-        self._render_grid()
-
-    def _on_destroy(self, event: tk.Event):
-        if event.widget is not self.win:
-            return
-        try:
-            parent = self.win.master
-            if isinstance(parent, (tk.Toplevel, tk.Tk)):
-                parent.grab_set()
-        except tk.TclError:
-            pass

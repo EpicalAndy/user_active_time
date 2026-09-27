@@ -82,6 +82,26 @@ def attach_tooltip(
     widget.bind("<Leave>", on_leave, add="+")
 
 
+def restore_parent_grab_on_destroy(window: tk.Toplevel) -> None:
+    """При закрытии модального window возвращает grab его родителю.
+
+    Нужно вложенным модальным окнам (календарь поверх диалога, диалог дня
+    поверх календаря): grab у Tk один на приложение, и без возврата родитель
+    после закрытия дочернего окна перестаёт быть модальным.
+    """
+    def on_destroy(event: tk.Event):
+        if event.widget is not window:
+            return  # <Destroy> приходит и от дочерних виджетов окна
+        try:
+            parent = window.master
+            if isinstance(parent, (tk.Toplevel, tk.Tk)):
+                parent.grab_set()
+        except tk.TclError:
+            pass
+
+    window.bind("<Destroy>", on_destroy)
+
+
 def bold_pixel_width(text: str, size: int) -> int:
     """Ширина текста в пикселях при ЖИРНОМ начертании FONT_FAMILY этого размера.
 
