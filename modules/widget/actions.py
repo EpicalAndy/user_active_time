@@ -17,7 +17,7 @@ import webbrowser
 from tkinter import messagebox
 
 from config import LOG_DIR
-from constants import APP_NAME
+from constants import APP_NAME, APP_SHORT_NAME
 from texts import (
     ABOUT_DESCRIPTION,
     ABOUT_TITLE,
@@ -121,7 +121,7 @@ def open_about(parent: tk.Misc):
     """Показывает версию приложения и ссылку на репозиторий."""
     messagebox.showinfo(
         ABOUT_TITLE,
-        f"{APP_NAME}\n{ABOUT_DESCRIPTION}\n\n"
+        f"{APP_NAME} ({APP_SHORT_NAME})\n{ABOUT_DESCRIPTION}\n\n"
         f"Версия: {__version__}\n"
         f"{GITHUB_URL}",
         parent=parent,

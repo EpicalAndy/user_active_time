@@ -6,7 +6,7 @@
 общие константы — в constants.py, Windows API — в winapi.py.
 """
 
-from constants import APP_NAME
+from constants import APP_SHORT_NAME
 from version import __version__
 
 # === Подсказки кнопок Тулбара ===
@@ -119,7 +119,7 @@ WIDGET_OPT_RANGE_ROLLING = "Скользящий (по сегодня)"
 
 # Всплывающая подсказка значка в трее — единственное место, где версия видна
 # без открытия «О программе» (у виджета кастомный заголовок фиксированной ширины).
-TRAY_TITLE = f"{APP_NAME} {__version__}"
+TRAY_TITLE = f"{APP_SHORT_NAME} {__version__}"
 TRAY_MENU_OPEN = "Открыть"
 TRAY_MENU_QUIT = "Выход"
 TRAY_MENU_TOOLTIP_METRIC = "Метрика в подсказке"
