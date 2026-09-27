@@ -29,7 +29,7 @@
 
 import datetime
 
-from modules.period_report import _read_day_metrics, percent
+from modules.period_report import read_day_metrics, percent
 from utility import get_work_hours
 
 # Значения config.WIDGET_WEEK_MODE.
@@ -62,7 +62,7 @@ def build_week(
     today: datetime.date,
     mode: str,
     today_stats: dict | None = None,
-    read_metrics=_read_day_metrics,
+    read_metrics=read_day_metrics,
 ) -> list[dict]:
     """Семь клеток полосы: вид, проценты и время по каждому дню.
 
@@ -78,7 +78,7 @@ def build_days(
     dates: list[datetime.date],
     today: datetime.date,
     today_stats: dict | None = None,
-    read_metrics=_read_day_metrics,
+    read_metrics=read_day_metrics,
 ) -> list[dict]:
     """Клетки для произвольного списка дат — по одной на дату, в том же порядке.
 

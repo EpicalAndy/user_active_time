@@ -13,7 +13,6 @@
 
 import argparse
 import datetime
-import json
 import os
 import re
 import sys
@@ -27,6 +26,7 @@ setup_user_config()
 
 from config import LOG_DIR, USERNAME  # noqa: E402
 from constants import ENCODING, REPORT_JSON_VERSION  # noqa: E402
+from modules.json_file import write_json_atomic  # noqa: E402
 
 
 _DURATION_RE = re.compile(
@@ -128,13 +128,6 @@ def _convert_txt(txt_path: str, date: datetime.date) -> dict:
     }
 
 
-def _atomic_write_json(path: str, data: dict):
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding=ENCODING) as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, path)
-
-
 def main():
     ap = argparse.ArgumentParser(description="Миграция TXT-отчётов в JSON")
     ap.add_argument("--log-dir", default=None,
@@ -178,7 +171,7 @@ def main():
 
         try:
             data = _convert_txt(txt_path, date)
-            _atomic_write_json(json_path, data)
+            write_json_atomic(json_path, data)
             print(f"OK:   {filename} -> {json_name}")
             converted += 1
             if args.delete_txt:

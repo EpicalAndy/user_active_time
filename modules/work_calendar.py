@@ -14,16 +14,15 @@
     hours == 0                  → выходной (день не отслеживается)
     hours > 0                   → переопределённый дневной лимит в часах
 
-Чтобы не плодить циклический импорт, модуль зависит только от config —
-форматирование ключа-даты делается напрямую через DATE_KEY_FORMAT.
+Чтобы не плодить циклический импорт (utility импортирует этот модуль), здесь
+нет зависимости от utility — только config и json_file; форматирование
+ключа-даты делается напрямую через DATE_KEY_FORMAT.
 """
 
 import datetime
-import json
-import os
 
 from config import CALENDAR_FILE, DATE_KEY_FORMAT
-from constants import ENCODING
+from modules.json_file import read_json, write_json_atomic
 
 # Кэш в памяти: ключ-дата (YYYY-MM-DD) → {"hours": float|None, "note": str}.
 # None означает «ещё не загружено» и отличается от пустого календаря ({}).
@@ -44,24 +43,13 @@ def _ensure_loaded() -> dict:
 
 def _load() -> dict:
     """Читает календарь из файла. При отсутствии/повреждении — пустой словарь."""
-    if os.path.exists(CALENDAR_FILE):
-        try:
-            with open(CALENDAR_FILE, "r", encoding=ENCODING) as f:
-                data = json.load(f)
-            if isinstance(data, dict):
-                return data
-        except (json.JSONDecodeError, IOError):
-            pass
-    return {}
+    data = read_json(CALENDAR_FILE)
+    return data if isinstance(data, dict) else {}
 
 
 def _save():
     """Атомарно сохраняет кэш в файл (через временный файл + replace)."""
-    data = _ensure_loaded()
-    tmp_path = CALENDAR_FILE + ".tmp"
-    with open(tmp_path, "w", encoding=ENCODING) as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    os.replace(tmp_path, CALENDAR_FILE)
+    write_json_atomic(CALENDAR_FILE, _ensure_loaded())
 
 
 def get_entry(date: datetime.date) -> dict | None:

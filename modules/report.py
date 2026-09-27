@@ -8,16 +8,23 @@
 """
 
 import datetime
-import json
 import os
 
-from constants import ENCODING, REPORT_JSON_EXT, REPORT_JSON_VERSION
+from config import LOG_DIR, USERNAME
+from constants import REPORT_JSON_EXT, REPORT_JSON_VERSION
+from modules.json_file import read_json, write_json_atomic
 from utility import format_date_display, parse_time
 
 
-def get_report_filename(username: str, date: datetime.date) -> str:
-    """Возвращает имя файла отчёта: userName_dd.mm.yyyy.json"""
-    return f"{username}_{format_date_display(date)}{REPORT_JSON_EXT}"
+def get_report_path(date: datetime.date) -> str:
+    """Путь к дневному отчёту: LOG_DIR/userName_dd.mm.yyyy.json"""
+    return os.path.join(LOG_DIR, f"{USERNAME}_{format_date_display(date)}{REPORT_JSON_EXT}")
+
+
+def load_report(date: datetime.date) -> dict | None:
+    """Содержимое дневного отчёта или None, если файла нет или он битый."""
+    data = read_json(get_report_path(date))
+    return data if isinstance(data, dict) else None
 
 
 def _compute_total_work_seconds(first_login: str | None, last_logout: str | None) -> int | None:
@@ -65,8 +72,6 @@ def build_report_data(
 
 
 def write_report(
-    log_dir: str,
-    username: str,
     date: datetime.date,
     active_seconds: int,
     first_login: str | None,
@@ -83,7 +88,7 @@ def write_report(
     break_seconds = int(get_break_hours(date) * 3600)
 
     data = build_report_data(
-        username=username,
+        username=USERNAME,
         date=date,
         active_seconds=active_seconds,
         max_work_seconds=max_work_seconds,
@@ -96,8 +101,4 @@ def write_report(
         break_seconds=break_seconds,
     )
 
-    filepath = os.path.join(log_dir, get_report_filename(username, date))
-    tmp_path = filepath + ".tmp"
-    with open(tmp_path, "w", encoding=ENCODING) as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    os.replace(tmp_path, filepath)
+    write_json_atomic(get_report_path(date), data)

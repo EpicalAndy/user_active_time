@@ -7,22 +7,18 @@
 """
 
 import datetime
-import json
 import os
 import re
 from collections.abc import Iterable
 
 from config import LOG_DIR, USERNAME
-from constants import ENCODING, REPORT_JSON_EXT
-from utility import format_date_display, get_work_hours
+from constants import REPORT_JSON_EXT
+from modules.report import load_report
+from utility import get_work_hours
 
 _REPORT_FILE_RE = re.compile(
     rf"^{re.escape(USERNAME)}_(\d{{2}}\.\d{{2}}\.\d{{4}}){re.escape(REPORT_JSON_EXT)}$"
 )
-
-
-def get_report_path(date: datetime.date) -> str:
-    return os.path.join(LOG_DIR, f"{USERNAME}_{format_date_display(date)}{REPORT_JSON_EXT}")
 
 
 def find_latest_past_report_date(before: datetime.date) -> datetime.date | None:
@@ -57,17 +53,10 @@ def daterange(start: datetime.date, end: datetime.date) -> Iterable[datetime.dat
         cur += datetime.timedelta(days=1)
 
 
-def _read_day_metrics(date: datetime.date) -> dict | None:
+def read_day_metrics(date: datetime.date) -> dict | None:
     """Загружает дневной JSON и возвращает метрики или None, если файла нет / битый."""
-    path = get_report_path(date)
-    if not os.path.exists(path):
-        return None
-    try:
-        with open(path, "r", encoding=ENCODING) as f:
-            data = json.load(f)
-    except (IOError, UnicodeDecodeError, json.JSONDecodeError):
-        return None
-    if not isinstance(data, dict):
+    data = load_report(date)
+    if data is None:
         return None
 
     active_seconds = data.get("active_seconds")
@@ -105,7 +94,7 @@ def build_period_report(start: datetime.date, end: datetime.date) -> dict:
     """
     days = []
     for d in daterange(start, end):
-        m = _read_day_metrics(d)
+        m = read_day_metrics(d)
         if m is not None:
             days.append(m)
 

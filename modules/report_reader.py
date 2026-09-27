@@ -14,12 +14,10 @@
 """
 
 import datetime
-import json
 import re
 
-import config
-from constants import ENCODING
 from modules import activity_intervals
+from modules.json_file import read_json
 from utility import (
     calculate_activity_percent,
     format_duration,
@@ -54,11 +52,7 @@ def parse_report(filepath: str) -> dict | None:
     """Загружает дневной JSON-отчёт. Возвращает dict с готовыми к показу значениями
     либо None, если файл нельзя интерпретировать.
     """
-    try:
-        with open(filepath, "r", encoding=ENCODING) as f:
-            data = json.load(f)
-    except (IOError, UnicodeDecodeError, json.JSONDecodeError):
-        return None
+    data = read_json(filepath)
     if not isinstance(data, dict) or "active_seconds" not in data:
         return None
 

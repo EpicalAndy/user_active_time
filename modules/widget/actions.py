@@ -33,8 +33,9 @@ from texts import (
 )
 from modules.changelog_viewer import ChangelogViewer
 from modules.heatmap_viewer import HeatmapViewer
-from modules.period_report import find_latest_past_report_date, get_report_path
+from modules.period_report import find_latest_past_report_date
 from modules.period_report_dialog import PeriodReportDialog
+from modules.report import get_report_path
 from modules.report_viewer import ReportViewer
 from modules.session_monitor import checkpoint_session
 from utility import resource_path

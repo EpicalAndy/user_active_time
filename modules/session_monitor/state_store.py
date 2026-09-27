@@ -11,11 +11,10 @@
 """
 
 import datetime
-import json
 import os
 
 from config import LOG_DIR, STATE_FILE
-from constants import ENCODING
+from modules.json_file import read_json, write_json_atomic
 from utility import format_date_key, format_timestamp, parse_timestamp
 from .journal import manual_seconds
 
@@ -23,22 +22,14 @@ os.makedirs(LOG_DIR, exist_ok=True)
 
 
 def load_state() -> dict:
-    """Загружает состояние из файла"""
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r", encoding=ENCODING) as f:
-                return json.load(f)
-        except (json.JSONDecodeError, IOError):
-            pass
-    return {}
+    """Загружает состояние из файла (пустое, если файла нет или он битый)."""
+    data = read_json(STATE_FILE)
+    return data if isinstance(data, dict) else {}
 
 
 def save_state(state: dict):
     """Сохраняет состояние в файл (атомарно через временный файл)"""
-    tmp_path = STATE_FILE + ".tmp"
-    with open(tmp_path, "w", encoding=ENCODING) as f:
-        json.dump(state, f, indent=2, ensure_ascii=False)
-    os.replace(tmp_path, STATE_FILE)
+    write_json_atomic(STATE_FILE, state)
 
 
 def cleanup_old_days(session_start=None):

@@ -7,12 +7,7 @@
 (см. `state_store.cleanup_old_days`).
 """
 
-import json
-import os
-
-from config import LOG_DIR, USERNAME
-from constants import ENCODING
-from modules.report import get_report_filename, write_report
+from modules.report import load_report, write_report
 from utility import parse_date_key
 from .activity import recompute_active
 from .state_store import fresh_day_state
@@ -33,8 +28,6 @@ def update_report(date_key: str, day_state: dict, live_idle=None):
     if live_idle:
         idle += live_idle
     write_report(
-        log_dir=LOG_DIR,
-        username=USERNAME,
         date=parse_date_key(date_key),
         active_seconds=day_state["active_seconds"],
         first_login=day_state["first_login"],
@@ -56,15 +49,8 @@ def load_report_day_state(date_key: str) -> dict | None:
     сохранённое active_seconds (проекция сессий может отличаться, если с момента
     записи менялся таймаут неактивности, — «замораживаем» активное время дня).
     """
-    path = os.path.join(LOG_DIR, get_report_filename(USERNAME, parse_date_key(date_key)))
-    if not os.path.exists(path):
-        return None
-    try:
-        with open(path, "r", encoding=ENCODING) as f:
-            data = json.load(f)
-    except (IOError, UnicodeDecodeError, json.JSONDecodeError):
-        return None
-    if not isinstance(data, dict):
+    data = load_report(parse_date_key(date_key))
+    if data is None:
         return None
 
     day_state = fresh_day_state()

@@ -7,21 +7,17 @@
 конкретного виджета (пока пустой словарь).
 """
 
-import json
 import os
 
 from config import LOG_DIR
+from modules.json_file import read_json, write_json_atomic
 
 _WIDGETS_FILE = os.path.join(LOG_DIR, "widgets.json")
 
 
 def load_widgets() -> list[dict]:
     """Загружает список записей виджетов. Пусто при отсутствии/повреждении файла."""
-    try:
-        with open(_WIDGETS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError, IOError):
-        return []
+    data = read_json(_WIDGETS_FILE)
     if not isinstance(data, list):
         return []
     return [item for item in data if isinstance(item, dict)]
@@ -29,10 +25,7 @@ def load_widgets() -> list[dict]:
 
 def save_widgets(items: list[dict]):
     """Атомарно сохраняет список записей виджетов (через временный файл)."""
-    tmp_path = _WIDGETS_FILE + ".tmp"
     try:
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(items, f, indent=2, ensure_ascii=False)
-        os.replace(tmp_path, _WIDGETS_FILE)
-    except IOError:
+        write_json_atomic(_WIDGETS_FILE, items)
+    except OSError:
         pass

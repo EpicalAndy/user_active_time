@@ -23,7 +23,8 @@ from texts import (
 )
 from modules import theme
 from modules.month_grid import MonthCalendarGrid
-from modules.period_report import _read_day_metrics, get_report_path, percent
+from modules.period_report import percent, read_day_metrics
+from modules.report import get_report_path
 from modules.report_viewer import ReportViewer
 from utility import (
     format_date_display,
@@ -60,7 +61,7 @@ class HeatmapViewer(MonthCalendarGrid):
 
     def _metrics(self, date: datetime.date) -> dict | None:
         if date not in self._metrics_cache:
-            self._metrics_cache[date] = _read_day_metrics(date)
+            self._metrics_cache[date] = read_day_metrics(date)
         return self._metrics_cache[date]
 
     def _cell_appearance(self, date: datetime.date) -> tuple[str, str]:

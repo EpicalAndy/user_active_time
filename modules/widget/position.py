@@ -7,11 +7,11 @@
 встаёт в правый нижний угол.
 """
 
-import json
 import os
 import tkinter as tk
 
 from config import LOG_DIR
+from modules.json_file import read_json, write_json_atomic
 
 _WIDGET_POS_FILE = os.path.join(LOG_DIR, "widget_position.json")
 
@@ -41,20 +41,16 @@ def place_window(window: tk.Toplevel, width: int):
 
 def load_position() -> tuple[int, int] | None:
     """Сохранённая позиция виджета; None — файла нет или он битый."""
+    pos = read_json(_WIDGET_POS_FILE)
     try:
-        with open(_WIDGET_POS_FILE, "r") as f:
-            pos = json.load(f)
-        return pos["x"], pos["y"]
-    except (FileNotFoundError, KeyError, json.JSONDecodeError, IOError):
+        return int(pos["x"]), int(pos["y"])
+    except (TypeError, KeyError, ValueError):
         return None
 
 
 def save_position(window: tk.Toplevel):
     """Сохраняет текущую позицию окна; ошибка записи не роняет виджет."""
     try:
-        x = window.winfo_x()
-        y = window.winfo_y()
-        with open(_WIDGET_POS_FILE, "w") as f:
-            json.dump({"x": x, "y": y}, f)
-    except IOError:
+        write_json_atomic(_WIDGET_POS_FILE, {"x": window.winfo_x(), "y": window.winfo_y()})
+    except OSError:
         pass

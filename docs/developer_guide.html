@@ -161,10 +161,10 @@ win_events    — WTS-подписка, скрытое окно, цикл соо
 
 <!-- ============================================================ -->
 <h2 id="files">Файлы данных и схемы</h2>
-<p>Всё в <code>LOG_DIR</code> = <code>~/active_time/</code>.</p>
+<p>Всё в <code>LOG_DIR</code> = <code>~/active_time/</code>. Чтение и запись JSON — через <code>modules/json_file.py</code>: отсутствующий или битый файл читается как «данных нет» (<code>read_json</code> → <code>None</code>, тип проверяет вызывающий), запись атомарная — <code>.tmp</code> + <code>os.replace</code> (<code>write_json_atomic</code>).</p>
 
 <h3><code>state.json</code></h3>
-<p>Словарь «ключ-дата <code>YYYY-MM-DD</code> → запись дня». Хранит только сегодня и будущие дни: прошедшие вычищает <code>cleanup_old_days</code> после записи отчёта (кроме случая кросс-полуночной незавершённой сессии), и источником истины для них становится дневной отчёт. Запись атомарная — через <code>.tmp</code> + <code>os.replace</code>.</p>
+<p>Словарь «ключ-дата <code>YYYY-MM-DD</code> → запись дня». Хранит только сегодня и будущие дни: прошедшие вычищает <code>cleanup_old_days</code> после записи отчёта (кроме случая кросс-полуночной незавершённой сессии), и источником истины для них становится дневной отчёт.</p>
 <pre><code>{
   "2026-09-11": {
     "active_seconds": 0,        "session_count": 0,
@@ -198,7 +198,7 @@ win_events    — WTS-подписка, скрытое окно, цикл соо
 <p>Плоский список записей мини-виджетов: <code>{"id", "type", "x", "y", "opts", "enabled"}</code>. Выключенный виджет не рисуется, но запись с настройками и позицией остаётся (<code>widget_store.py</code>, <code>manager.py</code>).</p>
 
 <h3><code>work_calendar.json</code></h3>
-<p><code>{"YYYY-MM-DD": {"hours": float|null, "note": str}}</code>. <code>hours</code>: ключа нет или <code>null</code> — действует расписание; <code>0</code> — выходной; <code>&gt; 0</code> — переопределённый лимит. Модуль <code>work_calendar.py</code> держит кэш в памяти и зависит только от <code>config</code>.</p>
+<p><code>{"YYYY-MM-DD": {"hours": float|null, "note": str}}</code>. <code>hours</code>: ключа нет или <code>null</code> — действует расписание; <code>0</code> — выходной; <code>&gt; 0</code> — переопределённый лимит. Модуль <code>work_calendar.py</code> держит кэш в памяти и не зависит от <code>utility</code> (тот импортирует календарь).</p>
 
 <h3><code>config.py</code></h3>
 <p>Пользовательская копия конфига — см. <a href="#config">Конфигурация</a>. Ещё в <code>LOG_DIR</code> лежит сгенерированный WAV звукового уведомления (<code>widget/notification.py</code>).</p>
@@ -361,9 +361,9 @@ kind: OPTION_CHOICE (по умолчанию) — радиокнопки, зна
 <!-- ============================================================ -->
 <h2 id="reports">Отчёты</h2>
 <ul>
-  <li><code>modules/report.py</code> — формирование дневного JSON; <code>session_monitor/day_report.py</code> — запись из <code>day_state</code> и чтение прошедших дней обратно.</li>
+  <li><code>modules/report.py</code> — единственное место, знающее путь к дневному отчёту: <code>get_report_path</code>, чтение (<code>load_report</code>) и формирование/запись; <code>session_monitor/day_report.py</code> — запись из <code>day_state</code> и чтение прошедших дней обратно.</li>
   <li><code>modules/report_reader.py</code> — чтение дневного JSON для просмотра (без tkinter): готовые строки метрик и интервалы графика. Для v2 интервалы строятся из <code>sessions</code>/<code>idle</code> с текущим таймаутом, ручное время отдельным слоем; v1 — по событиям лога (<code>tests/test_report_reader.py</code>). <code>modules/report_viewer.py</code> — само окно: сводка + график по часам на Canvas.</li>
-  <li><code>modules/period_report.py</code> — агрегация за период из дневных JSON (без UI), <code>period_report_dialog.py</code> / <code>period_report_viewer.py</code> — диалог и окно. Дни без отчётов пропускаются.</li>
+  <li><code>modules/period_report.py</code> — метрики дня из отчёта (<code>read_day_metrics</code>, ими же пользуются тепловая карта и недельная полоса) и агрегация за период (без UI), <code>period_report_dialog.py</code> / <code>period_report_viewer.py</code> — диалог и окно. Дни без отчётов пропускаются.</li>
   <li><code>modules/month_grid.py</code> — базовый месячный календарь (навигация, сетка, тултипы, подсветка сегодня); наследники переопределяют семантику ячейки: <code>heatmap_viewer.py</code> (цвет по проценту активности) и <code>schedule_calendar.py</code> (календарь рабочего времени, клик → <code>day_schedule_dialog.py</code>).</li>
   <li><code>modules/calendar_popup.py</code> — модальный пикер даты для диалогов; <code>manual_activity_dialog.py</code> — ручные диапазоны.</li>
   <li>«Отчёт за сегодня» перед открытием вызывает <code>checkpoint_session()</code>, чтобы файл отражал сессию до текущего момента; «Последний дневной отчёт» — <code>find_latest_past_report_date</code>.</li>
@@ -425,6 +425,7 @@ git push --follow-tags                           # или сразу флаго�
   <li><code>modules/events_monitor.py</code> — мониторинг ввода через LL-хуки, захват сырых гэпов</li>
   <li><code>modules/activity_intervals.py</code> — чистое ядро активного времени из интервалов</li>
   <li><code>modules/work_calendar.py</code> — календарь-исключения (<code>work_calendar.json</code>)</li>
+  <li><code>modules/json_file.py</code> — чтение и атомарная запись JSON-файлов данных</li>
   <li><code>modules/theme.py</code> — палитры тем и переключение</li>
   <li><code>modules/report.py</code>, <code>report_reader.py</code>, <code>report_viewer.py</code>, <code>period_report.py</code>, <code>period_report_dialog.py</code>, <code>period_report_viewer.py</code>, <code>heatmap_viewer.py</code>, <code>month_grid.py</code>, <code>schedule_calendar.py</code>, <code>day_schedule_dialog.py</code>, <code>calendar_popup.py</code>, <code>manual_activity_dialog.py</code>, <code>changelog_viewer.py</code>, <code>ui_utils.py</code> — отчёты и диалоги</li>
   <li><code>modules/settings/</code> — диалог настроек: <code>dialog.py</code> (окно, кнопки, сбор значений), <code>tab_general.py</code> / <code>tab_metrics.py</code> / <code>tab_tools.py</code> (вкладки, каждая отдаёт свою часть словаря через <code>values()</code>), <code>writer.py</code> (запись в config.py и применение на лету)</li>
