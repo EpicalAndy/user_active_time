@@ -1,8 +1,9 @@
 """
 Значок приложения в системном трее (pystray).
 
-Значок висит всё время работы приложения. Двойной клик по нему — открыть
-(вернуть окно конфигуратора); правый клик — меню «Открыть / Метрика в
+Значок висит всё время работы приложения. Двойной клик по нему переключает
+окно конфигуратора: свёрнуто в трей — открывает, открыто — сворачивает
+(одиночный клик ничего не делает); правый клик — меню «Открыть / Метрика в
 подсказке / Выход».
 
 Подсказка при наведении: название с версией и одна метрика из каталога —
@@ -12,7 +13,7 @@
 из контекстного меню, а не из диалога настроек).
 
 pystray работает в собственном потоке (Icon.run блокирует), поэтому колбэки
-`on_open`/`on_quit` вызываются НЕ в потоке Tk — вызывающая сторона обязана
+`on_open`/`on_toggle`/`on_quit` вызываются НЕ в потоке Tk — вызывающая сторона обязана
 переадресовать их в главный поток (например, через `root.after(0, ...)`).
 
 pystray и Pillow — единственные внешние зависимости приложения. Если их нет,
@@ -122,6 +123,34 @@ def _make_image() -> "Image.Image":
     return img.resize((size, size), Image.LANCZOS)
 
 
+# Коды мыши, которые оболочка присылает в WM_NOTIFY значка (lparam).
+_WM_LBUTTONUP = 0x0202
+_WM_LBUTTONDBLCLK = 0x0203
+
+
+def _make_icon_class():
+    """pystray.Icon, который реагирует на двойной клик, а не на одиночный.
+
+    win32-бэкенд pystray активирует значок по WM_LBUTTONUP — то есть по
+    одиночному клику, и отдельного обработчика двойного у него нет. Подменяем
+    `_on_notify` (приватный, но бэкенд на Windows один): одиночный клик
+    глушим, двойной отдаём в `on_double_click`, остальное (правый клик →
+    меню) — как было.
+    """
+    class _Icon(pystray.Icon):
+        def __init__(self, *args, on_double_click, **kwargs):
+            self._on_double_click = on_double_click
+            super().__init__(*args, **kwargs)
+
+        def _on_notify(self, wparam, lparam):
+            if lparam == _WM_LBUTTONDBLCLK:
+                self._on_double_click()
+            elif lparam != _WM_LBUTTONUP:
+                super()._on_notify(wparam, lparam)
+
+    return _Icon
+
+
 class TrayIcon:
     """Обёртка над pystray.Icon: всегда в трее, запуск/остановка в потоке.
 
@@ -130,17 +159,19 @@ class TrayIcon:
     ссылки — ключ и последний stats — и заново собирают текст целиком.
     """
 
-    def __init__(self, on_open, on_quit):
+    def __init__(self, on_open, on_toggle, on_quit):
         self._on_open = on_open
         self._on_quit = on_quit
         self._thread: threading.Thread | None = None
         self._metric_key = load_tooltip_metric()
         self._stats: dict | None = None
-        # default=True → пункт срабатывает по двойному клику (win32-бэкенд).
-        self._icon = pystray.Icon(
+        # default=True — только жирный шрифт пункта в меню: двойной клик
+        # по значку не «открывает», а переключает окно (on_toggle).
+        self._icon = _make_icon_class()(
             "user_active_time",
             _make_image(),
             tooltip_text(self._metric_key, None),
+            on_double_click=on_toggle,
             menu=pystray.Menu(
                 pystray.MenuItem(TRAY_MENU_OPEN, self._open, default=True),
                 pystray.MenuItem(TRAY_MENU_TOOLTIP_METRIC, self._metric_menu()),
@@ -204,7 +235,7 @@ class TrayIcon:
             pass
 
 
-def create_tray(on_open, on_quit) -> TrayIcon | None:
+def create_tray(on_open, on_toggle, on_quit) -> TrayIcon | None:
     """Создаёт и запускает значок в трее. None, если трей недоступен.
 
     Причина (нет зависимости или сбой запуска) печатается в консоль вместе с
@@ -215,7 +246,7 @@ def create_tray(on_open, on_quit) -> TrayIcon | None:
               f"Установите: \"{sys.executable}\" -m pip install pystray Pillow")
         return None
     try:
-        tray = TrayIcon(on_open=on_open, on_quit=on_quit)
+        tray = TrayIcon(on_open=on_open, on_toggle=on_toggle, on_quit=on_quit)
         tray.start()
         return tray
     except Exception as e:

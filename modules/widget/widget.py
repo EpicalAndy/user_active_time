@@ -90,6 +90,7 @@ class ActivityWidget:
         # Без pystray трея нет — «—» тогда сворачивает до заголовка с тулбаром.
         self._tray = create_tray(
             on_open=lambda: self.root.after(0, self._show_from_tray),
+            on_toggle=lambda: self.root.after(0, self._toggle_from_tray),
             on_quit=lambda: self.root.after(0, self.close),
         )
         self._tick()
@@ -263,9 +264,16 @@ class ActivityWidget:
             self._toggle_minimize()
 
     def _show_from_tray(self):
-        """Возвращает окно конфигуратора из трея (двойной клик / «Открыть»)."""
+        """Возвращает окно конфигуратора из трея («Открыть» в меню значка)."""
         self.window.deiconify()
         self.window.lift()
+
+    def _toggle_from_tray(self):
+        """Двойной клик по значку: окно в трее — открыть, на экране — свернуть."""
+        if self.window.state() == "withdrawn":
+            self._show_from_tray()
+        else:
+            self._minimize_to_tray()
 
     def _toggle_minimize(self):
         """Сворачивает виджет до заголовка с тулбаром и разворачивает обратно.
