@@ -88,7 +88,8 @@ def attach_pointer_tooltip(
     окно подсказки создаётся один раз, дальше у него меняется только текст,
     и оно едет за курсором по горизонтали, держась под виджетом (у нижнего
     края экрана — над ним). `on_leave` — уборка при уходе курсора, например
-    снять подсветку отрезка.
+    снять подсветку отрезка. С зажатой левой кнопкой (окно перетаскивают)
+    подсказки нет — она бы ехала вслед за окном.
     """
     tip: list = [None, None]  # окно подсказки и метка в нём
 
@@ -98,6 +99,9 @@ def attach_pointer_tooltip(
             tip[0] = tip[1] = None
 
     def on_motion(event):
+        if event.state & _BUTTON1_MASK:
+            leave(event)
+            return
         value = text_at(event.x, event.y)
         if not value:
             hide()
@@ -122,6 +126,10 @@ def attach_pointer_tooltip(
 
     widget.bind("<Motion>", on_motion, add="+")
     widget.bind("<Leave>", leave, add="+")
+
+
+# Бит зажатой левой кнопки мыши в event.state (Button1Mask; в Tk на Windows тот же).
+_BUTTON1_MASK = 0x100
 
 
 def _tooltip_window(widget: tk.Widget, text: str) -> tuple[tk.Toplevel, tk.Label]:

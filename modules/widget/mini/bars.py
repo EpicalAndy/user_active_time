@@ -5,7 +5,9 @@
 её собственной шкале порогов, поверх заливки название слева и значение справа.
 Особняком стоит «Таймлайн»: его полоса закрашена целиком лентой дня
 (активность/простой/ручное время), той же, что кольцо таймлайна, а процент
-уходит только в подпись — см. `_draw_strip`.
+уходит только в подпись — см. `_draw_strip`. При наведении на эту ленту
+подсказка показывает полосу под курсором, как в таймлайне тела виджета
+(`timeline_cells.run_caption`), и обводит её рамкой.
 
 Набор полос настраивается галочками (опция `metrics`), порядок фиксированный —
 он задан `_BARS`, а не порядком кликов, чтобы виджет не «перетасовывался».
@@ -27,9 +29,10 @@ from constants import FONT_FAMILY
 from texts import METRIC_TIMELINE, WIDGET_BARS_EMPTY, WIDGET_CAPTION_BARS
 from modules import theme
 from modules.metrics import BY_KEY
+from modules.ui_utils import attach_pointer_tooltip
 from utility import format_percent
 from .base import PERCENT_DECIMALS, BaseMiniWidget
-from ..timeline_cells import cell_kinds, cell_runs, segment_color
+from ..timeline_cells import cell_kinds, cell_runs, run_caption, segment_color
 
 # Геометрия. Ширина больше кольцевых виджетов: полосе нужно место под название
 # и значение одновременно.
@@ -153,6 +156,14 @@ class MetricBarsWidget(BaseMiniWidget):
 
     def _build(self):
         self._build_canvas(WIDTH, self._canvas_height())
+        # Лента таймлайна для подсказки: (верх полосы, timeline) последней
+        # отрисовки и её ячейки по видам (считаются при первом наведении).
+        self._hover_strip: tuple[int, dict] | None = None
+        self._hover_kinds: list[str] | None = None
+        attach_pointer_tooltip(
+            self._canvas, self._hover_text,
+            on_leave=lambda: self._canvas.delete("hover"),
+        )
 
     def _canvas_height(self) -> int:
         """Высота под текущий набор полос (пустой набор — под одну строку)."""
@@ -169,6 +180,8 @@ class MetricBarsWidget(BaseMiniWidget):
         c = self._canvas
         c.delete("all")
         c.configure(bg=theme.COLOR_DARK_BG)
+        self._hover_strip = None
+        self._hover_kinds = None
 
         if not keys:
             self._draw_placeholder(WIDGET_BARS_EMPTY)
@@ -184,7 +197,32 @@ class MetricBarsWidget(BaseMiniWidget):
             else:
                 pct, value_text, paint = reading
                 self._draw_bar(y, meta["label"], value_text, pct, paint)
+                if key == "timeline":
+                    self._hover_strip = (y, stats["timeline"])
             y += BAR_HEIGHT + BAR_GAP
+
+    def _hover_text(self, x: int, y: int) -> str | None:
+        """Подпись полосы ленты таймлайна под курсором; над другими полосами — нет.
+
+        Заодно обводит эту полосу рамкой.
+        """
+        self._canvas.delete("hover")
+        if self._hover_strip is None:
+            return None
+        top, timeline = self._hover_strip
+        if not (top <= y <= top + BAR_HEIGHT and PAD_X <= x < WIDTH - PAD_X):
+            return None
+        if self._hover_kinds is None:
+            self._hover_kinds = cell_kinds(timeline, _STRIP_CELLS)
+        kinds = self._hover_kinds
+        step = (WIDTH - 2 * PAD_X) / len(kinds)
+        index = min(int((x - PAD_X) / step), len(kinds) - 1)
+        first, last, caption = run_caption(timeline, kinds, index)
+        self._canvas.create_rectangle(
+            PAD_X + first * step, top, PAD_X + (last + 1) * step - 1, top + BAR_HEIGHT - 1,
+            outline=theme.COLOR_LIGHT_FG, width=1, tags="hover",
+        )
+        return caption
 
     def _draw_placeholder(self, text: str):
         c = self._canvas

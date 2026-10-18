@@ -10,9 +10,13 @@
 
 Модуль намеренно не импортирует ничего из `widget.mini`: тело виджета
 (`body`) — общий предок мини-виджетов, и цепочка body → mini → body замкнулась бы.
+
+Здесь же — подсказка при наведении для всех трёх лент (`run_caption`): по
+ячейке под курсором находит полосу, как она нарисована, и подписывает её.
 """
 
 from modules import theme
+from modules.timeline_hover import notes_within, segment_caption
 
 
 def segment_color(kind: str) -> str:
@@ -104,6 +108,23 @@ def run_bounds(timeline: dict, cells: int, first: int, last: int) -> tuple[int, 
     start = day_start if first == 0 else snap(first)
     end = day_end if last == cells - 1 else snap(last + 1)
     return int(start), int(end)
+
+
+def run_caption(timeline: dict, kinds: list[str], index: int) -> tuple[int, int, str]:
+    """Полоса ячеек вокруг `index` и подпись к ней: (первая, последняя, текст).
+
+    Подсказка описывает полосу такой, какой её видно, а не сырой отрезок:
+    при ячейке в несколько минут под красным мог бы оказаться секундный
+    зелёный. Последняя полоса упирается в «сейчас» — она ещё идёт.
+    """
+    first, last, kind = next(run for run in cell_runs(kinds) if run[0] <= index <= run[1])
+    start, end = run_bounds(timeline, len(kinds), first, last)
+    notes = (
+        notes_within(timeline.get("manual_notes", []), start, end)
+        if kind == "manual" else []
+    )
+    caption = segment_caption(kind, start, end, ongoing=last == len(kinds) - 1, notes=notes)
+    return first, last, caption
 
 
 def _winner(cell: dict[str, float]) -> str:

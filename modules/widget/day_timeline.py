@@ -35,10 +35,10 @@ from texts import (
     TIMELINE_TOOLTIP_OF_WORK_TIME,
 )
 from modules import theme
-from modules.timeline_hover import clock, notes_within, segment_caption
+from modules.timeline_hover import clock
 from modules.ui_utils import attach_pointer_tooltip
 from utility import format_duration_short, format_percent
-from .timeline_cells import cell_kinds, cell_runs, run_bounds, segment_color
+from .timeline_cells import cell_kinds, cell_runs, run_caption, segment_color
 
 # Геометрия полосы. Ширина подобрана под WIDGET_WIDTH за вычетом подписи
 # «Таймлайн:» и отступов; ячейка ленты — пиксель, мельче полоса не покажет.
@@ -163,15 +163,7 @@ class DayTimelineRow:
         if not cells:
             return self._tooltip
         index = min(max(int(x / STRIP_WIDTH * len(cells)), 0), len(cells) - 1)
-        first, last, kind = next(run for run in cell_runs(cells) if run[0] <= index <= run[1])
-        start, end = run_bounds(self._timeline, len(cells), first, last)
-        notes = (
-            notes_within(self._timeline.get("manual_notes", []), start, end)
-            if kind == "manual" else []
-        )
-        caption = segment_caption(
-            kind, start, end, ongoing=last == len(cells) - 1, notes=notes,
-        )
+        first, last, caption = run_caption(self._timeline, cells, index)
         self._highlight(first, last)
         return "\n".join((caption, _TOOLTIP_RULE, self._tooltip))
 

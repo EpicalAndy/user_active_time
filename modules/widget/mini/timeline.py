@@ -12,6 +12,11 @@
 Данные приходят готовыми в `stats["timeline"]` (см. session_monitor) — виджет
 только отрисовывает. Нарезка ленты на ячейки и палитра — общие с полосами
 таймлайна (`widget.timeline_cells`).
+
+При наведении на кольцо подсказка показывает дугу под курсором — так же, как
+полосы таймлайна (`timeline_cells.run_caption`): точка переводится в угол от
+12 часов по часовой стрелке (`cell_at`), дуга обводится по краям кольца. Над
+центром и углами канвы подсказки нет.
 """
 
 import math
@@ -21,13 +26,27 @@ import config
 from constants import FONT_FAMILY
 from texts import WIDGET_CAPTION_TIMELINE
 from modules import theme
-from ..timeline_cells import cell_kinds, cell_runs, segment_color
+from modules.ui_utils import attach_pointer_tooltip
+from ..timeline_cells import cell_kinds, cell_runs, run_caption, segment_color
 from .ring import MIN_ARC_PX, PAD, RADIUS, RING_WIDTH, SIZE, RingWidget
 
 # На сколько ячеек делится круг: по длине окружности, ячейка — минимальная
 # рисуемая дуга (см. MIN_ARC_PX). Мельче кольцо всё равно не покажет: при
 # рабочем дне в 9 часов одна ячейка — это примерно две с половиной минуты.
 _CELLS = max(1, int(2 * math.pi * RADIUS / MIN_ARC_PX))
+
+
+def cell_at(x: float, y: float, cells: int) -> int | None:
+    """Ячейка кольца под точкой канвы. None — точка не на кольце.
+
+    Угол отсчитывается от 12 часов по часовой стрелке, как идёт и сам день;
+    у экранной оси y вниз, поэтому atan2(dx, -dy).
+    """
+    dx, dy = x - SIZE / 2, y - SIZE / 2
+    if abs(math.hypot(dx, dy) - RADIUS) > RING_WIDTH / 2:
+        return None
+    angle = math.atan2(dx, -dy) % (2 * math.pi)
+    return min(int(angle / (2 * math.pi) * cells), cells - 1)
 
 
 def _color_over_background(kind: str) -> str | None:
@@ -83,6 +102,41 @@ class TimelineWidget(RingWidget):
             config.MIN_ACTIVITY_THRESHOLD,
         )
 
+    def _build(self):
+        super()._build()
+        # Таймлайн последней отрисовки для подсказки и его ячейки по видам
+        # (считаются при первом наведении). None — рисовать было нечего.
+        self._hover_timeline: dict | None = None
+        self._hover_kinds: list[str] | None = None
+        attach_pointer_tooltip(
+            self._canvas, self._hover_text,
+            on_leave=lambda: self._canvas.delete("hover"),
+        )
+
+    def _hover_text(self, x: int, y: int) -> str | None:
+        """Подпись дуги под курсором; заодно обводит её по краям кольца."""
+        c = self._canvas
+        c.delete("hover")
+        if self._hover_timeline is None:
+            return None
+        if self._hover_kinds is None:
+            self._hover_kinds = cell_kinds(self._hover_timeline, _CELLS)
+        kinds = self._hover_kinds
+        index = cell_at(x, y, len(kinds))
+        if index is None:
+            return None
+        first, last, caption = run_caption(self._hover_timeline, kinds, index)
+        start = 90 - 360.0 * first / len(kinds)
+        extent = max(-360.0 * (last - first + 1) / len(kinds), -359.999)
+        center = SIZE / 2
+        for r in (RADIUS - RING_WIDTH / 2, RADIUS + RING_WIDTH / 2):
+            c.create_arc(
+                center - r, center - r, center + r, center + r,
+                start=start, extent=extent, style=tk.ARC,
+                outline=theme.COLOR_LIGHT_FG, width=1, tags="hover",
+            )
+        return caption
+
     # --- Отрисовка ---
 
     def update(self, stats: dict):
@@ -96,6 +150,8 @@ class TimelineWidget(RingWidget):
         # Процент не подрезаем: с добавленным вручную временем активность
         # честно может превысить рабочее время.
         pct = float(frac) if frac is not None else 0.0
+        self._hover_timeline = timeline if available else None
+        self._hover_kinds = None
         self._draw_timeline(timeline if available else None,
                             self._center_text(stats, available, pct))
 

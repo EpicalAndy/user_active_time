@@ -21,7 +21,14 @@ from modules.timeline_hover import (  # noqa: E402
     segment_at,
     segment_caption,
 )
-from modules.widget.timeline_cells import cell_runs, run_bounds  # noqa: E402
+from modules.widget.mini import ring  # noqa: E402
+from modules.widget.mini.timeline import cell_at  # noqa: E402
+from modules.widget.timeline_cells import (  # noqa: E402
+    cell_kinds,
+    cell_runs,
+    run_bounds,
+    run_caption,
+)
 
 H = 3600
 M = 60
@@ -113,6 +120,43 @@ def test_run_bounds_use_strip_edges_at_the_ends():
     timeline = _timeline([(9 * H + 5 * M, 12 * H, "active")])
     assert run_bounds(timeline, 8, 0, 1) == (9 * H, 10 * H)
     assert run_bounds(timeline, 8, 6, 7) == (12 * H, 13 * H)
+
+
+def test_run_caption_describes_the_run_as_drawn():
+    """Секундный всплеск внутри простоя не перебивает полосу: она красная целиком."""
+    # 5 часов на 10 ячеек: ячейка — 30 минут. Простой — явные отрезки, как
+    # их отдаёт session_monitor; ручное время лежит поверх простоя.
+    timeline = _timeline([
+        (9 * H, 10 * H + 7 * M, "active"),
+        (10 * H + 7 * M, 11 * H, "inactive"),
+        (11 * H, 11 * H + 20, "active"),    # 20 секунд — мельче ячейки
+        (11 * H + 20, 14 * H, "inactive"),
+        (12 * H + 30 * M, 13 * H, "manual"),
+    ], end=14 * H)
+    timeline["manual_notes"] = [(12 * H + 30 * M, 13 * H, "созвон")]
+    kinds = cell_kinds(timeline, 10)
+    assert run_caption(timeline, kinds, 4) == (2, 6, "Простой 10:07 — 12:30 (2ч 23м)")
+    assert run_caption(timeline, kinds, 7) == (
+        7, 7, "Добавленное время 12:30 — 13:00 (0ч 30м) — созвон",
+    )
+    assert run_caption(timeline, kinds, 9)[2] == "Простой с 13:00 (идёт, 1ч 0м)"
+
+
+# --- Точка на кольце ---
+
+def test_ring_cell_goes_clockwise_from_noon():
+    """12 часов — начало дня, 3 часа — четверть, 6 — половина, 9 — три четверти."""
+    center, radius = ring.SIZE / 2, ring.RADIUS
+    assert cell_at(center, center - radius, 100) == 0
+    assert cell_at(center + radius, center, 100) == 25
+    assert cell_at(center, center + radius, 100) == 50
+    assert cell_at(center - radius, center, 100) == 75
+
+
+def test_ring_cell_is_none_off_the_ring():
+    """Центр с процентом и углы канвы — не кольцо, подсказки там нет."""
+    assert cell_at(ring.SIZE / 2, ring.SIZE / 2, 100) is None
+    assert cell_at(0, 0, 100) is None
 
 
 def _run():
