@@ -33,6 +33,7 @@ from .position import place_window, save_position
 from .countdown_indicator import PROGRESS_NONE, progress_level
 from .title_bar import TitleBar
 from .toolbar import WidgetToolbar
+from .toolbar_reveal import ToolbarReveal
 from .tray import create_tray
 from utility import format_date_key
 
@@ -85,9 +86,16 @@ class ActivityWidget:
         self.window = tk.Toplevel(self.root)
         self._setup_window()
         self._build_chrome()
+        # Тулбар свёрнутого окна: выезжает при наведении и фокусе. Сам тулбар
+        # пересобирается при смене темы, поэтому флаг меню читаем на лету.
+        self._toolbar_reveal = ToolbarReveal(
+            self.window,
+            on_change=self._relayout,
+            keep_open=lambda: self._toolbar.menu_open,
+        )
         place_window(self.window, WIDGET_WIDTH)
         self._manager.restore()
-        # Без pystray трея нет — «—» тогда сворачивает до заголовка с тулбаром.
+        # Без pystray трея нет — «—» тогда сворачивает до заголовка.
         self._tray = create_tray(
             on_open=lambda: self.root.after(0, self._show_from_tray),
             on_toggle=lambda: self.root.after(0, self._toggle_from_tray),
@@ -233,6 +241,7 @@ class ActivityWidget:
         self._title_bar.tick_blink()
         self._apply_border_indicator()
         self._manager.tick_blink()
+        self._toolbar_reveal.check()
 
         # 1с — countdown (в заголовке и в мини-виджетах, которым мало stats)
         if self._tick_count % 2 == 0:
@@ -256,7 +265,7 @@ class ActivityWidget:
         """Прячет окно конфигуратора в трей (мини-виджеты остаются на рабочем столе).
 
         Значок трея висит всегда, поэтому достаточно скрыть окно. Если трей
-        недоступен — откатываемся к сворачиванию до заголовка с тулбаром.
+        недоступен — откатываемся к сворачиванию до заголовка.
         """
         if self._tray is not None:
             self.window.withdraw()
@@ -276,24 +285,35 @@ class ActivityWidget:
             self._minimize_to_tray()
 
     def _toggle_minimize(self):
-        """Сворачивает виджет до заголовка с тулбаром и разворачивает обратно.
+        """Сворачивает виджет до заголовка и разворачивает обратно.
 
-        Тулбар в свёрнутом виде остаётся: отчёты, настройки и ручное время
-        нужны и без тела. Разделитель прячется вместе с телом — под ним
-        в свёрнутом виде ничего нет.
+        Отчёты, настройки и ручное время нужны и без тела, поэтому тулбар
+        в свёрнутом виде не пропадает совсем: выезжает, пока курсор над окном
+        или фокус в нём (см. ToolbarReveal).
         """
-        if self._minimized:
+        self._minimized = not self._minimized
+        self._toolbar_reveal.set_enabled(self._minimized)
+        self._relayout()
+
+    def _apply_layout(self):
+        """Раскладывает тулбар, разделитель и тело под заголовком.
+
+        Развёрнутый виджет — все три; свёрнутый — тулбар, только если он
+        раскрыт наведением или фокусом. Части перепаковываются заново, чтобы
+        их порядок не зависел от того, что и когда пряталось.
+        """
+        self._toolbar.pack_forget()
+        self._toolbar_separator.pack_forget()
+        self._content.pack_forget()
+        if not self._minimized or self._toolbar_reveal.shown:
+            self._toolbar.pack(fill=tk.X)
+        if not self._minimized:
             self._toolbar_separator.pack(fill=tk.X)
             self._content.pack()
-        self._minimized = not self._minimized
-        self._hide_body_if_minimized()
-        self._resize_window()
 
-    def _hide_body_if_minimized(self):
-        """В свёрнутом виде прячет разделитель и тело (тулбар остаётся)."""
-        if self._minimized:
-            self._toolbar_separator.pack_forget()
-            self._content.pack_forget()
+    def _relayout(self):
+        self._apply_layout()
+        self._resize_window()
 
     def _open_widgets_dialog(self):
         """Открывает диалог управления мини-виджетами рабочего стола"""
@@ -342,7 +362,7 @@ class ActivityWidget:
         self._toolbar_separator.destroy()
         self._content.destroy()
         self._build_chrome()
-        self._hide_body_if_minimized()
+        self._apply_layout()
         self._manager.apply_theme()
         self._update_metrics()  # перерисует и содержимое мини-виджетов
         self._resize_window()
@@ -352,7 +372,7 @@ class ActivityWidget:
         self._title_bar.rebuild_metric_labels()
         self._content.destroy()
         self._content = WidgetContent(self.window)
-        self._hide_body_if_minimized()
+        self._apply_layout()
         self._update_metrics()
         self._resize_window()
 

@@ -57,6 +57,9 @@ class WidgetToolbar:
         tool_items: list[tuple[str, Callable]] | None = None,
     ):
         self.frame = tk.Frame(parent, bg=theme.COLOR_DARKER_BG, pady=2)
+        # Раскрыто ли сейчас меню одной из кнопок: свёрнутый виджет не прячет
+        # тулбар, пока курсор над меню, а не над окном.
+        self.menu_open = False
 
         # Слева: добавление активного времени
         self._add_button("⏱", TOOLTIP_ADD_ACTIVE_TIME, on_add_active_time, side=tk.LEFT)
@@ -182,7 +185,13 @@ class WidgetToolbar:
         def on_click(_e):
             x = btn.winfo_rootx()
             y = btn.winfo_rooty() + btn.winfo_height()
-            menu.tk_popup(x, y)
+            # tk_popup на Windows возвращается только после закрытия меню
+            # (after-таймеры Tk при этом крутятся), так что флаг честный.
+            self.menu_open = True
+            try:
+                menu.tk_popup(x, y)
+            finally:
+                self.menu_open = False
 
         btn.bind("<Button-1>", on_click)
 
