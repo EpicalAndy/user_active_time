@@ -65,6 +65,10 @@ TOOL_INPUT_LOCK_LABEL = "Заблокировать ввод"   # пункт м�
 INPUT_LOCK_OVERLAY_TITLE = "Ввод заблокирован"
 INPUT_LOCK_OVERLAY_HINT = "Разблокировать: {hotkey}"
 INPUT_LOCK_OVERLAY_LEFT = "осталось {time}"
+# Плашка, пока активно окно с повышенными правами: Windows не отдаёт его ввод хукам.
+INPUT_LOCK_OVERLAY_BYPASSED_TITLE = "Блокировка не действует"
+INPUT_LOCK_OVERLAY_BYPASSED = "Активно окно с повышенными правами: {process}"
+INPUT_LOCK_OVERLAY_BYPASSED_UNKNOWN = "Активно окно с повышенными правами"
 INPUT_LOCK_HOTKEY_INVALID_TITLE = "Неверная комбинация"
 INPUT_LOCK_HOTKEY_INVALID_TEXT = (
     "Не удалось разобрать комбинацию «{hotkey}».\n\n"

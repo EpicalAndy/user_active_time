@@ -1,10 +1,11 @@
 """
 Windows API: константы сообщений и сессий, коды клавиш, типы и функции ctypes.
 
-Всё, что нужно монитору сессий (WTS-уведомления через скрытое окно) и
-низкоуровневым хукам ввода (WH_KEYBOARD_LL / WH_MOUSE_LL). Без прав
-администратора — см. developer_guide, разделы «Мониторинг сессий» и
-«Мониторинг ввода».
+Всё, что нужно монитору сессий (WTS-уведомления через скрытое окно),
+низкоуровневым хукам ввода (WH_KEYBOARD_LL / WH_MOUSE_LL) и проверке уровня
+целостности процесса активного окна (блокировка ввода). Без прав
+администратора — см. developer_guide, разделы «Мониторинг сессий»,
+«Мониторинг ввода» и «Инструменты».
 """
 
 import ctypes
@@ -43,6 +44,13 @@ VK_LCONTROL = 0xA2
 VK_RCONTROL = 0xA3
 VK_LMENU = 0xA4
 VK_RMENU = 0xA5
+
+# === Уровень целостности процесса (UIPI) ===
+# LL-хуки не получают ввод, адресованный окну процесса с более высоким
+# уровнем целостности, — см. tools/input_lock/elevation.py.
+PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+TOKEN_QUERY = 0x0008
+TOKEN_INTEGRITY_LEVEL = 25  # TOKEN_INFORMATION_CLASS.TokenIntegrityLevel
 
 # === Типы, структуры и функции Windows API (ctypes) ===
 
@@ -96,8 +104,18 @@ class WNDCLASSW(ctypes.Structure):
     ]
 
 
+class SID_AND_ATTRIBUTES(ctypes.Structure):
+    """Начало TOKEN_MANDATORY_LABEL: SID метки целостности токена."""
+
+    _fields_ = [
+        ("Sid", ctypes.c_void_p),
+        ("Attributes", wintypes.DWORD),
+    ]
+
+
 user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
+advapi32 = ctypes.windll.advapi32
 wtsapi32 = ctypes.windll.wtsapi32
 
 user32.CreateWindowExW.restype = wintypes.HWND
@@ -145,6 +163,33 @@ user32.PostThreadMessageW.argtypes = [
     wintypes.WPARAM,     # wParam
     wintypes.LPARAM,     # lParam
 ]
+
+
+# Процесс активного окна и уровень целостности его токена
+user32.GetForegroundWindow.restype = wintypes.HWND
+user32.GetForegroundWindow.argtypes = []
+user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+kernel32.GetCurrentProcess.argtypes = []
+kernel32.OpenProcess.restype = wintypes.HANDLE
+kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+kernel32.CloseHandle.restype = wintypes.BOOL
+kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+kernel32.QueryFullProcessImageNameW.restype = wintypes.BOOL
+kernel32.QueryFullProcessImageNameW.argtypes = [
+    wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD),
+]
+advapi32.OpenProcessToken.restype = wintypes.BOOL
+advapi32.OpenProcessToken.argtypes = [wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE)]
+advapi32.GetTokenInformation.restype = wintypes.BOOL
+advapi32.GetTokenInformation.argtypes = [
+    wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD),
+]
+advapi32.GetSidSubAuthorityCount.restype = ctypes.POINTER(ctypes.c_ubyte)
+advapi32.GetSidSubAuthorityCount.argtypes = [ctypes.c_void_p]
+advapi32.GetSidSubAuthority.restype = ctypes.POINTER(wintypes.DWORD)
+advapi32.GetSidSubAuthority.argtypes = [ctypes.c_void_p, wintypes.DWORD]
 
 
 def run_message_loop() -> None:

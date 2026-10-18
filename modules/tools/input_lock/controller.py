@@ -20,6 +20,9 @@
 Границы возможного: LL-хуки не перехватывают Ctrl+Alt+Del и Win+L — это
 защищено самой Windows и обходится только драйвером. Блокировка здесь
 мягкая: аварийный выход у пользователя есть всегда, и это скорее плюс.
+Ещё одна дыра — окно с повышенными правами на переднем плане (уведомление
+антивируса, программа от администратора): его ввод Windows хукам не отдаёт.
+Её не закрыть, но тик её замечает, и плашка говорит об этом (elevation.py).
 """
 
 import time
@@ -40,11 +43,13 @@ from modules import events_monitor
 from modules.tools.spec import SETTING_BOOL, SETTING_INT, SETTING_TEXT
 
 from . import blocker
+from .elevation import elevated_foreground
 from .hotkey import parse_hotkey
 from .overlay import LockOverlay
 
-# Как часто обновляется плашка и проверяется срок автоснятия.
-_TICK_MS = 1000
+# Как часто обновляется плашка, проверяется срок автоснятия и активное окно:
+# полсекунды — чтобы предупреждение об обходе блокировки не запаздывало.
+_TICK_MS = 500
 
 
 def _validate_hotkey(value: str):
@@ -105,6 +110,9 @@ class InputLockTool:
         self._overlay = LockOverlay(root)
         self._deadline: float | None = None
         self._tick_id: str | None = None
+        # exe окна с повышенными правами, из-за которого блокировка сейчас
+        # не действует ("" — имя неизвестно); None — блокировка действует.
+        self._bypassed_by: str | None = None
 
     # --- Подключение ---
 
@@ -181,6 +189,7 @@ class InputLockTool:
         blocker.reset_keys()
 
         self._deadline = None
+        self._bypassed_by = None
         self._cancel_tick()
         self._overlay.hide()
 
@@ -220,6 +229,21 @@ class InputLockTool:
             except (RuntimeError, tk.TclError):
                 pass
 
+    def _check_bypass(self):
+        """Замечает окно с повышенными правами на переднем плане и уход с него."""
+        bypassed_by = elevated_foreground()
+        if bypassed_by == self._bypassed_by:
+            return
+        self._bypassed_by = bypassed_by
+        self._overlay.set_bypassed(bypassed_by)
+        if bypassed_by is None:
+            print("[LOCK] Блокировка снова действует")
+        else:
+            print(
+                "[LOCK] Блокировка не действует: активно окно с повышенными "
+                f"правами ({bypassed_by or 'процесс неизвестен'})"
+            )
+
     def _schedule_tick(self):
         self._cancel_tick()
         self._tick_id = self._root.after(_TICK_MS, self._tick)
@@ -237,6 +261,7 @@ class InputLockTool:
         if not blocker.is_locked():
             return
 
+        self._check_bypass()
         if self._deadline is None:
             self._overlay.update_remaining(None)
         else:

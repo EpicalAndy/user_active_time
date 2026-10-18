@@ -2,7 +2,8 @@
 Тесты инструмента «Блокировка ввода».
 
 Покрыто то, что не требует ни окон, ни хуков: разбор комбинации, распознавание
-её нажатия и решение фильтра «глотать или пропустить». Именно здесь живут
+её нажатия, решение фильтра «глотать или пропустить» и реакция на окно
+с повышенными правами, мимо которого блокировка не действует. Именно здесь живут
 свойства, ошибка в которых оставила бы пользователя без клавиатуры:
 разблокировка должна срабатывать при зажатых ровно тех модификаторах, что
 заданы, а до блокировки фильтр обязан пропускать всё, кроме самой комбинации.
@@ -32,6 +33,7 @@ from winapi import (  # noqa: E402
     VK_RCONTROL,
     VK_RSHIFT,
     WM_KEYDOWN,
+    kernel32,
 )
 from modules import events_monitor  # noqa: E402
 from modules.events_monitor import (  # noqa: E402
@@ -40,7 +42,7 @@ from modules.events_monitor import (  # noqa: E402
 )
 import config  # noqa: E402
 from utility import get_input_timeout  # noqa: E402
-from modules.tools.input_lock import blocker  # noqa: E402
+from modules.tools.input_lock import blocker, controller, elevation  # noqa: E402
 from modules.tools.input_lock.controller import InputLockTool  # noqa: E402
 from modules.tools.spec import (  # noqa: E402
     SETTING_BOOL,
@@ -271,6 +273,76 @@ def test_note_input_is_ignored_without_a_session():
     events_monitor.note_input("клавиатура")
 
     assert events_monitor._last_input_mono == marker
+
+
+# --- Окно с повышенными правами (UIPI) ---
+
+class _FakeOverlay:
+    """Плашка без окна: запоминает, что ей сказали про обход блокировки."""
+
+    def __init__(self):
+        self.bypassed_calls = []
+
+    def set_bypassed(self, process_name):
+        self.bypassed_calls.append(process_name)
+
+    def hide(self):
+        pass
+
+
+def _tool_seeing(foregrounds):
+    """Инструмент, которому активное окно «показывают» по очереди из списка."""
+    tool = InputLockTool(root=None)
+    tool._overlay = _FakeOverlay()
+    queue = list(foregrounds)
+    controller.elevated_foreground = lambda: queue.pop(0)
+    return tool
+
+
+def test_bypass_is_reported_once_per_change():
+    """Плашка узнаёт о входе в окно с правами и выходе из него — не каждый тик."""
+    original = controller.elevated_foreground
+    try:
+        tool = _tool_seeing([None, "AvAgent.exe", "AvAgent.exe", None, None])
+        for _ in range(5):
+            tool._check_bypass()
+    finally:
+        controller.elevated_foreground = original
+
+    assert tool._overlay.bypassed_calls == ["AvAgent.exe", None]
+
+
+def test_unknown_elevated_process_still_counts_as_bypass():
+    """Имя exe не узнать — но предупредить всё равно нужно."""
+    original = controller.elevated_foreground
+    try:
+        tool = _tool_seeing([""])
+        tool._check_bypass()
+    finally:
+        controller.elevated_foreground = original
+
+    assert tool._overlay.bypassed_calls == [""]
+
+
+def test_release_forgets_bypass():
+    """После снятия блокировки следующая блокировка начинает с чистого листа."""
+    original = controller.elevated_foreground
+    try:
+        tool = _tool_seeing(["AvAgent.exe"])
+        tool._check_bypass()
+        blocker.set_locked(True)
+        tool.release("тест")
+    finally:
+        controller.elevated_foreground = original
+        blocker.set_locked(False)
+
+    assert tool._bypassed_by is None
+
+
+def test_own_integrity_level_is_readable():
+    """Свой токен читается всегда — иначе сравнивать уровень было бы не с чем."""
+    level = elevation._integrity_level(kernel32.GetCurrentProcess())
+    assert level is not None and level >= 0x1000  # не ниже Low
 
 
 # --- Схема настроек (вкладка «Инструменты») ---
