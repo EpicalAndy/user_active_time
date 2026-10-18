@@ -25,6 +25,7 @@ from modules.report_reader import (  # noqa: E402
     build_intervals,
     combine_time_percent,
     manual_hour_intervals,
+    manual_hour_notes,
     parse_report,
 )
 
@@ -95,6 +96,17 @@ def test_manual_hour_intervals_pairs_start_and_end():
         (ts(13), "MANUAL_ADD_END"),  # хвост без начала — игнорируется
     ]
     assert manual_hour_intervals(events) == [(11.0, 12.25)]
+
+
+
+def test_manual_hour_notes_keep_descriptions():
+    """Подсказка графика показывает, что это было за добавленное время."""
+    log = [
+        "2026-09-14 11:00:00 | user | MANUAL_ADD_START (созвон)",
+        "2026-09-14 12:15:00 | user | MANUAL_ADD_END (созвон)",
+        "2026-09-14 13:00:00 | user | MANUAL_ADD_END (без начала)",
+    ]
+    assert manual_hour_notes(log) == [(11.0, 12.25, "созвон")]
 
 
 # --- Разбор файла ---

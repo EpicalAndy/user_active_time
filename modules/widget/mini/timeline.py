@@ -21,7 +21,7 @@ import config
 from constants import FONT_FAMILY
 from texts import WIDGET_CAPTION_TIMELINE
 from modules import theme
-from ..timeline_cells import cell_kinds, segment_color
+from ..timeline_cells import cell_kinds, cell_runs, segment_color
 from .ring import MIN_ARC_PX, PAD, RADIUS, RING_WIDTH, SIZE, RingWidget
 
 # На сколько ячеек делится круг: по длине окружности, ячейка — минимальная
@@ -49,20 +49,14 @@ def arcs(timeline: dict) -> list[tuple[float, float, str]]:
     total = len(colors)
 
     out = []
-    index = 0
-    while index < total:
-        color = colors[index]
-        run = index
-        while run + 1 < total and colors[run + 1] == color:
-            run += 1
+    for first, last, color in cell_runs(colors):
         if color is not None:
-            extent = -360.0 * (run - index + 1) / total
+            extent = -360.0 * (last - first + 1) / total
             out.append((
-                90 - 360.0 * index / total,
+                90 - 360.0 * first / total,
                 max(extent, -359.999),
                 color,
             ))
-        index = run + 1
     return out
 
 

@@ -271,3 +271,11 @@ WEEK_TOOLTIP_TODAY = "сегодня"
 TIMELINE_TOOLTIP_ACTIVITY = "Активность"
 TIMELINE_TOOLTIP_OF_WORK_TIME = "рабочего времени"
 TIMELINE_TOOLTIP_NO_DATA = "Сессий сегодня ещё не было"
+
+# Подсказка к отрезку под курсором (таймлайн виджета и график отчёта).
+# Те же названия — в легенде графика отчёта.
+TIMELINE_KIND_ACTIVE = "Активность"
+TIMELINE_KIND_INACTIVE = "Простой"
+TIMELINE_KIND_MANUAL = "Добавленное время"
+TIMELINE_SEGMENT_SPAN = "{kind} {start} — {end} ({duration})"
+TIMELINE_SEGMENT_ONGOING = "{kind} с {start} (идёт, {duration})"

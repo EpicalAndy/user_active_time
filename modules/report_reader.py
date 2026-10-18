@@ -11,6 +11,9 @@
   рисуется отдельным слоем поверх;
 - v1 (старые отчёты) — из событий лога (`build_intervals`), ручное время уже
   закодировано в интервалах.
+
+Описания ручных диапазонов (`manual_notes`) — для подсказки при наведении на
+график; разбираются тем же `parse_manual_entries`, что и в виджете.
 """
 
 import datetime
@@ -18,6 +21,7 @@ import re
 
 from modules import activity_intervals
 from modules.json_file import read_json
+from modules.session_monitor import parse_manual_entries
 from utility import (
     calculate_activity_percent,
     format_duration,
@@ -128,6 +132,7 @@ def parse_report(filepath: str) -> dict | None:
         "events": events,
         "intervals": intervals,
         "manual_intervals": manual_intervals,
+        "manual_notes": manual_hour_notes(data.get("log") or []),
     }
 
 
@@ -221,6 +226,19 @@ def manual_hour_intervals(events: list) -> list:
         elif etype in _MANUAL_END_EVENTS and start is not None:
             out.append((time_to_hours(start), time_to_hours(ts)))
             start = None
+    return out
+
+
+def manual_hour_notes(log: list) -> list:
+    """Ручные диапазоны с описаниями: [(start_hour, end_hour, описание)]."""
+    out = []
+    for pair in parse_manual_entries([str(line) for line in log]):
+        try:
+            start = datetime.datetime.strptime(pair["start"], "%H:%M:%S")
+            end = datetime.datetime.strptime(pair["end"], "%H:%M:%S")
+        except ValueError:
+            continue
+        out.append((time_to_hours(start), time_to_hours(end), pair["description"]))
     return out
 
 

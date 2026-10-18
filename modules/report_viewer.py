@@ -2,7 +2,10 @@
 Визуализация отчёта об активности — окно со статистикой и графиком активности/простоя.
 
 Источник — дневной JSON-отчёт; разбор файла и построение интервалов графика
-лежат в `report_reader`, здесь только окно и отрисовка на Canvas.
+лежат в `report_reader`, здесь только окно и отрисовка на Canvas. При
+наведении на график подсказка показывает отрезок под курсором (вид, границы,
+длительность, описание добавленного времени — см. `timeline_hover`), а сам
+отрезок подсвечивается рамкой.
 """
 
 import os
@@ -17,6 +20,9 @@ from texts import (
     METRIC_BREAK_TIME,
     METRIC_FULL_DAY_TIME,
     METRIC_SESSION_COUNT_FULL,
+    TIMELINE_KIND_ACTIVE,
+    TIMELINE_KIND_INACTIVE,
+    TIMELINE_KIND_MANUAL,
 )
 from modules import theme
 from modules.report_reader import (
@@ -26,7 +32,8 @@ from modules.report_reader import (
     parse_report,
     time_to_hours,
 )
-from modules.ui_utils import center_on_screen, legend_item
+from modules.timeline_hover import notes_within, segment_at, segment_caption
+from modules.ui_utils import attach_pointer_tooltip, center_on_screen, legend_item
 
 
 class ReportViewer:
@@ -108,9 +115,9 @@ class ReportViewer:
         legend_frame = tk.Frame(self.win, bg=theme.COLOR_DARK_BG)
         legend_frame.pack(pady=(4, 12))
 
-        legend_item(legend_frame, theme.COLOR_GREEN, "Активность", padx=12)
-        legend_item(legend_frame, theme.COLOR_RED, "Простой", padx=12)
-        legend_item(legend_frame, theme.COLOR_BLUE, "Добавленное время", padx=12)
+        legend_item(legend_frame, theme.COLOR_GREEN, TIMELINE_KIND_ACTIVE, padx=12)
+        legend_item(legend_frame, theme.COLOR_RED, TIMELINE_KIND_INACTIVE, padx=12)
+        legend_item(legend_frame, theme.COLOR_BLUE, TIMELINE_KIND_MANUAL, padx=12)
 
         # --- Кнопка закрыть ---
         tk.Button(
@@ -208,3 +215,40 @@ class ReportViewer:
                 text=str(h), anchor=tk.N,
                 fill=theme.COLOR_LIGHT_FG, font=(FONT_FAMILY, 8),
             )
+
+        # Подсказка к отрезку под курсором. Отрезки — в секундах от полуночи,
+        # как их ждёт timeline_hover; ручное время — тем же слоем поверх.
+        segments = [(_seconds(s), _seconds(e), state) for s, e, state in intervals]
+        segments += [(_seconds(s), _seconds(e), STATE_MANUAL) for s, e in manual_intervals]
+        notes = [(_seconds(s), _seconds(e), d) for s, e, d in data.get("manual_notes", [])]
+
+        def hover_text(x: int, y: int) -> str | None:
+            """Подпись отрезка под точкой (x, y); заодно подсвечивает его рамкой."""
+            canvas.delete("hover")
+            inside = (
+                pad_left <= x <= pad_left + chart_width
+                and pad_top <= y <= pad_top + chart_height
+            )
+            if not inside:
+                return None
+            hour = min_hour + (x - pad_left) / chart_width * hour_span
+            segment = segment_at(segments, _seconds(hour))
+            if segment is None:
+                return None
+            start, end, kind = segment
+            canvas.create_rectangle(
+                hour_to_x(max(start / 3600, min_hour)), pad_top,
+                hour_to_x(min(end / 3600, max_hour)) - 1, pad_top + chart_height - 1,
+                outline=theme.COLOR_LIGHT_FG, width=1, tags="hover",
+            )
+            return segment_caption(
+                kind, start, end,
+                notes=notes_within(notes, start, end) if kind == STATE_MANUAL else [],
+            )
+
+        attach_pointer_tooltip(canvas, hover_text, on_leave=lambda: canvas.delete("hover"))
+
+
+def _seconds(hour: float) -> int:
+    """Дробные часы графика → секунды от полуночи."""
+    return round(hour * 3600)

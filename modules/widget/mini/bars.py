@@ -29,7 +29,7 @@ from modules import theme
 from modules.metrics import BY_KEY
 from utility import format_percent
 from .base import PERCENT_DECIMALS, BaseMiniWidget
-from ..timeline_cells import cell_kinds, segment_color
+from ..timeline_cells import cell_kinds, cell_runs, segment_color
 
 # Геометрия. Ширина больше кольцевых виджетов: полосе нужно место под название
 # и значение одновременно.
@@ -241,16 +241,11 @@ class MetricBarsWidget(BaseMiniWidget):
         x0 = PAD_X
         step = (WIDTH - 2 * PAD_X) / len(cells)
 
-        index = 0
-        while index < len(cells):
-            run = index
-            while run + 1 < len(cells) and cells[run + 1] == cells[index]:
-                run += 1
+        for first, last, color in cell_runs(cells):
             c.create_rectangle(
-                x0 + index * step, y, x0 + (run + 1) * step, y1,
-                fill=cells[index], outline="",
+                x0 + first * step, y, x0 + (last + 1) * step, y1,
+                fill=color, outline="",
             )
-            index = run + 1
 
         def background_at(x: float) -> str:
             cell = int((x - x0) / step)

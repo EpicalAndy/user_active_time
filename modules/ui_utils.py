@@ -61,17 +61,8 @@ def attach_tooltip(
         value = text() if callable(text) else text
         if not value:
             return
-        tw = tk.Toplevel(widget)
-        tw.wm_overrideredirect(True)
+        tw, _label = _tooltip_window(widget, value)
         tw.wm_geometry(f"+{widget.winfo_rootx()}+{widget.winfo_rooty() + widget.winfo_height() + offset_y}")
-        tw.attributes("-topmost", True)
-        tk.Label(
-            tw, text=value,
-            bg=theme.COLOR_TOOLTIP_BG, fg=theme.COLOR_TOOLTIP_FG,
-            font=(FONT_FAMILY, 9), padx=6, pady=3,
-            justify=tk.LEFT,
-            relief=tk.SOLID, borderwidth=1,
-        ).pack()
         tip[0] = tw
 
     def on_leave(_e):
@@ -81,6 +72,72 @@ def attach_tooltip(
 
     widget.bind("<Enter>", on_enter, add="+")
     widget.bind("<Leave>", on_leave, add="+")
+
+
+def attach_pointer_tooltip(
+    widget: tk.Widget,
+    text_at: Callable[[int, int], str | None],
+    *,
+    on_leave: Callable[[], None] | None = None,
+    offset_y: int = 2,
+) -> None:
+    """Подсказка, текст которой зависит от точки под курсором (отрезок таймлайна).
+
+    `text_at(x, y)` получает координаты курсора внутри виджета и возвращает
+    текст или None — тогда подсказки нет. Зовётся на каждое движение мыши:
+    окно подсказки создаётся один раз, дальше у него меняется только текст,
+    и оно едет за курсором по горизонтали, держась под виджетом (у нижнего
+    края экрана — над ним). `on_leave` — уборка при уходе курсора, например
+    снять подсветку отрезка.
+    """
+    tip: list = [None, None]  # окно подсказки и метка в нём
+
+    def hide():
+        if tip[0] is not None:
+            tip[0].destroy()
+            tip[0] = tip[1] = None
+
+    def on_motion(event):
+        value = text_at(event.x, event.y)
+        if not value:
+            hide()
+            return
+        if tip[0] is None:
+            tip[0], tip[1] = _tooltip_window(widget, value)
+        elif tip[1].cget("text") != value:
+            tip[1].configure(text=value)
+        tw = tip[0]
+        tw.update_idletasks()
+        width, height = tw.winfo_reqwidth(), tw.winfo_reqheight()
+        x = max(0, min(event.x_root + 12, tw.winfo_screenwidth() - width))
+        y = widget.winfo_rooty() + widget.winfo_height() + offset_y
+        if y + height > tw.winfo_screenheight():
+            y = widget.winfo_rooty() - height - offset_y
+        tw.wm_geometry(f"+{x}+{y}")
+
+    def leave(_e):
+        hide()
+        if on_leave is not None:
+            on_leave()
+
+    widget.bind("<Motion>", on_motion, add="+")
+    widget.bind("<Leave>", leave, add="+")
+
+
+def _tooltip_window(widget: tk.Widget, text: str) -> tuple[tk.Toplevel, tk.Label]:
+    """Окно подсказки с текстом; позицию задаёт вызывающий."""
+    tw = tk.Toplevel(widget)
+    tw.wm_overrideredirect(True)
+    tw.attributes("-topmost", True)
+    label = tk.Label(
+        tw, text=text,
+        bg=theme.COLOR_TOOLTIP_BG, fg=theme.COLOR_TOOLTIP_FG,
+        font=(FONT_FAMILY, 9), padx=6, pady=3,
+        justify=tk.LEFT,
+        relief=tk.SOLID, borderwidth=1,
+    )
+    label.pack()
+    return tw, label
 
 
 def legend_item(parent: tk.Misc, color: str, text: str, padx: int = 8) -> None:

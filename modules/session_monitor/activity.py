@@ -44,7 +44,7 @@ def _day_intervals(day_state: dict, date, live_open_session=None, extra_idle=())
 
 
 def _manual_intervals(day_state: dict, date) -> list:
-    """Ручные интервалы дня как (начало, конец) — только корректные пары."""
+    """Ручные интервалы дня как (начало, конец, описание) — только корректные пары."""
     intervals = []
     for pair in parse_manual_entries(day_state.get("log_entries", [])):
         try:
@@ -53,7 +53,7 @@ def _manual_intervals(day_state: dict, date) -> list:
         except ValueError:
             continue
         if end > start:
-            intervals.append((start, end))
+            intervals.append((start, end, pair["description"]))
     return intervals
 
 
@@ -78,10 +78,11 @@ def build_timeline(
     Всё, что в границы не попало, отрезается; непокрытая отрезками часть — простой
     (рисующая сторона считает её фоном).
 
-    Возвращает {start_seconds, end_seconds, segments} в секундах от полуночи,
-    где segments — [(start, end, "active"|"inactive"|"manual")] в порядке
-    отрисовки (ручное время последним, т.е. поверх). None — рабочего времени
-    за день ещё нет.
+    Возвращает {start_seconds, end_seconds, segments, manual_notes} в секундах
+    от полуночи, где segments — [(start, end, "active"|"inactive"|"manual")]
+    в порядке отрисовки (ручное время последним, т.е. поверх), а manual_notes —
+    [(start, end, описание)] ручных диапазонов для подсказки при наведении.
+    None — рабочего времени за день ещё нет.
     """
     if span_end <= span_start:
         return None
@@ -90,25 +91,36 @@ def build_timeline(
     raw = list(activity_intervals.day_segments(
         sessions, idle, get_input_timeout(date), date,
     ))
-    for manual_start, manual_end in _manual_intervals(day_state, date):
+    manual = _manual_intervals(day_state, date)
+    for manual_start, manual_end, _description in manual:
         raw.append((manual_start, manual_end, "manual"))
 
     day_start = datetime.datetime.combine(date, datetime.time.min)
-    segments = []
-    for seg_start, seg_end, kind in raw:
+
+    def clipped(seg_start, seg_end):
+        """Отрезок, обрезанный границами дня, в секундах от полуночи (None — вне их)."""
         start = max(seg_start, span_start)
         end = min(seg_end, span_end)
-        if end > start:
-            segments.append((
-                int((start - day_start).total_seconds()),
-                int((end - day_start).total_seconds()),
-                kind,
-            ))
+        if end <= start:
+            return None
+        return int((start - day_start).total_seconds()), int((end - day_start).total_seconds())
+
+    segments = [
+        (*bounds, kind)
+        for seg_start, seg_end, kind in raw
+        if (bounds := clipped(seg_start, seg_end)) is not None
+    ]
+    manual_notes = [
+        (*bounds, description)
+        for seg_start, seg_end, description in manual
+        if (bounds := clipped(seg_start, seg_end)) is not None
+    ]
 
     return {
         "start_seconds": int((span_start - day_start).total_seconds()),
         "end_seconds": int((span_end - day_start).total_seconds()),
         "segments": segments,
+        "manual_notes": manual_notes,
     }
 
 
@@ -135,7 +147,7 @@ def active_reached_at(
         )
         if kind == "active"
     ]
-    spans += _manual_intervals(day_state, date)
+    spans += [(start, end) for start, end, _description in _manual_intervals(day_state, date)]
 
     accumulated = day_state.get("legacy_base_seconds", 0)
     for span_start, span_end in sorted(spans):

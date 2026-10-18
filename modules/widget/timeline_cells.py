@@ -67,6 +67,45 @@ def cell_kinds(timeline: dict, cells: int) -> list[str]:
     return [_winner(bucket) for bucket in buckets]
 
 
+def cell_runs(cells: list) -> list[tuple[int, int, object]]:
+    """Соседние одинаковые ячейки, склеенные в полосы: [(первая, последняя, значение)].
+
+    Ячеек сотни, а ленты перерисовываются на каждом обновлении метрик — рисуем
+    фигуру на полосу, а не на ячейку. По тем же полосам подсказка находит
+    участок под курсором: он ровно такой, каким его видно.
+    """
+    runs: list[tuple[int, int, object]] = []
+    for index, value in enumerate(cells):
+        if runs and runs[-1][2] == value:
+            runs[-1] = (runs[-1][0], index, value)
+        else:
+            runs.append((index, index, value))
+    return runs
+
+
+def run_bounds(timeline: dict, cells: int, first: int, last: int) -> tuple[int, int]:
+    """Границы полосы ячеек [first, last] в секундах от полуночи.
+
+    Граница ячейки — приближение: смена вида лежит где-то внутри неё. Если
+    не дальше ячейки от неё есть настоящая граница отрезка, берём её — тогда
+    подсказка показывает время как в логе, а не с точностью до пикселя.
+    Края ленты — её собственные границы (первый логин и «сейчас»).
+    """
+    day_start = timeline["start_seconds"]
+    day_end = timeline["end_seconds"]
+    cell_seconds = (day_end - day_start) / cells
+    edges = {t for seg_start, seg_end, _ in timeline["segments"] for t in (seg_start, seg_end)}
+
+    def snap(edge_index: int) -> int:
+        approx = day_start + edge_index * cell_seconds
+        near = [t for t in edges if abs(t - approx) <= cell_seconds]
+        return min(near, key=lambda t: abs(t - approx)) if near else round(approx)
+
+    start = day_start if first == 0 else snap(first)
+    end = day_end if last == cells - 1 else snap(last + 1)
+    return int(start), int(end)
+
+
 def _winner(cell: dict[str, float]) -> str:
     """Вид, занявший в ячейке больше всего времени (при равенстве — приоритетный)."""
     if not cell:

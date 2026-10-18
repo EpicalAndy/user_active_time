@@ -20,6 +20,7 @@
 и не зависят от внутренней раскладки пакета.
 """
 
+from .journal import parse_manual_entries
 from .manual_time import (
     add_manual_active_time,
     get_manual_active_entries,
@@ -37,6 +38,7 @@ __all__ = [
     "get_manual_active_entries",
     "log_event",
     "main",
+    "parse_manual_entries",
     "remove_manual_active_time",
     "request_stop",
     "start_session",
