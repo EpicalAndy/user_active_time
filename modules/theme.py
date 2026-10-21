@@ -13,7 +13,7 @@
 
 Постоянный виджет уже созданными tk-виджетами сам не перекрашивается,
 поэтому после смены темы он пересобирает свою «хромированную» часть —
-см. ActivityWidget._apply_theme.
+см. ActivityWidget.apply_theme.
 
 Активная тема инициализируется из config.THEME при импорте модуля
 и переключается через set_theme() (диалог настроек).
@@ -92,7 +92,7 @@ def set_theme(name: str) -> None:
 
     Окна, создаваемые после вызова, подхватят новую палитру сами через
     динамическое чтение theme.COLOR_X; постоянный виджет перекрашивает себя
-    сам (ActivityWidget._apply_theme).
+    сам (ActivityWidget.apply_theme).
     """
     global _current_theme
     if name not in _PALETTES:

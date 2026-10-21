@@ -9,7 +9,7 @@
 
 Набор метрик и наличие полосы читаются из config при создании — после
 изменения настроек содержимое пересоздаётся целиком (см.
-`ActivityWidget._rebuild_content`).
+`ActivityWidget.rebuild_content`).
 """
 
 import tkinter as tk

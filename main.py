@@ -15,29 +15,25 @@ from bootstrap import setup_console, setup_user_config
 setup_console()
 setup_user_config()
 
+from modules.session_monitor import get_current_stats, request_stop
 from modules.session_monitor import main as run_monitor
-from modules.widget import ActivityWidget, is_widget_enabled
+from modules.widget import App
 
 
 def main():
-    if is_widget_enabled():
-        from modules.session_monitor import get_current_stats, request_stop
+    monitor_thread = threading.Thread(
+        target=run_monitor, daemon=True, name="SessionMonitor"
+    )
+    monitor_thread.start()
 
-        monitor_thread = threading.Thread(
-            target=run_monitor, daemon=True, name="SessionMonitor"
-        )
-        monitor_thread.start()
-
-        widget = ActivityWidget(stats_provider=get_current_stats)
-        try:
-            widget.run()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            request_stop()
-            monitor_thread.join(timeout=5)
-    else:
-        run_monitor()
+    app = App(stats_provider=get_current_stats)
+    try:
+        app.run()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        request_stop()
+        monitor_thread.join(timeout=5)
 
 
 if __name__ == "__main__":

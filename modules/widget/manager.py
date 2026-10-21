@@ -153,7 +153,7 @@ class WidgetManager:
     def apply_theme(self):
         """Перекрашивает каркас живых виджетов после смены темы.
 
-        Содержимое перерисует следующий `update(stats)` — конфигуратор зовёт
+        Содержимое перерисует следующий `update(stats)` — ядро (`App`) зовёт
         его сразу после этого.
         """
         for widget in self._widgets.values():

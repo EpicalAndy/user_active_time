@@ -1,10 +1,12 @@
 """
 Виджет отображения активности на рабочем столе — окно-конфигуратор.
 
-Здесь то, что держит состояние виджета: окно и его «хром» (заголовок, тулбар,
-содержимое), тикер обновления метрик и отсчёта, трей, настройки. Тело и
-недельная полоса — в `content`, действия меню «Отчёты»/«Помощь» — в
-`actions`, позиция окна между запусками — в `position`.
+Здесь окно и его «хром» (заголовок, тулбар, содержимое), сворачивание (до
+заголовка и в трей) и диалоги, которые открываются из тулбара. Данные окно
+не добывает само: stats, секундный остаток и шаг мигания ему раздаёт ядро
+(`app.App`) — так же, как мини-виджетам и трею. Тело и недельная полоса — в
+`content`, действия меню «Отчёты»/«Помощь» — в `actions`, позиция окна между
+запусками — в `position`.
 """
 
 import datetime
@@ -21,24 +23,20 @@ from config import (
     WIDGET_SHOW_SESSION_COUNT,
 )
 import config
-from modules import theme, tools
-from modules.events_monitor import get_countdown_remaining
+from modules import theme
 from modules.manual_activity_dialog import ManualActivityDialog
 from modules.settings import SettingsDialog
-from . import actions
+from . import actions, position
 from .content import WidgetContent
-from .manager import WidgetManager
-from .notification import play_notification, play_tick
-from .position import place_window, save_position
 from .countdown_indicator import PROGRESS_NONE, progress_level
+from .manager import WidgetManager
 from .title_bar import TitleBar
 from .toolbar import WidgetToolbar
 from .toolbar_reveal import ToolbarReveal
-from .tray import create_tray
 from utility import format_date_key
 
 # Фон окна (под телом и тулбаром) и тонкая линия-разделитель читаются
-# динамически из theme.* — см. _build_chrome / _apply_theme.
+# динамически из theme.* — см. _build_chrome / apply_theme.
 
 # Ширина виджета — даёт место длинным меткам вроде «До рекомендуемой нормы:»
 # плюс склеенным значениям вида «5ч 51м (86.6%)».
@@ -46,7 +44,7 @@ WIDGET_WIDTH = 280
 
 
 def is_widget_enabled() -> bool:
-    """Проверяет, включена ли хотя бы одна опция отображения"""
+    """Включена ли хотя бы одна строка тела окна (иначе окну нечего показать)."""
     return any([
         WIDGET_SHOW_ACTIVE_TIME,
         WIDGET_SHOW_SESSION_COUNT,
@@ -64,26 +62,34 @@ def is_widget_enabled() -> bool:
 class ActivityWidget:
     """Минималистичный виджет активности на рабочем столе"""
 
-    def __init__(self, stats_provider: Callable[[], dict]):
-        self.stats_provider = stats_provider
+    def __init__(
+        self,
+        root: tk.Tk,
+        manager: WidgetManager,
+        *,
+        tool_items: Callable[[], list],
+        tray_available: bool,
+        start_hidden: bool,
+        on_settings_saved: Callable[[bool], None],
+        on_data_changed: Callable[[], None],
+        on_quit: Callable[[], None],
+    ):
+        self._manager = manager  # для диалога 🧩
+        self._tool_items = tool_items
+        self._tray_available = tray_available
+        self._on_settings_saved = on_settings_saved
+        self._on_data_changed = on_data_changed
+        self._on_quit = on_quit
         self._minimized = False
-        self._goal_notified = False
         self._last_activity_percent: float | None = None  # кеш для countdown-гейта
-        self._tick_count = 0
-        self.root = tk.Tk()
-        self.root.withdraw()
+        # Высота окна зависит от содержимого — после пересборки подгоняем её
+        # ещё раз, когда содержимое получит первые stats.
+        self._resize_pending = False
 
-        # Менеджер мини-виджетов рабочего стола (создаётся до _build_chrome:
-        # тулбар берёт из него колбэк добавления).
-        self._manager = WidgetManager(self.root, stats_provider)
-        self._tray = None  # значок трея (создаётся ниже; None если трей недоступен)
-
-        # Инструменты (меню 🧰) — тоже до _build_chrome: тулбар берёт у них
-        # пункты меню. Живут дольше «хрома»: пересборка при смене темы их
-        # не трогает, иначе блокировка ввода снималась бы вместе с окном.
-        self._tools = tools.create_tools(self.root)
-
-        self.window = tk.Toplevel(self.root)
+        self.window = tk.Toplevel(root)
+        if start_hidden:
+            # До первой отрисовки: окно не мелькает на экране.
+            self.window.withdraw()
         self._setup_window()
         self._build_chrome()
         # Тулбар свёрнутого окна: выезжает при наведении и фокусе. Сам тулбар
@@ -93,15 +99,7 @@ class ActivityWidget:
             on_change=self._relayout,
             keep_open=lambda: self._toolbar.menu_open,
         )
-        place_window(self.window, WIDGET_WIDTH)
-        self._manager.restore()
-        # Без pystray трея нет — «—» тогда сворачивает до заголовка.
-        self._tray = create_tray(
-            on_open=lambda: self.root.after(0, self._show_from_tray),
-            on_toggle=lambda: self.root.after(0, self._toggle_from_tray),
-            on_quit=lambda: self.root.after(0, self.close),
-        )
-        self._tick()
+        position.place_window(self.window, WIDGET_WIDTH)
 
     def _build_chrome(self):
         """Создаёт «хромированную» часть виджета: заголовок, тулбар,
@@ -110,9 +108,9 @@ class ActivityWidget:
         """
         self._title_bar = TitleBar(
             self.window,
-            on_close=self.close,
+            on_close=self._on_quit,
             on_minimize=self._minimize_to_tray,
-            on_position_changed=lambda: save_position(self.window),
+            on_position_changed=self.save_position,
             on_collapse=self._toggle_minimize,
         )
         self._toolbar = WidgetToolbar(
@@ -131,7 +129,7 @@ class ActivityWidget:
             on_today_report=partial(actions.open_today_report, self.window),
             on_last_report=partial(actions.open_last_report, self.window),
             on_open_widgets=self._open_widgets_dialog,
-            tool_items=tools.menu_items(self._tools),
+            tool_items=self._tool_items(),
         )
         self._toolbar.pack(fill=tk.X)
         self._toolbar_separator = tk.Frame(self.window, bg=theme.COLOR_MUTED, height=1)
@@ -151,21 +149,16 @@ class ActivityWidget:
             highlightcolor=theme.COLOR_DARK_BG,
         )
 
-    # --- Обновление данных ---
+    # --- Данные от ядра ---
 
-    def _update_metrics(self):
-        try:
-            stats = self.stats_provider()
-        except Exception:
-            return
-
+    def update(self, stats: dict):
+        """Свежие stats: тело, полоса, метрики и прогресс в заголовке."""
         # Содержимое обновляется до проверки на нерабочий день: тело в такой
         # день сворачивается в плашку, а недельная полоса остаётся на месте.
         self._content.update(stats)
-        # Мини-виджеты рабочего стола и подсказка трея — та же частота, тот же stats.
-        self._manager.update(stats)
-        if self._tray is not None:
-            self._tray.update_stats(stats)
+        if self._resize_pending:
+            self._resize_pending = False
+            self._resize_window()
 
         if not stats.get("is_working_day", True):
             self._title_bar.clear_metric_labels()
@@ -175,19 +168,11 @@ class ActivityWidget:
 
         self._title_bar.update_metric_labels(stats)
         self._title_bar.set_progress_level(progress_level(stats["activity_percent"]))
-        # Кешируем для _update_countdown: он бегает в 60 раз чаще, чем мы
-        # обновляем stats, и тянуть stats_provider() каждую секунду накладно.
+        # Кешируем для tick_second: он бегает в 60 раз чаще, чем приходят stats.
         self._last_activity_percent = stats["activity_percent"]
 
-        # Уведомление о достижении рекомендуемого порога активности
-        if config.SOUND_NOTIFICATION and stats["activity_percent"] >= config.RECOMMENDED_ACTIVITY_THRESHOLD:
-            if not self._goal_notified:
-                self._goal_notified = True
-                play_notification()
-        else:
-            self._goal_notified = False
-
-    def _update_countdown(self):
+    def tick_second(self, remaining: int | None):
+        """Секундный остаток до неактивности — счётчик в заголовке."""
         if not self._title_bar.has_countdown():
             return
         if not self._content.is_working_day():
@@ -207,24 +192,18 @@ class ActivityWidget:
                 show_placeholder=config.STOP_COUNTDOWN_AT_RECOMMENDED,
             )
             if config.STOP_COUNTDOWN_AT_RECOMMENDED:
-                # Заполнитель уже выставлен в enter_goal_reached, и тиканья
-                # звуком тоже не нужно — норма выработана, отдыхаем.
+                # Заполнитель уже выставлен в enter_goal_reached.
                 return
         else:
             self._title_bar.exit_goal_reached()
 
-        remaining = get_countdown_remaining()
         self._title_bar.update_countdown(remaining)
 
-        # Тиканье часов в предупредительной фазе (мигает жёлтый/красный).
-        warning = config.COUNTDOWN_WARNING_SECONDS
-        if (
-            config.COUNTDOWN_TICK_SOUND
-            and remaining is not None
-            and warning > 0
-            and 0 < remaining <= warning
-        ):
-            play_tick()
+    def tick_blink(self):
+        """Шаг мигания (~500мс): счётчик в заголовке, рамка, выезд тулбара."""
+        self._title_bar.tick_blink()
+        self._apply_border_indicator()
+        self._toolbar_reveal.check()
 
     def _apply_border_indicator(self):
         """Красит рамку окна: прогресс по активности + алерты countdown'а.
@@ -234,32 +213,19 @@ class ActivityWidget:
         color = self._title_bar.border_indicator_color() or theme.COLOR_DARK_BG
         self.window.configure(highlightbackground=color, highlightcolor=color)
 
-    def _tick(self):
-        """Единый тикер виджета (шаг 500мс)"""
-        # 500мс — анимация мигания countdown'а (если активна): в заголовке
-        # и в мини-виджетах, чтобы мигали в одну фазу.
-        self._title_bar.tick_blink()
-        self._apply_border_indicator()
-        self._manager.tick_blink()
-        self._toolbar_reveal.check()
+    # --- Показ и сворачивание ---
 
-        # 1с — countdown (в заголовке и в мини-виджетах, которым мало stats)
-        if self._tick_count % 2 == 0:
-            self._update_countdown()
-            self._manager.tick_second()
+    def show(self):
+        """Возвращает окно на экран (из трея)."""
+        self.window.deiconify()
+        self.window.lift()
 
-        # WIDGET_UPDATE_INTERVAL — метрики
-        update_every = config.WIDGET_UPDATE_INTERVAL * 2
-        if self._tick_count % update_every == 0:
-            self._update_metrics()
-
-        # Промежуточное сохранение сессии теперь ведёт фоновый монитор
-        # (session_monitor/checkpoint.py) — виджет только отображает данные.
-
-        self._tick_count = (self._tick_count + 1) % update_every
-        self.root.after(500, self._tick)
-
-    # --- Управление ---
+    def toggle_visible(self):
+        """Двойной клик по значку трея: окно в трее — открыть, на экране — свернуть."""
+        if self.window.state() == "withdrawn":
+            self.show()
+        else:
+            self._minimize_to_tray()
 
     def _minimize_to_tray(self):
         """Прячет окно конфигуратора в трей (мини-виджеты остаются на рабочем столе).
@@ -267,22 +233,10 @@ class ActivityWidget:
         Значок трея висит всегда, поэтому достаточно скрыть окно. Если трей
         недоступен — откатываемся к сворачиванию до заголовка.
         """
-        if self._tray is not None:
+        if self._tray_available:
             self.window.withdraw()
         else:
             self._toggle_minimize()
-
-    def _show_from_tray(self):
-        """Возвращает окно конфигуратора из трея («Открыть» в меню значка)."""
-        self.window.deiconify()
-        self.window.lift()
-
-    def _toggle_from_tray(self):
-        """Двойной клик по значку: окно в трее — открыть, на экране — свернуть."""
-        if self.window.state() == "withdrawn":
-            self._show_from_tray()
-        else:
-            self._minimize_to_tray()
 
     def _toggle_minimize(self):
         """Сворачивает виджет до заголовка и разворачивает обратно.
@@ -315,6 +269,8 @@ class ActivityWidget:
         self._apply_layout()
         self._resize_window()
 
+    # --- Диалоги из тулбара ---
+
     def _open_widgets_dialog(self):
         """Открывает диалог управления мини-виджетами рабочего стола"""
         from .widgets_dialog import WidgetsDialog
@@ -326,31 +282,25 @@ class ActivityWidget:
         dialog = ManualActivityDialog(self.window, today)
         dialog.wait()
         if dialog.changed:
-            self._update_metrics()
+            self._on_data_changed()
 
     def _open_settings(self):
-        """Открывает диалог настроек"""
+        """Открывает диалог настроек; применение — у ядра (`on_settings_saved`)."""
         theme_before = theme.current_theme()
         dialog = SettingsDialog(self.window)
         dialog.wait()
-        if not dialog.saved:
-            return
-        # Инструменты читают свои настройки при подключении — после сохранения
-        # им нужно перечитать их (например, изменённую комбинацию блокировки).
-        tools.refresh_tools(self._tools)
-        if theme.current_theme() != theme_before:
-            # Смена темы затрагивает всю «хромированную» часть — пересобираем
-            # её целиком (тело тоже, поэтому отдельный _rebuild_content не нужен).
-            self._apply_theme()
-        else:
-            self._rebuild_content()
+        if dialog.saved:
+            self._on_settings_saved(theme.current_theme() != theme_before)
 
-    def _apply_theme(self):
+    # --- Пересборка после настроек ---
+
+    def apply_theme(self):
         """Перекрашивает виджет под текущую тему.
 
         Окно перекрашиваем напрямую, а заголовок/тулбар/разделитель/тело
         пересобираем: уже созданные tk-виджеты сами цвет не меняют, новые же
-        читают палитру динамически из theme.*.
+        читают палитру динамически из theme.*. Содержимое заполнит следующий
+        `update(stats)` — ядро зовёт его сразу после этого.
         """
         self.window.configure(
             bg=theme.COLOR_DARK_BG,
@@ -362,36 +312,34 @@ class ActivityWidget:
         self._toolbar_separator.destroy()
         self._content.destroy()
         self._build_chrome()
-        self._apply_layout()
-        self._manager.apply_theme()
-        self._update_metrics()  # перерисует и содержимое мини-виджетов
-        self._resize_window()
+        self._relayout()
+        self._resize_pending = True
 
-    def _rebuild_content(self):
+    def rebuild_content(self):
         """Пересоздаёт тело и полосу после изменения настроек"""
         self._title_bar.rebuild_metric_labels()
         self._content.destroy()
         self._content = WidgetContent(self.window)
-        self._apply_layout()
-        self._update_metrics()
-        self._resize_window()
+        self._relayout()
+        self._resize_pending = True
 
     def _resize_window(self):
         """Пересчитывает размер окна под содержимое"""
         self.window.update_idletasks()
         width = WIDGET_WIDTH
         win_h = self.window.winfo_reqheight()
+        if self.window.state() == "withdrawn":
+            # У спрятанного окна winfo_x/y нулевые — меняем только размер,
+            # позиция из place_window сохраняется.
+            self.window.geometry(f"{width}x{win_h}")
+            return
         x = self.window.winfo_x()
         y = self.window.winfo_y()
         self.window.geometry(f"{width}x{win_h}+{x}+{y}")
 
-    def close(self):
-        save_position(self.window)
-        tools.detach_tools(self._tools)
-        if self._tray is not None:
-            self._tray.stop()
-        self.root.quit()
-        self.root.destroy()
-
-    def run(self):
-        self.root.mainloop()
+    def save_position(self):
+        """Запоминает позицию окна. Спрятанное в трей окно не трогаем: у
+        ни разу не показанного окна координаты нулевые, а позицию показанного
+        уже сохранило отпускание после перетаскивания."""
+        if self.window.state() != "withdrawn":
+            position.save_position(self.window)

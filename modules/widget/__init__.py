@@ -1,10 +1,10 @@
 """
-Пакет виджета активности.
+Пакет виджета активности: ядро UI, окно-конфигуратор, мини-виджеты, трей.
 
-Внешние потребители импортируют ActivityWidget / is_widget_enabled отсюда:
-    from modules.widget import ActivityWidget, is_widget_enabled
+Внешние потребители импортируют ядро отсюда:
+    from modules.widget import App
 """
 
-from .widget import ActivityWidget, is_widget_enabled
+from .app import App
 
-__all__ = ["ActivityWidget", "is_widget_enabled"]
+__all__ = ["App"]

@@ -184,7 +184,7 @@ def apply_runtime(values: dict):
     config.MIN_WORK_TIME_THRESHOLD = values["min_work_time_threshold"]
     config.FREE_TIME_WARNING_PERCENT = values["free_time_warning_percent"]
     # Настройки инструментов: значения кладём в config, а перечитать их
-    # инструменты просит сам виджет (ActivityWidget._open_settings →
+    # инструменты просит ядро UI (App._on_settings_saved →
     # tools.refresh_tools) — остальное читается динамически по месту.
     for key, value in values["tools"].items():
         setattr(config, key, value)
@@ -199,6 +199,6 @@ def apply_runtime(values: dict):
     config.BREAK_MINUTES = values["break_minutes"]
     # Тема: обновляем config и перепривязываем палитру theme.COLOR_*.
     # Окна, открытые после этого, отрисуются в новой теме; постоянный
-    # виджет перекрасит себя сам (ActivityWidget._apply_theme).
+    # виджет перекрасит себя сам (ActivityWidget.apply_theme).
     config.THEME = values["theme"]
     theme.set_theme(values["theme"])
