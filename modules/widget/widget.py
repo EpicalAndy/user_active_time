@@ -219,6 +219,7 @@ class ActivityWidget:
         """Возвращает окно на экран (из трея)."""
         self.window.deiconify()
         self.window.lift()
+        position.save_in_tray(False)
 
     def toggle_visible(self):
         """Двойной клик по значку трея: окно в трее — открыть, на экране — свернуть."""
@@ -231,10 +232,12 @@ class ActivityWidget:
         """Прячет окно конфигуратора в трей (мини-виджеты остаются на рабочем столе).
 
         Значок трея висит всегда, поэтому достаточно скрыть окно. Если трей
-        недоступен — откатываемся к сворачиванию до заголовка.
+        недоступен — откатываемся к сворачиванию до заголовка. Следующий
+        запуск начнётся тоже в трее (см. `position.load_in_tray`).
         """
         if self._tray_available:
             self.window.withdraw()
+            position.save_in_tray(True)
         else:
             self._toggle_minimize()
 

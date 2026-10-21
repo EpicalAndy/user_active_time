@@ -18,6 +18,7 @@ from collections.abc import Callable
 import config
 from modules import tools
 from modules.events_monitor import get_countdown_remaining
+from . import position
 from .alerts import SoundAlerts
 from .manager import WidgetManager
 from .notification import play_notification, play_tick
@@ -47,15 +48,19 @@ class App:
             on_toggle=lambda: self.root.after(0, self._window.toggle_visible),
             on_quit=lambda: self.root.after(0, self.close),
         )
-        # Окно без единой строки тела ничего не показывает — тогда оно ждёт
-        # в трее, а работают мини-виджеты. Без трея прятать некуда: иначе
-        # приложение нельзя было бы ни настроить, ни закрыть.
+        # Окно стартует в трее, если его туда спрятали в прошлый раз или если
+        # без единой строки тела ему нечего показать (работают мини-виджеты).
+        # Без трея прятать некуда: иначе приложение нельзя было бы ни
+        # настроить, ни закрыть.
+        start_hidden = self._tray is not None and (
+            position.load_in_tray() or not is_widget_enabled()
+        )
         self._window = ActivityWidget(
             self.root,
             self._manager,
             tool_items=lambda: tools.menu_items(self._tools),
             tray_available=self._tray is not None,
-            start_hidden=self._tray is not None and not is_widget_enabled(),
+            start_hidden=start_hidden,
             on_settings_saved=self._on_settings_saved,
             on_data_changed=self.refresh,
             on_quit=self.close,

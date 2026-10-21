@@ -1,10 +1,17 @@
 """
-Позиция окна конфигуратора между запусками: `widget_position.json` в LOG_DIR.
+Окно конфигуратора между запусками: `widget_position.json` в LOG_DIR.
 
-Файл — {"x", "y"}; ширина окна фиксированная, высота считается по содержимому,
-поэтому хранить размер незачем. Сохранённая позиция применяется, только если
-окно целиком помещается на экран (монитор могли отключить) — иначе окно
-встаёт в правый нижний угол.
+Файл — {"x", "y", "in_tray"}. Ширина окна фиксированная, высота считается
+по содержимому, поэтому хранить размер незачем. Сохранённая позиция
+применяется, только если окно целиком помещается на экран (монитор могли
+отключить) — иначе окно встаёт в правый нижний угол.
+
+`in_tray` — было ли окно спрятано в трей: при следующем запуске оно
+стартует так же. Пишется в момент сворачивания и показа, а не на выходе:
+при выключении компьютера приложение штатный выход не проходит.
+
+Позиция и флаг пишутся независимо (чтение-правка-запись), чтобы одно не
+затирало другое.
 """
 
 import os
@@ -39,9 +46,22 @@ def place_window(window: tk.Toplevel, width: int):
     window.geometry(f"{width}x{win_h}+{x}+{y}")
 
 
+def _load() -> dict:
+    data = read_json(_WIDGET_POS_FILE)
+    return data if isinstance(data, dict) else {}
+
+
+def _update(**fields):
+    """Дописывает поля в файл, не трогая остальные; ошибка записи не роняет виджет."""
+    try:
+        write_json_atomic(_WIDGET_POS_FILE, {**_load(), **fields})
+    except OSError:
+        pass
+
+
 def load_position() -> tuple[int, int] | None:
     """Сохранённая позиция виджета; None — файла нет или он битый."""
-    pos = read_json(_WIDGET_POS_FILE)
+    pos = _load()
     try:
         return int(pos["x"]), int(pos["y"])
     except (TypeError, KeyError, ValueError):
@@ -49,8 +69,15 @@ def load_position() -> tuple[int, int] | None:
 
 
 def save_position(window: tk.Toplevel):
-    """Сохраняет текущую позицию окна; ошибка записи не роняет виджет."""
-    try:
-        write_json_atomic(_WIDGET_POS_FILE, {"x": window.winfo_x(), "y": window.winfo_y()})
-    except OSError:
-        pass
+    """Сохраняет текущую позицию окна."""
+    _update(x=window.winfo_x(), y=window.winfo_y())
+
+
+def load_in_tray() -> bool:
+    """Было ли окно спрятано в трей на момент последнего сворачивания/показа."""
+    return _load().get("in_tray") is True
+
+
+def save_in_tray(in_tray: bool):
+    """Запоминает, спрятано ли окно в трей."""
+    _update(in_tray=in_tray)
