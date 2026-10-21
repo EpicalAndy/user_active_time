@@ -10,11 +10,13 @@ import config
 from constants import FONT_FAMILY
 from texts import (
     METRIC_BREAK_TIME,
+    SETTINGS_AUTOSTART,
     SETTINGS_CALENDAR_BUTTON,
+    SETTINGS_STARTUP_FRAME,
     SETTINGS_TIMEOUT_HINT,
     SETTINGS_TIMEOUT_LABEL,
 )
-from modules import theme
+from modules import autostart, theme
 
 # Дни недели: ключ в WORK_HOURS_BY_DAY → отображаемое название
 _DAYS = [
@@ -164,6 +166,20 @@ class GeneralTab:
         ttk.Spinbox(timer_grid, from_=0, to=300, width=6, textvariable=self._warning_var).grid(
             row=0, column=1, padx=(8, 0), pady=2,
         )
+
+        # --- Запуск ---
+        # Состояние — из реестра, а не из config.py (см. modules.autostart).
+        startup_frame = ttk.LabelFrame(self.frame, text=SETTINGS_STARTUP_FRAME)
+        startup_frame.pack(fill=tk.X, **pad)
+
+        self._autostart_var = tk.BooleanVar(value=autostart.is_enabled())
+        ttk.Checkbutton(
+            startup_frame, text=SETTINGS_AUTOSTART, variable=self._autostart_var,
+        ).pack(anchor=tk.W, padx=12, pady=2)
+
+    def autostart(self) -> bool:
+        """Галочка автозагрузки — отдельно от `values()`: в config.py она не пишется."""
+        return self._autostart_var.get()
 
     def values(self) -> dict:
         return {

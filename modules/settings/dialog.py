@@ -7,9 +7,11 @@
 """
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
+from modules import autostart
 from modules.ui_utils import center_on_parent
+from texts import SETTINGS_AUTOSTART_ERROR, SETTINGS_AUTOSTART_ERROR_TITLE
 from .tab_general import GeneralTab
 from .tab_metrics import MetricsTab
 from .tab_tools import ToolsTab, has_settings
@@ -65,6 +67,16 @@ class SettingsDialog:
         values = self._collect_values()
         write_config_file(values, self._tools.specs)
         apply_runtime(values)
+        # Автозагрузка живёт в реестре, а не в config.py. Отказ в записи
+        # (политика компьютера) не мешает сохранить остальное.
+        try:
+            autostart.apply(self._general.autostart())
+        except OSError as e:
+            messagebox.showerror(
+                SETTINGS_AUTOSTART_ERROR_TITLE,
+                SETTINGS_AUTOSTART_ERROR.format(error=e),
+                parent=self.dialog,
+            )
         self.saved = True
         self.dialog.destroy()
 

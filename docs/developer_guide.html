@@ -232,6 +232,9 @@ win_events    — WTS-подписка, скрытое окно, цикл соо
 <p><b>Конвенция hot-reload.</b> Значения, изменяемые через диалог настроек, читаются в коде как <code>config.X</code> (через <code>import config</code>), а не <code>from config import X</code> — иначе имя биндится при импорте модуля и обновления через <code>settings.writer.apply_runtime</code> не применяются до перезапуска. Диалог пишет в <code>config.X</code> напрямую и в файл. Та же конвенция у тем: <code>theme.COLOR_X</code>.</p>
 </aside>
 
+<h3>Автозагрузка</h3>
+<p>Галочка «Запускать при входе в Windows» — единственная настройка вне <code>config.py</code>: <code>modules/autostart.py</code> пишет значение <code>User Active Time</code> в <code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code> (ветка пользователя, прав администратора не нужно). Источник истины — реестр: запись можно удалить или выключить в Диспетчере задач, а выключение там пишет флаг в <code>…\Explorer\StartupApproved\Run</code> (нечётный первый байт = выключено), поэтому <code>is_enabled</code> учитывает оба ключа, а <code>set_enabled</code> снимает флаг. Команда — без консоли: <code>pythonw.exe</code> из окружения текущего интерпретатора + <code>main.py</code>, в сборке PyInstaller — сам exe; от рабочей папки приложение не зависит. Галочка отдаётся вкладкой через <code>GeneralTab.autostart()</code> отдельно от <code>values()</code>, диалог после записи конфига вызывает <code>autostart.apply</code>: реестр трогается только при смене состояния или если запись указывает на пропавшие файлы (перенос папки) — рабочую запись другой копии простое «OK» не перебивает. Отказ записи (<code>OSError</code>, например запрет политикой) показывается сообщением, остальные настройки сохраняются.</p>
+
 <h3>Параметры</h3>
 <p>Значения по умолчанию — в скобках. В диалоге ⚙ есть всё, кроме отмеченных «только вручную».</p>
 
@@ -439,6 +442,7 @@ git push --follow-tags                           # или сразу флаго�
   <li><code>modules/work_calendar.py</code> — календарь-исключения (<code>work_calendar.json</code>)</li>
   <li><code>modules/json_file.py</code> — чтение и атомарная запись JSON-файлов данных</li>
   <li><code>modules/theme.py</code> — палитры тем и переключение</li>
+  <li><code>modules/autostart.py</code> — автозагрузка через <code>HKCU\…\Run</code> (см. <a href="#config">Конфигурация</a>)</li>
   <li><code>modules/report.py</code>, <code>report_reader.py</code>, <code>report_viewer.py</code>, <code>timeline_hover.py</code>, <code>period_report.py</code>, <code>period_report_dialog.py</code>, <code>period_report_viewer.py</code>, <code>heatmap_viewer.py</code>, <code>month_grid.py</code>, <code>schedule_calendar.py</code>, <code>day_schedule_dialog.py</code>, <code>calendar_popup.py</code>, <code>manual_activity_dialog.py</code>, <code>changelog_viewer.py</code>, <code>ui_utils.py</code> — отчёты и диалоги</li>
   <li><code>modules/settings/</code> — диалог настроек: <code>dialog.py</code> (окно, кнопки, сбор значений), <code>tab_general.py</code> / <code>tab_metrics.py</code> / <code>tab_tools.py</code> (вкладки, каждая отдаёт свою часть словаря через <code>values()</code>), <code>writer.py</code> (запись в config.py и применение на лету)</li>
   <li><code>modules/week_activity.py</code> — раскладка недельной полосы (данные, без tkinter)</li>
@@ -466,6 +470,7 @@ git push --follow-tags                           # или сразу флаго�
   <tr><td><code>test_time_marks.py</code></td><td>отметки времени: чтение, цвет, чистка настроек</td></tr>
   <tr><td><code>test_widget_menu.py</code></td><td>ПКМ-меню мини-виджета: состав пунктов и отметка активных значений</td></tr>
   <tr><td><code>test_settings_writer.py</code></td><td>запись настроек в config.py: построчные замены, кавычки у строк, блок рабочих часов, идемпотентность</td></tr>
+  <tr><td><code>test_autostart.py</code></td><td>автозагрузка без записи в реестр: команда через pythonw, флаг «выключено в Диспетчере задач», когда <code>apply</code> трогает реестр</td></tr>
   <tr><td><code>test_day_timeline.py</code></td><td>строка таймлайна в теле: отметки часов внутри отрезка, текст подсказки</td></tr>
   <tr><td><code>test_timeline_hover.py</code></td><td>подсказка к отрезку таймлайна: подпись и длительность по показанным минутам, «идёт», описания, отрезок под курсором на графике отчёта, полосы ячеек и их границы, подпись полосы как нарисована, точка на кольце</td></tr>
   <tr><td><code>test_timeline_arcs.py</code></td><td>раскладка таймлайна: ячейки, сохранность простоя, отсутствие вырожденных дуг</td></tr>

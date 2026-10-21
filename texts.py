@@ -176,6 +176,15 @@ SETTINGS_TIMEOUT_LABEL = "Таймаут (сек)"
 SETTINGS_TIMEOUT_HINT = "Таймаут неактивности; 0 — простой в этот день не считается"
 SETTINGS_CALENDAR_BUTTON = "Календарь рабочего времени…"
 
+# Автозагрузка (вкладка «Общие»)
+SETTINGS_STARTUP_FRAME = "Запуск"
+SETTINGS_AUTOSTART = "Запускать при входе в Windows"
+SETTINGS_AUTOSTART_ERROR_TITLE = "Автозагрузка"
+SETTINGS_AUTOSTART_ERROR = (
+    "Не удалось изменить автозагрузку: {error}\n\n"
+    "Возможно, она запрещена политикой компьютера. Остальные настройки сохранены."
+)
+
 # === Диалог «Отчёт за период» ===
 
 PERIOD_DIALOG_TITLE = "Отчёт за период"
